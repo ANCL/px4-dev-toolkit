@@ -1,0 +1,594 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+source "${ROOT}/config/env.env"
+
+RUNTIME_ENV="${ROOT}/ros2/runtime_env.sh"
+TMUX_CONFIG="${ROOT}/config/tmux.conf"
+MAVPROXY_BIN="${ROOT}/.venv/mavproxy/bin/mavproxy.py"
+
+ACTION="${1:-}"
+HEADLESS=false
+
+# This wrapper owns the local SITL lifecycle. It starts PX4/Gazebo plus the
+# configured ROS and ground-control services in one tmux session, and `stop`
+# also cleans up Gazebo if the simulator has detached from that process tree.
+usage() {
+    echo "Usage:"
+    echo "  ./tools/sitl start [headless]"
+    echo "  ./tools/sitl status"
+    echo "  ./tools/sitl stop"
+}
+
+require_config_value() {
+    local name="$1"
+
+    if [[ -z "${!name-}" ]]; then
+        echo "ERROR: missing ${name} in config/env.env."
+        exit 1
+    fi
+}
+
+require_boolean() {
+    local name="$1"
+    local value="${!name-}"
+
+    case "${value}" in
+        true|false) ;;
+        *)
+            echo "ERROR: ${name} must be either 'true' or 'false'."
+            exit 1
+            ;;
+    esac
+}
+
+# Parse only the small public CLI exposed by this script. `headless` changes
+# Gazebo presentation only; the PX4 SITL process and simulator server still run.
+if (( $# == 0 || $# > 2 )); then
+    usage
+    exit 2
+fi
+
+case "${ACTION}" in
+    start)
+        if (( $# == 2 )); then
+            if [[ "$2" != "headless" ]]; then
+                usage
+                exit 2
+            fi
+
+            HEADLESS=true
+        fi
+        ;;
+    stop|status)
+        if (( $# != 1 )); then
+            usage
+            exit 2
+        fi
+        ;;
+    *)
+        usage
+        exit 2
+        ;;
+esac
+
+# Validate values before constructing tmux commands. Conditional services only
+# require the settings they actually consume.
+require_config_value TMUX_SESSION
+require_boolean START_XRCE_AGENT
+require_config_value PX4_BUILD_TARGET
+require_config_value PX4_SIM_MODEL
+require_config_value PX4_GZ_WORLD
+require_config_value GCS
+
+if [[ "${START_XRCE_AGENT}" == "true" ]]; then
+    require_config_value XRCE_AGENT_TRANSPORT
+    require_config_value XRCE_AGENT_PORT
+fi
+
+if [[ "${GCS}" == "mavproxy" ]]; then
+    require_config_value MAVPROXY_MASTER
+fi
+
+case "${GCS}" in
+    qgc|mavproxy|none) ;;
+    *)
+        echo "ERROR: GCS must be 'qgc', 'mavproxy', or 'none'."
+        exit 1
+        ;;
+esac
+
+if ! command -v tmux >/dev/null 2>&1; then
+    echo "ERROR: tmux is not installed."
+    exit 1
+fi
+
+# tmux is the primary process container for a running SITL session.
+session_exists() {
+    tmux has-session -t "${TMUX_SESSION}" 2>/dev/null
+}
+
+# ROS support services are launched through the built px4_bringup package so
+# each tmux window gets the same sourced runtime environment.
+launch_command() {
+    local launch_file="$1"
+    local command
+
+    printf -v command \
+        'source %q && exec ros2 launch px4_bringup %q' \
+        "${RUNTIME_ENV}" "${launch_file}"
+
+    printf 'bash -lc %q' "${command}"
+}
+
+# Build the exact command executed in the PX4 tmux window. PX4_GZ_WORLD is
+# passed explicitly, and HEADLESS=1 is used only for headless Gazebo startup.
+px4_command() {
+    local command
+
+    if [[ "${HEADLESS}" == "true" ]]; then
+        printf -v command \
+            'cd %q && exec env HEADLESS=1 PX4_GZ_WORLD=%q make %q %q' \
+            "${ROOT}/px4/PX4-Autopilot" \
+            "${PX4_GZ_WORLD}" \
+            "${PX4_BUILD_TARGET}" \
+            "${PX4_SIM_MODEL}"
+    else
+        printf -v command \
+            'cd %q && exec env -u HEADLESS PX4_GZ_WORLD=%q make %q %q' \
+            "${ROOT}/px4/PX4-Autopilot" \
+            "${PX4_GZ_WORLD}" \
+            "${PX4_BUILD_TARGET}" \
+            "${PX4_SIM_MODEL}"
+    fi
+
+    printf 'bash -lc %q' "${command}"
+}
+
+# MAVProxy runs from its isolated repository-managed Python environment.
+mavproxy_command() {
+    if [[ ! -x "${MAVPROXY_BIN}" ]]; then
+        echo "ERROR: MAVProxy is not installed:" >&2
+        echo "  ${MAVPROXY_BIN}" >&2
+        exit 1
+    fi
+
+    local command
+
+    printf -v command \
+        'exec env -u PYTHONPATH -u PYTHONHOME PYTHONNOUSERSITE=1 %q %q' \
+        "${MAVPROXY_BIN}" \
+        "--master=${MAVPROXY_MASTER}"
+
+    printf 'bash -lc %q' "${command}"
+}
+
+# Start one tmux window per selected component. Re-running `start` while the
+# session exists attaches to the existing stack instead of launching duplicates.
+start_stack() {
+    if [[ ! -f "${RUNTIME_ENV}" ]]; then
+        echo "ERROR: runtime environment script is missing:"
+        echo "  ${RUNTIME_ENV}"
+        exit 1
+    fi
+
+    if [[ ! -f "${TMUX_CONFIG}" ]]; then
+        echo "ERROR: missing tmux config:"
+        echo "  ${TMUX_CONFIG}"
+        exit 1
+    fi
+
+    if session_exists; then
+        exec tmux attach-session -t "${TMUX_SESSION}"
+    fi
+
+    local effective_gcs="${GCS}"
+
+    # A graphical QGC window defeats the purpose of a headless run. MAVProxy
+    # remains allowed because it is terminal-based.
+    if [[ "${HEADLESS}" == "true" ]] &&
+        [[ "${effective_gcs}" == "qgc" ]]; then
+        effective_gcs=none
+    fi
+
+    local px4_command_line
+    px4_command_line="$(px4_command)"
+
+    tmux new-session \
+        -d \
+        -s "${TMUX_SESSION}" \
+        -n px4 \
+        "${px4_command_line}"
+
+    if [[ "${START_XRCE_AGENT}" == "true" ]]; then
+        local xrce_command
+        xrce_command="$(launch_command xrce.launch.py)"
+
+        tmux new-window \
+            -t "${TMUX_SESSION}:" \
+            -n xrce-dds \
+            "${xrce_command}"
+    fi
+
+    case "${effective_gcs}" in
+        qgc)
+            local qgc_command
+            qgc_command="$(launch_command qgc.launch.py)"
+
+            tmux new-window \
+                -t "${TMUX_SESSION}:" \
+                -n qgroundcontrol \
+                "${qgc_command}"
+            ;;
+        mavproxy)
+            local mavproxy_command_line
+            mavproxy_command_line="$(mavproxy_command)"
+
+            tmux new-window \
+                -t "${TMUX_SESSION}:" \
+                -n mavproxy \
+                "${mavproxy_command_line}"
+            ;;
+        none)
+            ;;
+    esac
+
+    tmux source-file "${TMUX_CONFIG}"
+    tmux select-window -t "${TMUX_SESSION}:px4"
+
+    echo "tmux session: ${TMUX_SESSION}"
+    echo
+    tmux list-windows \
+        -t "${TMUX_SESSION}" \
+        -F '  #I: #W'
+
+    exec tmux attach-session -t "${TMUX_SESSION}"
+}
+
+# The helpers below manage process trees explicitly because Gazebo/PX4 may
+# spawn children that outlive their original tmux pane shell.
+pid_is_alive() {
+    local pid="$1"
+    local state
+
+    [[ -r "/proc/${pid}/stat" ]] || return 1
+
+    state="$(
+        awk '{print $3}' "/proc/${pid}/stat" 2>/dev/null || true
+    )"
+
+    [[ -n "${state}" && "${state}" != "Z" ]]
+}
+
+collect_process_tree() {
+    local root_pid="$1"
+    local -a queue=("${root_pid}")
+    local index=0
+    local pid
+    local child
+
+    while (( index < ${#queue[@]} )); do
+        pid="${queue[$index]}"
+        index=$((index + 1))
+
+        echo "${pid}"
+
+        while IFS= read -r child; do
+            if [[ -n "${child}" ]]; then
+                queue+=("${child}")
+            fi
+        done < <(
+            pgrep -P "${pid}" 2>/dev/null || true
+        )
+    done
+}
+
+any_pid_alive() {
+    local pid
+
+    for pid in "$@"; do
+        if pid_is_alive "${pid}"; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+wait_for_pids() {
+    local timeout_seconds="$1"
+    shift
+
+    local elapsed=0
+
+    while (( elapsed < timeout_seconds )); do
+        if ! any_pid_alive "$@"; then
+            return 0
+        fi
+
+        sleep 1
+        elapsed=$((elapsed + 1))
+    done
+
+    ! any_pid_alive "$@"
+}
+
+signal_alive_pids() {
+    local signal="$1"
+    shift
+
+    local pid
+
+    for pid in "$@"; do
+        if pid_is_alive "${pid}"; then
+            kill -s "${signal}" "${pid}" 2>/dev/null || true
+        fi
+    done
+}
+
+# Gazebo can detach/reparent while PX4 is shutting down. Match the world path
+# inside this repository so cleanup targets only this px4_env simulator and
+# does not kill an unrelated Gazebo session on the workstation.
+repo_gazebo_root_pids() {
+    local world_marker="${ROOT}/px4/PX4-Autopilot/Tools/simulation/gz/worlds/"
+    local pid
+    local args
+
+    while read -r pid args; do
+        if [[ "${args}" == *"${world_marker}"* ]] &&
+            [[ "${args}" == *"gz sim"* ||
+               "${args}" == *"gz-sim"* ||
+               ( "${args}" == *"ruby"* && "${args}" == *"gz"* ) ]]; then
+            echo "${pid}"
+        fi
+    done < <(ps -eo pid=,args=)
+}
+
+collect_repo_gazebo_tree() {
+    local root_pid
+    local pid
+
+    while IFS= read -r root_pid; do
+        [[ -n "${root_pid}" ]] || continue
+
+        while IFS= read -r pid; do
+            [[ -n "${pid}" ]] && echo "${pid}"
+        done < <(collect_process_tree "${root_pid}")
+    done < <(repo_gazebo_root_pids)
+}
+
+# Stop detached Gazebo processes gracefully first, then escalate only if they
+# refuse to exit. This path runs even when the tmux session is already gone.
+stop_repo_gazebo() {
+    local -a gazebo_pids=()
+
+    mapfile -t gazebo_pids < <(
+        collect_repo_gazebo_tree |
+            sort -n -u
+    )
+
+    if (( ${#gazebo_pids[@]} == 0 )); then
+        echo "Gazebo: no simulator process for this repo is running."
+        return 0
+    fi
+
+    echo "Stopping Gazebo simulator for this repo..."
+
+    signal_alive_pids INT "${gazebo_pids[@]}"
+
+    if ! wait_for_pids 10 "${gazebo_pids[@]}"; then
+        echo "Gazebo still running; sending SIGTERM."
+        signal_alive_pids TERM "${gazebo_pids[@]}"
+
+        if ! wait_for_pids 5 "${gazebo_pids[@]}"; then
+            echo "Gazebo still running; sending SIGKILL."
+            signal_alive_pids KILL "${gazebo_pids[@]}"
+
+            if ! wait_for_pids 2 "${gazebo_pids[@]}"; then
+                echo "ERROR: Gazebo simulator did not stop." >&2
+                return 1
+            fi
+        fi
+    fi
+
+    echo "Gazebo simulator stopped."
+}
+
+# Stop tmux-managed processes first so each component receives Ctrl-C, then
+# clean any repo-owned Gazebo process that escaped the tmux process tree.
+stop_stack() {
+    if session_exists; then
+        local -a pane_pids=()
+        local -a stack_pids=()
+        local -a pane_targets=()
+
+        local pane_pid
+        local target
+
+        mapfile -t pane_pids < <(
+            tmux list-panes \
+                -s \
+                -t "${TMUX_SESSION}" \
+                -F '#{pane_pid}'
+        )
+
+        mapfile -t pane_targets < <(
+            tmux list-panes \
+                -s \
+                -t "${TMUX_SESSION}" \
+                -F '#{session_name}:#{window_name}.#{pane_index}'
+        )
+
+        for pane_pid in "${pane_pids[@]}"; do
+            while IFS= read -r target; do
+                stack_pids+=("${target}")
+            done < <(
+                collect_process_tree "${pane_pid}"
+            )
+        done
+
+        if (( ${#stack_pids[@]} > 0 )); then
+            mapfile -t stack_pids < <(
+                printf '%s\n' "${stack_pids[@]}" |
+                    sort -n -u
+            )
+        fi
+
+        echo "Stopping tmux session '${TMUX_SESSION}'..."
+
+        for target in "${pane_targets[@]}"; do
+            tmux send-keys \
+                -t "${target}" \
+                C-c \
+                2>/dev/null || true
+        done
+
+        if (( ${#stack_pids[@]} > 0 )) &&
+            ! wait_for_pids 15 "${stack_pids[@]}"; then
+
+            echo "Processes still running; sending SIGINT."
+            signal_alive_pids INT "${stack_pids[@]}"
+
+            if ! wait_for_pids 15 "${stack_pids[@]}"; then
+                echo "Processes still running; sending SIGTERM."
+                signal_alive_pids TERM "${stack_pids[@]}"
+
+                if ! wait_for_pids 2 "${stack_pids[@]}"; then
+                    echo "Processes still running; sending SIGKILL."
+                    signal_alive_pids KILL "${stack_pids[@]}"
+                fi
+            fi
+        fi
+
+        tmux kill-session \
+            -t "${TMUX_SESSION}" \
+            2>/dev/null || true
+
+        echo "tmux session '${TMUX_SESSION}' stopped."
+    else
+        echo "tmux session '${TMUX_SESSION}' is not running."
+    fi
+
+    stop_repo_gazebo
+}
+
+# Status helpers intentionally report processes rather than only tmux windows;
+# this makes detached or stale components visible during diagnosis.
+xrce_processes() {
+    pgrep -a -x MicroXRCEAgent 2>/dev/null || true
+}
+
+px4_processes() {
+    pgrep -a -x px4 2>/dev/null || true
+}
+
+gazebo_processes() {
+    local pid
+
+    while IFS= read -r pid; do
+        [[ -n "${pid}" ]] || continue
+        ps -p "${pid}" -o pid=,comm=,args= 2>/dev/null || true
+    done < <(repo_gazebo_root_pids)
+}
+
+qgc_processes() {
+    pgrep -af QGroundControl 2>/dev/null || true
+}
+
+mavproxy_processes() {
+    pgrep -af '[m]avproxy.py' 2>/dev/null || true
+}
+
+show_component_status() {
+    local label="$1"
+    local configured="$2"
+    local process_function="$3"
+    local processes
+
+    processes="$("${process_function}")"
+
+    if [[ -n "${processes}" ]]; then
+        printf '%-16s running' "${label}:"
+
+        if [[ "${configured}" != "always" ]]; then
+            printf ' (configured %s)' "${configured}"
+        fi
+
+        echo
+
+        while IFS= read -r line; do
+            echo "  ${line}"
+        done <<< "${processes}"
+    else
+        printf '%-16s stopped' "${label}:"
+
+        if [[ "${configured}" != "always" ]]; then
+            printf ' (configured %s)' "${configured}"
+        fi
+
+        echo
+    fi
+}
+
+status_stack() {
+    echo "tmux session: ${TMUX_SESSION}"
+
+    if session_exists; then
+        echo "state: running"
+
+        tmux list-windows \
+            -t "${TMUX_SESSION}" \
+            -F '  #I: #W'
+    else
+        echo "state: stopped"
+    fi
+
+    echo
+
+    show_component_status \
+        "XRCE Agent" \
+        "${START_XRCE_AGENT}" \
+        xrce_processes
+
+    show_component_status \
+        "PX4" \
+        "always" \
+        px4_processes
+
+    show_component_status \
+        "Gazebo" \
+        "always" \
+        gazebo_processes
+
+    case "${GCS}" in
+        qgc)
+            show_component_status \
+                "QGroundControl" \
+                "qgc" \
+                qgc_processes
+            ;;
+        mavproxy)
+            show_component_status \
+                "MAVProxy" \
+                "mavproxy" \
+                mavproxy_processes
+            ;;
+        none)
+            printf '%-16s stopped (configured none)\n' "Ground control:"
+            ;;
+    esac
+}
+
+case "${ACTION}" in
+    start)
+        start_stack
+        ;;
+    stop)
+        stop_stack
+        ;;
+    status)
+        status_stack
+        ;;
+esac

@@ -8,6 +8,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(px4_msgs REQUIRED)
+find_package(px4_control_common REQUIRED)
 
 add_executable(position_takeoff_hover
   src/position_takeoff_hover.cpp
@@ -26,6 +27,7 @@ target_include_directories(position_takeoff_hover PRIVATE
 ament_target_dependencies(position_takeoff_hover
   rclcpp
   px4_msgs
+  px4_control_common
 )
 
 install(

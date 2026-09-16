@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <memory>
 
-#include <px4_msgs/msg/manual_control_setpoint.hpp>
+#include <px4_control_common/virtual_joystick_client.hpp>
 #include <px4_msgs/msg/vehicle_command.hpp>
 #include <px4_msgs/msg/vehicle_command_ack.hpp>
 #include <px4_msgs/msg/vehicle_land_detected.hpp>
@@ -26,17 +26,17 @@ namespace px4_topics
  * Minimal headless PX4 Position-mode flight sequence:
  *
  *   wait for PX4 readiness and a valid local position
- *       -> provide a virtual manual-control stream
+ *       -> set the background virtual joystick to minimum throttle
  *       -> switch to Position mode
  *       -> arm
- *       -> climb approximately 2 m
- *       -> center the sticks and hover for 20 seconds
+ *       -> command a climb of approximately 2 m
+ *       -> center the joystick and hover for 20 seconds
  *       -> ask PX4 to land at the current position
  *       -> wait for PX4 to land and disarm
  *
- * This node is intentionally not an Offboard controller. It supplies the
- * manual-control input normally provided by a joystick while PX4 retains
- * ownership of its position, attitude, rate, and actuator-control loops.
+ * MAVProxy owns the continuous MANUAL_CONTROL stream. This node only changes
+ * the virtual-joystick state through the local control socket; it does not
+ * publish PX4 manual-control input through DDS.
  */
 class PositionTakeoffHover : public rclcpp::Node
 {
@@ -84,11 +84,6 @@ public:
       px4_topics::IN_VEHICLE_COMMAND,
       10);
 
-    manual_control_pub_ =
-      create_publisher<px4_msgs::msg::ManualControlSetpoint>(
-      px4_topics::IN_MANUAL_CONTROL_INPUT,
-      10);
-
     phase_started_at_ = SteadyClock::now();
 
     timer_ = create_wall_timer(
@@ -113,6 +108,7 @@ private:
   enum class Phase
   {
     WAIT_READY,
+    WARMUP_JOYSTICK,
     WAIT_POSITION_MODE,
     WAIT_PREFLIGHT,
     WAIT_ARM,
@@ -125,14 +121,9 @@ private:
   static constexpr float kClimbHeightM = 2.0F;
   static constexpr float kPrearmThrottle = -1.0F;
   static constexpr float kClimbThrottle = 0.60F;
-  static constexpr float kHoverThrottle = 0.0F;
 
-  static constexpr std::uint32_t kManualWarmupSamples = 20;
+  static constexpr double kJoystickWarmupSeconds = 1.0;
 
-  /*
-   * PX4's pinned custom-mode definition maps main mode 3 to POSCTL.
-   * VEHICLE_CMD_DO_SET_MODE param1=1 selects the custom-mode fields.
-   */
   static constexpr float kCustomModeEnabled = 1.0F;
   static constexpr float kPositionMainMode = 3.0F;
   static constexpr float kPositionSubMode = 0.0F;
@@ -159,10 +150,6 @@ private:
   }
 
 
-  /*
-   * Position mode depends on PX4's local estimate. VehicleLocalPosition is
-   * expressed in local NED coordinates, where negative z is upward.
-   */
   void handle_local_position(
     const px4_msgs::msg::VehicleLocalPosition & msg)
   {
@@ -234,58 +221,48 @@ private:
   }
 
 
-  float commanded_throttle() const
+  bool set_joystick(double throttle)
   {
-    switch (phase_) {
-      case Phase::CLIMB:
-        return kClimbThrottle;
+    try {
+      virtual_joystick_.set(0.0, 0.0, throttle, 0.0);
+      return true;
 
-      case Phase::HOVER:
-      case Phase::WAIT_LAND:
-        return kHoverThrottle;
-
-      default:
-        return kPrearmThrottle;
+    } catch (const std::exception & error) {
+      fail(error.what());
+      return false;
     }
   }
 
 
-  /*
-   * Keep the virtual joystick alive for the complete flight. The input uses a
-   * MAVLink-class source so PX4's normal joystick/manual-control selector
-   * accepts it without introducing an Offboard control path.
-   */
-  void publish_manual_control()
+  bool center_joystick()
   {
-    px4_msgs::msg::ManualControlSetpoint msg{};
+    try {
+      virtual_joystick_.center();
+      return true;
 
-    const std::uint64_t timestamp = now_us();
+    } catch (const std::exception & error) {
+      fail(error.what());
+      return false;
+    }
+  }
 
-    msg.timestamp = timestamp;
-    msg.timestamp_sample = timestamp;
-    msg.valid = true;
 
-    msg.data_source =
-      px4_msgs::msg::ManualControlSetpoint::SOURCE_MAVLINK_0;
+  void leave_joystick_safe()
+  {
+    try {
+      if (
+        arming_state_ ==
+        px4_msgs::msg::VehicleStatus::ARMING_STATE_ARMED)
+      {
+        virtual_joystick_.center();
 
-    msg.roll = 0.0F;
-    msg.pitch = 0.0F;
-    msg.yaw = 0.0F;
-    msg.throttle = commanded_throttle();
+      } else {
+        virtual_joystick_.set(0.0, 0.0, kPrearmThrottle, 0.0);
+      }
 
-    msg.flaps = NAN;
-    msg.aux1 = NAN;
-    msg.aux2 = NAN;
-    msg.aux3 = NAN;
-    msg.aux4 = NAN;
-    msg.aux5 = NAN;
-    msg.aux6 = NAN;
-
-    msg.sticks_moving = false;
-    msg.buttons = 0;
-
-    manual_control_pub_->publish(msg);
-    ++manual_samples_published_;
+    } catch (const std::exception &) {
+      // Failure reporting must not recursively fail while shutting down.
+    }
   }
 
 
@@ -303,9 +280,7 @@ private:
     fill_command_metadata(msg);
     vehicle_command_pub_->publish(msg);
 
-    RCLCPP_INFO(
-      get_logger(),
-      "Position-mode command sent.");
+    RCLCPP_INFO(get_logger(), "Position-mode command sent.");
   }
 
 
@@ -324,9 +299,7 @@ private:
     fill_command_metadata(msg);
     vehicle_command_pub_->publish(msg);
 
-    RCLCPP_INFO(
-      get_logger(),
-      "Arm command sent.");
+    RCLCPP_INFO(get_logger(), "Arm command sent.");
   }
 
 
@@ -334,10 +307,6 @@ private:
   {
     px4_msgs::msg::VehicleCommand msg{};
 
-    /*
-     * No global coordinates are supplied. PX4 handles NAV_LAND as a request
-     * to land at the current position and can fall back to DESCEND if needed.
-     */
     msg.param1 = NAN;
     msg.param2 = NAN;
     msg.param3 = NAN;
@@ -352,9 +321,7 @@ private:
     fill_command_metadata(msg);
     vehicle_command_pub_->publish(msg);
 
-    RCLCPP_INFO(
-      get_logger(),
-      "Land command sent.");
+    RCLCPP_INFO(get_logger(), "Land command sent.");
   }
 
 
@@ -363,10 +330,8 @@ private:
   {
     msg.target_system = 1;
     msg.target_component = 1;
-
     msg.source_system = 1;
     msg.source_component = 1;
-
     msg.from_external = true;
     msg.timestamp = now_us();
   }
@@ -395,6 +360,7 @@ private:
 
     exit_code_ = 1;
     set_phase(Phase::DONE);
+    leave_joystick_safe();
     timer_->cancel();
     rclcpp::shutdown();
   }
@@ -408,6 +374,16 @@ private:
 
     exit_code_ = 0;
     set_phase(Phase::DONE);
+
+    try {
+      virtual_joystick_.set(0.0, 0.0, kPrearmThrottle, 0.0);
+    } catch (const std::exception & error) {
+      RCLCPP_WARN(
+        get_logger(),
+        "Could not reset virtual joystick after landing: %s",
+        error.what());
+    }
+
     timer_->cancel();
     rclcpp::shutdown();
   }
@@ -416,8 +392,6 @@ private:
   void run()
   {
     using VehicleStatus = px4_msgs::msg::VehicleStatus;
-
-    publish_manual_control();
 
     if (phase_ == Phase::DONE) {
       return;
@@ -435,7 +409,10 @@ private:
     }
 
     if (!local_position_valid_) {
-      if (phase_ != Phase::WAIT_READY) {
+      if (
+        phase_ != Phase::WAIT_READY &&
+        phase_ != Phase::WARMUP_JOYSTICK)
+      {
         fail("PX4 local position became invalid.");
 
       } else if (phase_elapsed_seconds() > 20.0) {
@@ -447,7 +424,20 @@ private:
 
     switch (phase_) {
       case Phase::WAIT_READY:
-        if (manual_samples_published_ < kManualWarmupSamples) {
+        if (!set_joystick(kPrearmThrottle)) {
+          return;
+        }
+
+        RCLCPP_INFO(
+          get_logger(),
+          "Virtual joystick connected; warming manual input.");
+
+        set_phase(Phase::WARMUP_JOYSTICK);
+        return;
+
+
+      case Phase::WARMUP_JOYSTICK:
+        if (phase_elapsed_seconds() < kJoystickWarmupSeconds) {
           return;
         }
 
@@ -507,6 +497,10 @@ private:
 
       case Phase::WAIT_ARM:
         if (arming_state_ == VehicleStatus::ARMING_STATE_ARMED) {
+          if (!set_joystick(kClimbThrottle)) {
+            return;
+          }
+
           RCLCPP_INFO(
             get_logger(),
             "Vehicle armed; starting climb.");
@@ -529,6 +523,10 @@ private:
         }
 
         if (local_z_ <= target_z_) {
+          if (!center_joystick()) {
+            return;
+          }
+
           RCLCPP_INFO(
             get_logger(),
             "Climb target reached: z=%.2f. "
@@ -607,6 +605,8 @@ private:
   }
 
 
+  px4_control_common::VirtualJoystickClient virtual_joystick_;
+
   rclcpp::Subscription<px4_msgs::msg::VehicleStatus>::SharedPtr
     vehicle_status_sub_;
 
@@ -622,9 +622,6 @@ private:
   rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr
     vehicle_command_pub_;
 
-  rclcpp::Publisher<px4_msgs::msg::ManualControlSetpoint>::SharedPtr
-    manual_control_pub_;
-
   rclcpp::TimerBase::SharedPtr timer_;
 
   Phase phase_{Phase::WAIT_READY};
@@ -638,8 +635,6 @@ private:
 
   bool pre_flight_checks_pass_{false};
   bool waiting_for_preflight_reported_{false};
-
-  std::uint32_t manual_samples_published_{0};
 
   float local_x_{NAN};
   float local_y_{NAN};

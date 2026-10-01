@@ -1,0 +1,401 @@
+#!/usr/bin/python3 -s
+
+"""Run ROS 2 launch experiments sequentially from a YAML configuration."""
+
+from __future__ import annotations
+
+import argparse
+from datetime import datetime, timezone
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import signal
+import subprocess
+import sys
+import time
+
+import yaml
+
+
+NAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+$")
+
+
+def find_repo_root() -> Path:
+    start = Path(__file__).resolve()
+
+    for path in (start.parent, *start.parents):
+        if (
+            (path / "px4_env.repos").is_file()
+            and (path / "config").is_dir()
+            and (path / "ros2").is_dir()
+        ):
+            return path
+
+    raise RuntimeError(
+        f"Could not locate px4_env repository root from {start}"
+    )
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def validate_name(value: object, field: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or NAME_PATTERN.fullmatch(value) is None
+    ):
+        raise ValueError(
+            f"{field} must contain only letters, numbers, '.', '_' or '-'."
+        )
+
+    return value
+
+
+def launch_value(value: object) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+
+    if isinstance(value, (str, int, float)):
+        return str(value)
+
+    raise ValueError(
+        "Launch argument values must be strings, numbers, or booleans."
+    )
+
+
+def load_sequence(path: Path) -> dict[str, object]:
+    if not path.is_file():
+        raise ValueError(f"Sequence file does not exist: {path}")
+
+    data = yaml.safe_load(path.read_text())
+
+    if not isinstance(data, dict):
+        raise ValueError("Sequence configuration must be a YAML mapping.")
+
+    name = validate_name(data.get("name"), "Sequence name")
+
+    settle_seconds = data.get("settle_seconds", 0.0)
+
+    if (
+        not isinstance(settle_seconds, (int, float))
+        or isinstance(settle_seconds, bool)
+        or settle_seconds < 0.0
+    ):
+        raise ValueError(
+            "settle_seconds must be a non-negative number."
+        )
+
+    raw_steps = data.get("steps")
+
+    if not isinstance(raw_steps, list) or not raw_steps:
+        raise ValueError("Sequence must define at least one step.")
+
+    steps = []
+
+    for index, raw_step in enumerate(raw_steps, start=1):
+        if not isinstance(raw_step, dict):
+            raise ValueError(
+                f"Step {index} must be a YAML mapping."
+            )
+
+        step_name = validate_name(
+            raw_step.get("name"),
+            f"Step {index} name",
+        )
+
+        package = raw_step.get("package")
+        launch = raw_step.get("launch")
+
+        if not isinstance(package, str) or not package:
+            raise ValueError(
+                f"Step '{step_name}' requires a package."
+            )
+
+        if not isinstance(launch, str) or not launch:
+            raise ValueError(
+                f"Step '{step_name}' requires a launch file."
+            )
+
+        arguments = raw_step.get("arguments", {})
+
+        if not isinstance(arguments, dict):
+            raise ValueError(
+                f"Step '{step_name}' arguments must be a mapping."
+            )
+
+        normalized_arguments = {
+            str(key): launch_value(value)
+            for key, value in arguments.items()
+        }
+
+        steps.append(
+            {
+                "name": step_name,
+                "package": package,
+                "launch": launch,
+                "arguments": normalized_arguments,
+            }
+        )
+
+    return {
+        "name": name,
+        "settle_seconds": float(settle_seconds),
+        "steps": steps,
+    }
+
+
+def command_for_step(step: dict[str, object]) -> list[str]:
+    command = [
+        "ros2",
+        "launch",
+        str(step["package"]),
+        str(step["launch"]),
+    ]
+
+    arguments = step["arguments"]
+
+    for key, value in arguments.items():
+        command.append(f"{key}:={value}")
+
+    return command
+
+
+def stop_process(process: subprocess.Popen[str]) -> None:
+    if process.poll() is not None:
+        return
+
+    try:
+        os.killpg(process.pid, signal.SIGINT)
+        process.wait(timeout=5.0)
+        return
+    except (ProcessLookupError, subprocess.TimeoutExpired):
+        pass
+
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+        process.wait(timeout=3.0)
+        return
+    except (ProcessLookupError, subprocess.TimeoutExpired):
+        pass
+
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+
+    process.wait()
+
+
+def write_manifest(path: Path, manifest: dict[str, object]) -> None:
+    path.write_text(
+        json.dumps(
+            manifest,
+            indent=2,
+            sort_keys=False,
+        )
+        + "\n"
+    )
+
+
+def bag_directories(root: Path) -> set[Path]:
+    """Return rosbag directories currently present below the toolkit bag root."""
+    bag_root = root / "bags"
+
+    if not bag_root.is_dir():
+        return set()
+
+    return {
+        metadata.parent.resolve()
+        for metadata in bag_root.rglob("metadata.yaml")
+    }
+
+
+def run_step(
+    command: list[str],
+    log_path: Path,
+) -> int:
+    print()
+    print("$", " ".join(command))
+    print()
+
+    with log_path.open("w") as log:
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            start_new_session=True,
+        )
+
+        assert process.stdout is not None
+
+        try:
+            for line in process.stdout:
+                sys.stdout.write(line)
+                sys.stdout.flush()
+                log.write(line)
+                log.flush()
+
+            return process.wait()
+
+        except KeyboardInterrupt:
+            stop_process(process)
+            raise
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Run ROS 2 launch experiments sequentially."
+    )
+
+    parser.add_argument(
+        "sequence",
+        type=Path,
+        help="YAML sequence configuration.",
+    )
+
+    args = parser.parse_args()
+
+    if shutil.which("ros2") is None:
+        raise RuntimeError(
+            "ros2 is not available. Source ros2/runtime_env.sh first."
+        )
+
+    root = find_repo_root()
+    config_path = args.sequence.expanduser().resolve()
+    sequence = load_sequence(config_path)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    run_dir = (
+        root
+        / "bags"
+        / "sequences"
+        / str(sequence["name"])
+        / timestamp
+    )
+
+    run_dir.mkdir(parents=True, exist_ok=False)
+
+    manifest_path = run_dir / "manifest.json"
+
+    manifest = {
+        "sequence": sequence["name"],
+        "configuration": str(config_path),
+        "started_at": utc_now(),
+        "finished_at": None,
+        "settle_seconds": sequence["settle_seconds"],
+        "result": "running",
+        "steps": [],
+    }
+
+    write_manifest(manifest_path, manifest)
+
+    print(f"Sequence: {sequence['name']}")
+    print(f"Study directory: {run_dir}")
+
+    try:
+        for index, step in enumerate(sequence["steps"], start=1):
+            command = command_for_step(step)
+
+            log_path = (
+                run_dir
+                / f"{index:02d}-{step['name']}.log"
+            )
+
+            record = {
+                "index": index,
+                "name": step["name"],
+                "command": command,
+                "log": log_path.name,
+                "started_at": utc_now(),
+                "finished_at": None,
+                "exit_code": None,
+                "recorded_bags": [],
+            }
+
+            bags_before = bag_directories(root)
+
+            manifest["steps"].append(record)
+            write_manifest(manifest_path, manifest)
+
+            print()
+            print(
+                f"===== STEP {index}/{len(sequence['steps'])}: "
+                f"{step['name']} ====="
+            )
+
+            exit_code = run_step(
+                command,
+                log_path,
+            )
+
+            bags_after = bag_directories(root)
+
+            record["finished_at"] = utc_now()
+            record["exit_code"] = exit_code
+            record["recorded_bags"] = sorted(
+                str(path.relative_to(root))
+                for path in bags_after - bags_before
+            )
+
+            write_manifest(manifest_path, manifest)
+
+            if exit_code != 0:
+                manifest["result"] = "failed"
+                manifest["finished_at"] = utc_now()
+                write_manifest(manifest_path, manifest)
+
+                print(
+                    f"ERROR: step '{step['name']}' exited "
+                    f"with status {exit_code}.",
+                    file=sys.stderr,
+                )
+
+                return exit_code or 1
+
+            if index < len(sequence["steps"]):
+                settle_seconds = float(
+                    sequence["settle_seconds"]
+                )
+
+                if settle_seconds > 0.0:
+                    print(
+                        f"Settling in Position mode for "
+                        f"{settle_seconds:.1f} s..."
+                    )
+                    time.sleep(settle_seconds)
+
+    except KeyboardInterrupt:
+        manifest["result"] = "interrupted"
+        manifest["finished_at"] = utc_now()
+        write_manifest(manifest_path, manifest)
+
+        print(
+            "\nSequence interrupted.",
+            file=sys.stderr,
+        )
+        return 130
+
+    manifest["result"] = "success"
+    manifest["finished_at"] = utc_now()
+    write_manifest(manifest_path, manifest)
+
+    print()
+    print("Sequence complete.")
+    print(f"Manifest: {manifest_path}")
+
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except (RuntimeError, ValueError, yaml.YAMLError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        raise SystemExit(1)

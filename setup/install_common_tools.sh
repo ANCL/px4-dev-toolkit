@@ -8,7 +8,7 @@ sudo apt update
 sudo apt install -y \
     tmux \
     python3-venv \
-    python3-numpy python3-matplotlib python3-scipy \
+    python3-numpy python3-matplotlib python3-scipy python3-yaml \
     python3-vcs2l
 
 echo "Common environment tools ready."

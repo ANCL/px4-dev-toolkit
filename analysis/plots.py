@@ -109,6 +109,12 @@ def _tracking_error(
     reference_t = reference_t[order]
     reference_y = reference_y[order]
 
+    reference_t, unique = np.unique(
+        reference_t,
+        return_index=True,
+    )
+    reference_y = reference_y[unique]
+
     start = max(actual_t[0], reference_t[0])
     end = min(actual_t[-1], reference_t[-1])
 

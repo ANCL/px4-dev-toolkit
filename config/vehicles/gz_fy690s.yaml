@@ -61,6 +61,10 @@ px4_allocator:
   airframe_type: 0
   rotor_count: 6
 
+  # The pinned FY690S airframe does not define MPC_THR_HOVER. Do not invent
+  # a normalized hover-thrust value here. Until one is experimentally
+  # validated, this vehicle supports the SE3 acceleration handoff only.
+
   rotors:
     - index: 0
       name: front_left

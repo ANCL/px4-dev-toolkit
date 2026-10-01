@@ -5,7 +5,7 @@
   <description>ROS 2 package for PX4 Offboard controller prerequisites, controllers, and experiment recording.</description>
 
   <maintainer email="mohssen.elshaar@gmail.com">Mohssene</maintainer>
-  <license>Apache-2.0</license>
+  <license>BSD-3-Clause</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

@@ -125,7 +125,9 @@ double load_vehicle_hover_thrust(
     throw std::invalid_argument(
             "Vehicle configuration '" +
             path +
-            "' does not define px4_allocator.hover_thrust.");
+            "' does not define px4_allocator.hover_thrust; "
+            "attitude, attitude_rate, and thrust_and_torque handoffs "
+            "require a validated hover-thrust value.");
   }
 
   const double hover_thrust =
@@ -683,10 +685,18 @@ private:
     if (transition == OffboardTransition::LOST) {
       offboard_active_ = false;
 
-      RCLCPP_ERROR(
-        get_logger(),
-        "PX4 left Offboard; trajectory timing is paused and "
-        "Offboard prestream will resume.");
+      if (return_to_position_requested_) {
+        RCLCPP_INFO(
+          get_logger(),
+          "PX4 left Offboard after the Position-mode return request; "
+          "waiting for Position-mode confirmation.");
+      } else {
+        RCLCPP_WARN(
+          get_logger(),
+          "PX4 left Offboard before trajectory completion; "
+          "the next Offboard entry will restart and re-anchor "
+          "the trajectory.");
+      }
 
       return;
     }
@@ -717,14 +727,14 @@ private:
     {
       RCLCPP_INFO(
         get_logger(),
-        "PX4 accepted Offboard mode command.");
+        "PX4 accepted mode-change command.");
 
       return;
     }
 
     RCLCPP_WARN(
       get_logger(),
-      "PX4 did not accept Offboard mode command: result=%u",
+      "PX4 did not accept mode-change command: result=%u",
       static_cast<unsigned>(msg.result));
   }
 

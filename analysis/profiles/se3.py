@@ -38,9 +38,6 @@ ATTITUDE_RATE_HANDOFF_TOPIC = TOPICS["IN_VEHICLE_RATES_SETPOINT"]
 THRUST_HANDOFF_TOPIC = TOPICS["IN_VEHICLE_THRUST_SETPOINT"]
 TORQUE_HANDOFF_TOPIC = TOPICS["IN_VEHICLE_TORQUE_SETPOINT"]
 
-# Retained for existing acceleration-profile fixtures.
-HANDOFF_TOPIC = ACCELERATION_HANDOFF_TOPIC
-
 HANDOFF_TOPICS = (
     ACCELERATION_HANDOFF_TOPIC,
     ATTITUDE_HANDOFF_TOPIC,
@@ -512,6 +509,10 @@ def analyze(bag: BagData) -> AnalysisResult:
         status_type.NAVIGATION_STATE_OFFBOARD
     )
 
+    position_state = int(
+        status_type.NAVIGATION_STATE_POSCTL
+    )
+
     started_armed = (
         int(status[0].message.arming_state)
         == armed_state
@@ -537,15 +538,34 @@ def analyze(bag: BagData) -> AnalysisResult:
             "Offboard-mode entry was not recorded"
         )
 
-    prestream_ns = min(
-        offboard_mode[0].timestamp_ns,
-        *(samples[0].timestamp_ns for _, samples in handoff_inputs),
-        reference[0].timestamp_ns,
+    position_return_ns = first_nav_state_time(
+        status,
+        position_state,
+        not_before_ns=offboard_ns,
     )
 
-    if prestream_ns >= offboard_ns:
+    if position_return_ns is None:
         raise RuntimeError(
-            "Offboard prestream did not precede Offboard entry"
+            "Position-mode return after Offboard was not recorded"
+        )
+
+    offboard_mode_start_ns = offboard_mode[0].timestamp_ns
+    reference_start_ns = reference[0].timestamp_ns
+    handoff_start_ns = min(
+        samples[0].timestamp_ns
+        for _, samples in handoff_inputs
+    )
+
+    if offboard_mode_start_ns >= offboard_ns:
+        raise RuntimeError(
+            "OffboardControlMode prestream did not precede "
+            "Offboard entry"
+        )
+
+    if reference_start_ns >= offboard_ns:
+        raise RuntimeError(
+            "Generated trajectory-reference prestream did not "
+            "precede Offboard entry"
         )
 
     metrics = {
@@ -554,14 +574,32 @@ def analyze(bag: BagData) -> AnalysisResult:
         "handoff_topic": handoff_topic,
         "started_armed": started_armed,
         "armed_s": bag.relative_seconds(armed_ns),
-        "prestream_start_s": bag.relative_seconds(
-            prestream_ns
+        "offboard_mode_start_s": bag.relative_seconds(
+            offboard_mode_start_ns
+        ),
+        "reference_start_s": bag.relative_seconds(
+            reference_start_ns
         ),
         "offboard_entry_s": bag.relative_seconds(
             offboard_ns
         ),
-        "prestream_duration_s": (
-            offboard_ns - prestream_ns
+        "handoff_start_s": bag.relative_seconds(
+            handoff_start_ns
+        ),
+        "position_return_s": bag.relative_seconds(
+            position_return_ns
+        ),
+        "offboard_mode_prestream_s": (
+            offboard_ns - offboard_mode_start_ns
+        ) / 1e9,
+        "reference_prestream_s": (
+            offboard_ns - reference_start_ns
+        ) / 1e9,
+        "handoff_offset_from_offboard_s": (
+            handoff_start_ns - offboard_ns
+        ) / 1e9,
+        "offboard_duration_s": (
+            position_return_ns - offboard_ns
         ) / 1e9,
     }
 
@@ -623,12 +661,24 @@ def analyze(bag: BagData) -> AnalysisResult:
             f"{'yes' if started_armed else 'no'}",
             f"  armed state first recorded: "
             f"{metrics['armed_s']:.3f} s",
-            f"  prestream start: "
-            f"{metrics['prestream_start_s']:.3f} s",
+            f"  OffboardControlMode start: "
+            f"{metrics['offboard_mode_start_s']:.3f} s",
+            f"  generated reference start: "
+            f"{metrics['reference_start_s']:.3f} s",
             f"  Offboard entry: "
             f"{metrics['offboard_entry_s']:.3f} s",
-            f"  prestream before entry: "
-            f"{metrics['prestream_duration_s']:.3f} s",
+            f"  OffboardControlMode before entry: "
+            f"{metrics['offboard_mode_prestream_s']:.3f} s",
+            f"  generated reference before entry: "
+            f"{metrics['reference_prestream_s']:.3f} s",
+            f"  selected handoff start: "
+            f"{metrics['handoff_start_s']:.3f} s",
+            f"  handoff offset from Offboard entry: "
+            f"{metrics['handoff_offset_from_offboard_s']:+.3f} s",
+            f"  Position return: "
+            f"{metrics['position_return_s']:.3f} s",
+            f"  time in Offboard: "
+            f"{metrics['offboard_duration_s']:.3f} s",
             "",
             *_se3_summary(
                 layers,
@@ -640,12 +690,20 @@ def analyze(bag: BagData) -> AnalysisResult:
 
     markers = [
         (
-            metrics["prestream_start_s"],
-            "OFFBOARD PRESTREAM",
+            metrics["reference_start_s"],
+            "REFERENCE PRESTREAM",
         ),
         (
             metrics["offboard_entry_s"],
             "OFFBOARD ENTRY",
+        ),
+        (
+            metrics["handoff_start_s"],
+            "HANDOFF START",
+        ),
+        (
+            metrics["position_return_s"],
+            "POSITION RETURN",
         ),
     ]
 

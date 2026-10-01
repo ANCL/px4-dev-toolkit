@@ -86,9 +86,9 @@ Vector3 scale(
 
 // Ninth-order smooth time scaling.
 //
-// Position through snap are zero at both segment boundaries. This keeps
-// consecutive trajectory segments smooth through the derivatives needed by
-// the later lower-level SE(3) handoffs.
+// The time-scaling derivatives through fourth order are zero at both
+// segment boundaries. This keeps consecutive trajectory segments smooth
+// through the derivatives needed by the later lower-level SE(3) handoffs.
 TimeScale smooth_time_scale(
   double time_s,
   double duration_s)

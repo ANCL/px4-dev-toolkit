@@ -1,0 +1,28 @@
+se3:
+  ros__parameters:
+    # Lee translational gains normalized by vehicle mass:
+    #   kx = mass * kx_over_mass
+    #   kv = mass * kv_over_mass
+    kx_over_mass: 16.0
+    kv_over_mass: 5.6
+
+    # Geometric attitude error -> desired FRD body-rate correction [1/s].
+    # Initial values follow the pinned PX4 multicopter attitude P scale.
+    attitude_gain: [6.5, 6.5, 2.8]
+
+    # PX4-normalized external rotational-controller gains. These are unitless
+    # controller-output scales, not physical moment gains in N*m.
+    # Initial rate values follow the pinned PX4 rate-loop P scale.
+    normalized_rate_gain: [0.15, 0.15, 0.20]
+
+    # Desired angular-acceleration feedforward into normalized torque.
+    # Initial magnitudes follow the pinned PX4 roll/pitch rate-D scale; the
+    # pinned PX4 yaw D gain is zero.
+    normalized_angular_acceleration_gain: [0.003, 0.003, 0.0]
+
+    # External toolkit control/update rate.
+    control_rate_hz: 100.0
+
+    # Offboard lifecycle durations remain invariant if the control rate changes.
+    warmup_duration_s: 1.5
+    offboard_retry_interval_s: 1.0

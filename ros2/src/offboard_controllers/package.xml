@@ -12,6 +12,7 @@
   <depend>rclcpp</depend>
   <depend>px4_msgs</depend>
   <depend>px4_control_common</depend>
+  <depend>yaml-cpp</depend>
 
   <!-- Runtime dependencies used only by the Python launch orchestration. -->
   <exec_depend>ament_index_python</exec_depend>

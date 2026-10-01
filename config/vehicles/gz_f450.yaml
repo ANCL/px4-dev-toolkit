@@ -1,0 +1,91 @@
+# Manually curated vehicle data for the PX4 Gazebo F450.
+#
+# Values are taken from the exact pinned PX4 source listed below.
+# This file is intentionally not generated automatically.
+
+vehicle:
+  name: gz_f450
+  type: quadrotor
+
+source:
+  px4_commit: fdba3a6f56465d05767d30cb617681acc07a6fd9
+  airframe: ROMFS/px4fmu_common/init.d-posix/airframes/4022_gz_f450
+  gazebo_model: Tools/simulation/gz/models/f450/model.sdf
+
+plant:
+  # Whole-model values reported by:
+  #   gz sdf --inertial-stats model.sdf
+  frame: FLU
+
+  mass_kg: 2.0736
+
+  center_of_mass_m:
+    x: 0.0
+    y: 0.0
+    z: 0.000279514
+
+  inertia_kg_m2:
+    xx: 0.021997
+    xy: 1.0842e-19
+    xz: 3.38813e-21
+    yy: 0.0221599
+    yz: 3.38813e-21
+    zz: 0.0433006
+
+gazebo_propulsion:
+  frame: FLU
+  motor_count: 4
+
+  max_rot_velocity_rad_s: 1032.0
+  motor_constant: 1.2e-05
+  moment_constant: 0.0137
+  time_constant_up_s: 0.0125
+  time_constant_down_s: 0.0125
+  rotor_drag_coefficient: 8.06428e-05
+  rolling_moment_coefficient: 1.0e-06
+  rotor_velocity_slowdown_sim: 10.0
+  motor_type: velocity
+
+  rotors:
+    - index: 0
+      position_m: [0.1626345596714, -0.1626345596714, 0.0115]
+      direction: ccw
+
+    - index: 1
+      position_m: [-0.1626345596714, 0.1626345596714, 0.0115]
+      direction: ccw
+
+    - index: 2
+      position_m: [0.1626345596714, 0.1626345596714, 0.0115]
+      direction: cw
+
+    - index: 3
+      position_m: [-0.1626345596714, -0.1626345596714, 0.0115]
+      direction: cw
+
+px4_allocator:
+  frame: FRD
+  airframe_type: 0
+  rotor_count: 4
+  hover_thrust: 0.60
+
+  rotors:
+    - index: 0
+      name: front_right
+      position_m: [0.159, 0.159]
+      km: 0.014
+
+    - index: 1
+      name: back_left
+      position_m: [-0.159, -0.159]
+      km: 0.014
+
+    - index: 2
+      name: front_left
+      position_m: [0.159, -0.159]
+      km: -0.014
+
+    - index: 3
+      name: back_right
+      position_m: [-0.159, 0.159]
+      km: -0.014

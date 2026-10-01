@@ -12,26 +12,21 @@ from launch.actions import (
     RegisterEventHandler,
     TimerAction,
 )
-from launch.event_handlers import OnProcessExit, OnProcessStart
+from launch.event_handlers import (
+    OnProcessExit,
+    OnProcessStart,
+)
 from launch.events import Shutdown, matches_action
 from launch.events.process import ShutdownProcess
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
-# ros2 bag is started before the node. Give DDS discovery a short window before
-# control starts so the beginning of the handoff is not missed.
 RECORDER_STARTUP_SECONDS = 1.0
 
 
 def find_repo_root() -> Path:
-    """
-    Locate px4_env from either the source or installed launch-file path.
-
-    colcon installs this launch file below ros2/install/, which is still inside
-    the repository. Repository markers keep bag output anchored to px4_env/bags
-    instead of depending on the shell's current working directory.
-    """
+    """Locate the toolkit root from source or installed launch paths."""
     start = Path(__file__).resolve()
 
     for path in (start.parent, *start.parents):
@@ -48,7 +43,7 @@ def find_repo_root() -> Path:
 
 
 def read_topic_catalog(path: Path) -> dict[str, str]:
-    """Load the project-wide PX4 topic-name catalog."""
+    """Load the project-wide PX4 topic catalog."""
     topics = {}
 
     for raw_line in path.read_text().splitlines():
@@ -58,28 +53,41 @@ def read_topic_catalog(path: Path) -> dict[str, str]:
             continue
 
         prefix = "PX4_TOPIC("
+
         if not line.startswith(prefix) or not line.endswith(")"):
             raise RuntimeError(
                 f"Invalid PX4 topic definition: {raw_line}"
             )
 
         name, value = line[len(prefix):-1].split(",", 1)
-        topics[name.strip()] = value.strip().strip('"')
+
+        topics[name.strip()] = (
+            value.strip().strip('"')
+        )
 
     return topics
 
 
-def read_recording_topics(
+def resolve_recording_topics(
     path: Path,
     topic_catalog: dict[str, str],
 ) -> list[str]:
-    """Resolve this package's recording selection through the topic catalog."""
+    """
+    Resolve a recording selection.
+
+    PX4 topics use symbolic names from px4_topics.def. Toolkit-owned ROS
+    topics may be listed directly as absolute topic names.
+    """
     topics = []
 
     for raw_line in path.read_text().splitlines():
         name = raw_line.strip()
 
         if not name or name.startswith("#"):
+            continue
+
+        if name.startswith("/"):
+            topics.append(name)
             continue
 
         if name not in topic_catalog:
@@ -90,56 +98,91 @@ def read_recording_topics(
         topics.append(topic_catalog[name])
 
     if not topics:
-        raise RuntimeError(f"Recording topic list is empty: {path}")
+        raise RuntimeError(
+            f"Recording topic list is empty: {path}"
+        )
 
     return topics
 
 
-def launch_argument_is_true(context, name: str) -> bool:
-    """Interpret a ROS launch boolean argument using the usual truthy forms."""
-    value = LaunchConfiguration(name).perform(context).strip().lower()
-    return value in {"1", "true", "yes", "on"}
+def launch_argument_is_true(
+    context,
+    name: str,
+) -> bool:
+    value = (
+        LaunchConfiguration(name)
+        .perform(context)
+        .strip()
+        .lower()
+    )
+
+    return value in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
 
 def make_control_node() -> Node:
-    """Create the Offboard takeoff handoff node used by both launch modes."""
     package_share = Path(
-        get_package_share_directory("offboard_controllers")
-    )
-    config_file = package_share / "config" / "offboard.yaml"
-
-    if not config_file.is_file():
-        raise RuntimeError(
-            f"Missing Offboard configuration: {config_file}"
+        get_package_share_directory(
+            "offboard_controllers"
         )
+    )
 
     return Node(
         package="offboard_controllers",
-        executable="offboard_takeoff_handoff",
-        name="offboard_takeoff_handoff",
+        executable="se3",
+        name="se3",
         output="screen",
         emulate_tty=True,
-        parameters=[str(config_file)],
+        parameters=[
+            str(
+                package_share
+                / "config"
+                / "se3.yaml"
+            ),
+            {
+                "vehicle":
+                    LaunchConfiguration("vehicle"),
+                "trajectory":
+                    LaunchConfiguration("trajectory"),
+                "handoff":
+                    LaunchConfiguration("handoff"),
+                "vehicle_config_dir":
+                    str(
+                        package_share
+                        / "config"
+                        / "vehicles"
+                    ),
+                "trajectory_config":
+                    str(
+                        package_share
+                        / "config"
+                        / "trajectories.yaml"
+                    ),
+            },
+        ],
     )
 
 
 def launch_setup(context):
-    """
-    Build either the simple control launch or the recording orchestration.
+    record = launch_argument_is_true(
+        context,
+        "record",
+    )
 
-    Without recording, the launch contains only the control node. With
-    recording, rosbag starts first and stops when the control node exits.
-    """
-    record = launch_argument_is_true(context, "record")
     control_node = make_control_node()
 
     if not record:
         def on_control_exit(event, _context):
             reason = (
-                "offboard_takeoff_handoff completed."
+                "SE3 controller completed."
                 if event.returncode == 0
                 else
-                f"offboard_takeoff_handoff exited with status {event.returncode}."
+                f"SE3 controller exited with status "
+                f"{event.returncode}."
             )
 
             return [
@@ -159,20 +202,54 @@ def launch_setup(context):
         ]
 
     repo_root = find_repo_root()
+
     package_share = Path(
-        get_package_share_directory("offboard_controllers")
+        get_package_share_directory(
+            "offboard_controllers"
+        )
     )
-    topic_file = package_share / "config" / "recording/offboard_takeoff_handoff.txt"
-    topic_catalog_file = repo_root / "config" / "px4_topics.def"
 
-    topic_catalog = read_topic_catalog(topic_catalog_file)
-    topics = read_recording_topics(topic_file, topic_catalog)
+    topic_file = (
+        package_share
+        / "config"
+        / "recording"
+        / "se3.txt"
+    )
 
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    bag_root = repo_root / "bags" / "offboard_takeoff_handoff"
-    bag_path = bag_root / timestamp
+    topic_catalog_file = (
+        repo_root
+        / "config"
+        / "px4_topics.def"
+    )
 
-    bag_root.mkdir(parents=True, exist_ok=True)
+    topic_catalog = read_topic_catalog(
+        topic_catalog_file
+    )
+
+    topics = resolve_recording_topics(
+        topic_file,
+        topic_catalog,
+    )
+
+    timestamp = datetime.now().strftime(
+        "%Y%m%d_%H%M%S"
+    )
+
+    bag_root = (
+        repo_root
+        / "bags"
+        / "se3"
+    )
+
+    bag_path = (
+        bag_root
+        / timestamp
+    )
+
+    bag_root.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
     bag_process = ExecuteProcess(
         cmd=[
@@ -184,7 +261,7 @@ def launch_setup(context):
             "--topics",
             *topics,
         ],
-        name="offboard_takeoff_handoff_recorder",
+        name="se3_recorder",
         output="screen",
         emulate_tty=True,
     )
@@ -192,36 +269,48 @@ def launch_setup(context):
     def on_control_exit(event, _context):
         if event.returncode == 0:
             message = (
-                "Offboard takeoff handoff complete; stopping recording."
+                "SE3 controller complete; "
+                "stopping recording."
             )
-
         else:
             message = (
-                "Offboard takeoff handoff failed; stopping recording."
+                "SE3 controller failed; "
+                "stopping recording."
             )
 
         return [
             LogInfo(msg=message),
             EmitEvent(
                 event=ShutdownProcess(
-                    process_matcher=matches_action(bag_process)
+                    process_matcher=matches_action(
+                        bag_process
+                    )
                 )
             ),
         ]
 
     def on_bag_exit(_event, _context):
         return [
-            LogInfo(msg=["Bag saved: ", str(bag_path)]),
+            LogInfo(
+                msg=[
+                    "Bag saved: ",
+                    str(bag_path),
+                ]
+            ),
             EmitEvent(
-                event=Shutdown(reason="ROS bag recorder stopped.")
+                event=Shutdown(
+                    reason="ROS bag recorder stopped."
+                )
             ),
         ]
 
     return [
-        LogInfo(msg=["Recording bag: ", str(bag_path)]),
-
-        # Start rosbag first. The short timer begins only after the recorder
-        # process has actually started, keeping early control traffic in the bag.
+        LogInfo(
+            msg=[
+                "Recording bag: ",
+                str(bag_path),
+            ]
+        ),
         bag_process,
         RegisterEventHandler(
             OnProcessStart(
@@ -234,7 +323,6 @@ def launch_setup(context):
                 ],
             )
         ),
-
         RegisterEventHandler(
             OnProcessExit(
                 target_action=control_node,
@@ -254,12 +342,26 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription(
         [
             DeclareLaunchArgument(
+                "vehicle",
+                default_value="gz_f450",
+            ),
+            DeclareLaunchArgument(
+                "trajectory",
+                default_value="hover",
+            ),
+            DeclareLaunchArgument(
+                "handoff",
+                default_value="acceleration",
+            ),
+            DeclareLaunchArgument(
                 "record",
                 default_value="false",
                 description=(
-                    "Record the Offboard takeoff handoff run."
+                    "Record the SE3 experiment."
                 ),
             ),
-            OpaqueFunction(function=launch_setup),
+            OpaqueFunction(
+                function=launch_setup
+            ),
         ]
     )

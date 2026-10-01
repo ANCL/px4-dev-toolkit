@@ -1,8 +1,12 @@
 // ROS 2 -> PX4 Offboard control-level heartbeat.
 PX4_TOPIC(IN_OFFBOARD_CONTROL_MODE, "/fmu/in/offboard_control_mode")
 
-// ROS 2 -> PX4 position/velocity/acceleration trajectory setpoint.
+// ROS 2 -> PX4 setpoints at the supported Offboard controller handoffs.
 PX4_TOPIC(IN_TRAJECTORY_SETPOINT, "/fmu/in/trajectory_setpoint")
+PX4_TOPIC(IN_VEHICLE_ATTITUDE_SETPOINT, "/fmu/in/vehicle_attitude_setpoint")
+PX4_TOPIC(IN_VEHICLE_RATES_SETPOINT, "/fmu/in/vehicle_rates_setpoint")
+PX4_TOPIC(IN_VEHICLE_THRUST_SETPOINT, "/fmu/in/vehicle_thrust_setpoint")
+PX4_TOPIC(IN_VEHICLE_TORQUE_SETPOINT, "/fmu/in/vehicle_torque_setpoint")
 
 // ROS 2 -> PX4 discrete vehicle commands.
 PX4_TOPIC(IN_VEHICLE_COMMAND, "/fmu/in/vehicle_command")

@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+import math
 import re
-
-from scipy.spatial.transform import Rotation
 
 
 _TOPIC_FILE = (
@@ -49,11 +48,63 @@ TOPICS = _load_topics()
 def quaternion_to_euler(
     quaternion: Sequence[float],
 ) -> tuple[float, float, float]:
-    """Convert PX4 [w, x, y, z] quaternion to roll, pitch, yaw in radians."""
-    w, x, y, z = (float(value) for value in quaternion)
+    """Convert PX4 [w, x, y, z] quaternion to roll, pitch, yaw."""
+    w, x, y, z = (
+        float(value)
+        for value in quaternion
+    )
 
-    roll, pitch, yaw = Rotation.from_quat(
-        [x, y, z, w]
-    ).as_euler("xyz")
+    norm = math.sqrt(
+        w * w
+        + x * x
+        + y * y
+        + z * z
+    )
 
-    return float(roll), float(pitch), float(yaw)
+    if norm <= 1.0e-12:
+        raise ValueError(
+            "Quaternion norm must be non-zero."
+        )
+
+    w /= norm
+    x /= norm
+    y /= norm
+    z /= norm
+
+    sin_roll = 2.0 * (
+        w * x + y * z
+    )
+    cos_roll = 1.0 - 2.0 * (
+        x * x + y * y
+    )
+    roll = math.atan2(
+        sin_roll,
+        cos_roll,
+    )
+
+    sin_pitch = 2.0 * (
+        w * y - z * x
+    )
+
+    if abs(sin_pitch) >= 1.0:
+        pitch = math.copysign(
+            math.pi / 2.0,
+            sin_pitch,
+        )
+    else:
+        pitch = math.asin(
+            sin_pitch
+        )
+
+    sin_yaw = 2.0 * (
+        w * z + x * y
+    )
+    cos_yaw = 1.0 - 2.0 * (
+        y * y + z * z
+    )
+    yaw = math.atan2(
+        sin_yaw,
+        cos_yaw,
+    )
+
+    return roll, pitch, yaw

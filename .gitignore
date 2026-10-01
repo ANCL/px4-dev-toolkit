@@ -28,3 +28,8 @@ __pycache__/
 
 # Recorded experiment data and generated analysis outputs.
 /bags/
+
+# Root-level build artifacts from local tooling.
+/build/
+/install/
+/log/

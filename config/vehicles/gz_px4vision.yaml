@@ -1,0 +1,83 @@
+# Manually curated vehicle data for the PX4 Gazebo PX4Vision.
+#
+# Values are taken from the exact pinned PX4 source listed below.
+# This file is intentionally not generated automatically.
+
+vehicle:
+  name: gz_px4vision
+  type: quadrotor
+
+source:
+  px4_commit: fdba3a6f56465d05767d30cb617681acc07a6fd9
+  airframe: ROMFS/px4fmu_common/init.d-posix/airframes/4006_gz_px4vision
+  gazebo_model: Tools/simulation/gz/models/px4vision/model.sdf
+
+plant:
+  frame: FLU
+
+  mass_kg: 1.52
+
+  center_of_mass_m:
+    x: 0.0
+    y: 0.0
+    z: 0.000394737
+
+  inertia_kg_m2:
+    xx: 0.0293756
+    xy: -6.77626e-21
+    xz: 3.38813e-21
+    yy: 0.03041
+    yz: 0.0
+    zz: 0.0567248
+
+gazebo_propulsion:
+  motor_count: 4
+
+  max_rot_velocity_rad_s: 1000.0
+  motor_constant: 8.54858e-06
+  moment_constant: 0.06
+  time_constant_up_s: 0.0125
+  time_constant_down_s: 0.025
+  rotor_drag_coefficient: 0.000806428
+  rolling_moment_coefficient: 1.0e-06
+  rotor_velocity_slowdown_sim: 10.0
+  motor_type: velocity
+
+  rotors:
+    - index: 0
+      position_m: [0.0935, -0.107, 0.03]
+      direction: ccw
+
+    - index: 1
+      position_m: [-0.0935, 0.107, 0.03]
+      direction: ccw
+
+    - index: 2
+      position_m: [0.0935, 0.107, 0.03]
+      direction: cw
+
+    - index: 3
+      position_m: [-0.0935, -0.107, 0.03]
+      direction: cw
+
+px4_allocator:
+  frame: FRD
+  rotor_count: 4
+  hover_thrust: 0.30
+
+  rotors:
+    - index: 0
+      position: [1.0, 1.0]
+      km: 0.05
+
+    - index: 1
+      position: [-1.0, -1.0]
+      km: 0.05
+
+    - index: 2
+      position: [1.0, -1.0]
+      km: -0.05
+
+    - index: 3
+      position: [-1.0, 1.0]
+      km: -0.05

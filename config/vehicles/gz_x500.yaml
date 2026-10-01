@@ -1,0 +1,78 @@
+# Manually curated vehicle data for the PX4 Gazebo X500.
+#
+# Values are taken from the exact pinned PX4 source listed below.
+# This file is intentionally not generated automatically.
+
+vehicle:
+  name: gz_x500
+  type: quadrotor
+
+source:
+  px4_commit: fdba3a6f56465d05767d30cb617681acc07a6fd9
+  airframe: ROMFS/px4fmu_common/init.d-posix/airframes/4001_gz_x500
+  gazebo_model: Tools/simulation/gz/models/x500/model.sdf
+  gazebo_base_model: Tools/simulation/gz/models/x500_base/model.sdf
+
+plant:
+  frame: FLU
+
+  mass_kg: 2.06431
+
+  center_of_mass_m:
+    x: 0.0
+    y: 0.0
+    z: 0.241869
+
+  inertia_kg_m2:
+    xx: 0.0238395
+    xy: -5.42101e-20
+    xz: -1.6263e-19
+    yy: 0.0239424
+    yz: 0.0
+    zz: 0.044
+
+gazebo_propulsion:
+  motor_count: 4
+
+  max_rot_velocity_rad_s: 1000.0
+  motor_constant: 8.54858e-06
+  moment_constant: 0.016
+  time_constant_up_s: 0.0125
+  time_constant_down_s: 0.025
+  rotor_drag_coefficient: 8.06428e-05
+  rolling_moment_coefficient: 1.0e-06
+  rotor_velocity_slowdown_sim: 10.0
+  motor_type: velocity
+
+  motors:
+    - index: 0
+      direction: ccw
+    - index: 1
+      direction: ccw
+    - index: 2
+      direction: cw
+    - index: 3
+      direction: cw
+
+px4_allocator:
+  frame: FRD
+  airframe_type: 0
+  rotor_count: 4
+  hover_thrust: 0.60
+
+  rotors:
+    - index: 0
+      position_m: [0.13, 0.22]
+      km: 0.05
+
+    - index: 1
+      position_m: [-0.13, -0.20]
+      km: 0.05
+
+    - index: 2
+      position_m: [0.13, -0.22]
+      km: -0.05
+
+    - index: 3
+      position_m: [-0.13, 0.20]
+      km: -0.05

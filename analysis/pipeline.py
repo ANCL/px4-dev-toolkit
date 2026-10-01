@@ -66,9 +66,10 @@ def _series3(
     scale: float = 1.0,
 ) -> dict[str, list[float]]:
     """Extract a finite three-component time series from one PX4 topic."""
+    samples = bag.samples.get(topic, [])
     selected = []
 
-    for sample in bag.samples.get(topic, []):
+    for sample in samples:
         message = sample.message
 
         if valid is not None and not valid(message):
@@ -82,6 +83,8 @@ def _series3(
         selected.append((sample, values))
 
     return {
+        "message_count": len(samples),
+        "finite_count": len(selected),
         "times_s": [
             bag.relative_seconds(sample.timestamp_ns)
             for sample, _ in selected
@@ -165,6 +168,20 @@ def _attitude_series(
     }
 
 
+def _yaw_series(
+    bag: BagData,
+    topic: str,
+    field: str,
+) -> dict[str, list[float]]:
+    """Extract yaw in degrees from a PX4 quaternion stream."""
+    series = _attitude_series(bag, topic, field)
+
+    return {
+        "times_s": series["times_s"],
+        "yaw": series["z"],
+    }
+
+
 def _motor_series(
     bag: BagData,
 ) -> dict[str, tuple[list[float], list[float]]]:
@@ -201,7 +218,9 @@ def _motor_series(
     return motors
 
 
-def analyze_control_pipeline(bag: BagData) -> dict[str, object]:
+def analyze_control_pipeline(
+    bag: BagData,
+) -> dict[str, object]:
     """
     Extract the standard native-PX4 multicopter control pipeline.
 

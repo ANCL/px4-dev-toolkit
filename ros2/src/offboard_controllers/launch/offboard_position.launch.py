@@ -162,7 +162,7 @@ def launch_setup(context):
     package_share = Path(
         get_package_share_directory("offboard_controllers")
     )
-    topic_file = package_share / "config" / "recording_topics_position.txt"
+    topic_file = package_share / "config" / "recording/offboard_position.txt"
     topic_catalog_file = repo_root / "config" / "px4_topics.def"
 
     topic_catalog = read_topic_catalog(topic_catalog_file)

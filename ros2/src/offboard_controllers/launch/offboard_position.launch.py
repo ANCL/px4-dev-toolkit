@@ -141,16 +141,26 @@ def launch_setup(context):
 
     if not record:
         def on_control_exit(event, _context):
-            reason = (
-                "offboard_position completed."
-                if event.returncode == 0
-                else
-                f"offboard_position exited with status {event.returncode}."
-            )
+            if event.returncode != 0:
+                returncode = event.returncode
+
+                def fail_launch(_context):
+                    raise RuntimeError(
+                        "offboard_position exited with status "
+                        f"{returncode}."
+                    )
+
+                return [
+                    OpaqueFunction(
+                        function=fail_launch
+                    )
+                ]
 
             return [
                 EmitEvent(
-                    event=Shutdown(reason=reason)
+                    event=Shutdown(
+                        reason="offboard_position completed."
+                    )
                 )
             ]
 
@@ -180,6 +190,10 @@ def launch_setup(context):
 
     bag_root.mkdir(parents=True, exist_ok=True)
 
+    control_exit_code = {
+        "value": None,
+    }
+
     bag_process = ExecuteProcess(
         cmd=[
             "ros2",
@@ -196,6 +210,8 @@ def launch_setup(context):
     )
 
     def on_control_exit(event, _context):
+        control_exit_code["value"] = event.returncode
+
         if event.returncode == 0:
             message = (
                 "Offboard position controller complete; stopping recording."
@@ -216,12 +232,46 @@ def launch_setup(context):
         ]
 
     def on_bag_exit(_event, _context):
-        return [
+        actions = [
             LogInfo(msg=["Bag saved: ", str(bag_path)]),
-            EmitEvent(
-                event=Shutdown(reason="ROS bag recorder stopped.")
-            ),
         ]
+
+        controller_returncode = control_exit_code["value"]
+
+        if controller_returncode is None:
+            failure = (
+                "Offboard position recorder exited "
+                "before the controller."
+            )
+        elif controller_returncode != 0:
+            failure = (
+                "offboard_position exited with status "
+                f"{controller_returncode}."
+            )
+        else:
+            failure = None
+
+        if failure is not None:
+            def fail_launch(_context):
+                raise RuntimeError(failure)
+
+            actions.append(
+                OpaqueFunction(
+                    function=fail_launch
+                )
+            )
+
+            return actions
+
+        actions.append(
+            EmitEvent(
+                event=Shutdown(
+                    reason="ROS bag recorder stopped."
+                )
+            )
+        )
+
+        return actions
 
     return [
         LogInfo(msg=["Recording bag: ", str(bag_path)]),

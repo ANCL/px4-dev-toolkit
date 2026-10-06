@@ -12,7 +12,6 @@ find_package(ament_cmake REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(px4_msgs REQUIRED)
-find_package(px4_ros_com REQUIRED)
 find_package(rclcpp REQUIRED)
 
 get_filename_component(
@@ -21,19 +20,17 @@ get_filename_component(
   ABSOLUTE
 )
 
-add_library(mocap_conversion
+add_library(mocap_conversion STATIC
   src/conversion.cpp
 )
 
 target_include_directories(mocap_conversion PUBLIC
-  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-  "$<INSTALL_INTERFACE:include>"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
 ament_target_dependencies(mocap_conversion
   geometry_msgs
   px4_msgs
-  px4_ros_com
 )
 
 target_link_libraries(mocap_conversion
@@ -59,28 +56,13 @@ target_link_libraries(px4_mocap_bridge
 )
 
 install(
-  TARGETS
-    mocap_conversion
-    px4_mocap_bridge
-  EXPORT export_mocap_conversion
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-  RUNTIME DESTINATION lib/${PROJECT_NAME}
-)
-
-install(
-  DIRECTORY include/
-  DESTINATION include
+  TARGETS px4_mocap_bridge
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 install(
   DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}
-)
-
-ament_export_targets(
-  export_mocap_conversion
-  HAS_LIBRARY_TARGET
 )
 
 if(BUILD_TESTING)

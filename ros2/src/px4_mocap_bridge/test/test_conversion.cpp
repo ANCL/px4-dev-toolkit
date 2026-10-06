@@ -26,6 +26,27 @@ bool near(double actual, double expected)
   return std::abs(actual - expected) <= kTolerance;
 }
 
+
+bool quaternion_near(
+  const std::array<float, 4> & actual,
+  const std::array<double, 4> & expected)
+{
+  bool same_sign = true;
+  bool opposite_sign = true;
+
+  for (std::size_t index = 0; index < actual.size(); ++index) {
+    same_sign =
+      same_sign &&
+      near(actual[index], expected[index]);
+
+    opposite_sign =
+      opposite_sign &&
+      near(actual[index], -expected[index]);
+  }
+
+  return same_sign || opposite_sign;
+}
+
 geometry_msgs::msg::PoseStamped identity_pose()
 {
   geometry_msgs::msg::PoseStamped pose;
@@ -85,17 +106,15 @@ void test_frame_conversion()
   const double half_sqrt = std::sqrt(0.5);
 
   require(
-    near(std::abs(odometry.q[0]), half_sqrt),
-    "converted quaternion w");
-  require(
-    near(odometry.q[1], 0.0),
-    "converted quaternion x");
-  require(
-    near(odometry.q[2], 0.0),
-    "converted quaternion y");
-  require(
-    near(std::abs(odometry.q[3]), half_sqrt),
-    "converted quaternion z");
+    quaternion_near(
+      odometry.q,
+      std::array<double, 4>{
+        half_sqrt,
+        0.0,
+        0.0,
+        half_sqrt,
+      }),
+    "converted identity orientation");
 
   require(
     odometry.velocity_frame ==
@@ -127,6 +146,64 @@ void test_frame_conversion()
     "PX4 timestamp should use current ROS time");
   require(odometry.quality == 1, "quality should be valid");
 }
+
+void test_yaw_frame_conversion()
+{
+  auto pose = identity_pose();
+
+  const double half_sqrt = std::sqrt(0.5);
+
+  // +90 deg ENU yaw points FLU forward toward North. After converting both
+  // world and body conventions, FRD is aligned with NED.
+  pose.pose.orientation.w = half_sqrt;
+  pose.pose.orientation.z = half_sqrt;
+
+  const auto odometry =
+    px4_mocap_bridge::convert_pose(
+      pose,
+      123456,
+      false);
+
+  require(
+    quaternion_near(
+      odometry.q,
+      std::array<double, 4>{
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+      }),
+    "converted +90 degree ENU yaw orientation");
+}
+
+
+void test_roll_frame_conversion()
+{
+  auto pose = identity_pose();
+
+  const double half_sqrt = std::sqrt(0.5);
+
+  pose.pose.orientation.w = half_sqrt;
+  pose.pose.orientation.x = half_sqrt;
+
+  const auto odometry =
+    px4_mocap_bridge::convert_pose(
+      pose,
+      123456,
+      false);
+
+  require(
+    quaternion_near(
+      odometry.q,
+      std::array<double, 4>{
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+      }),
+    "converted +90 degree ENU roll orientation");
+}
+
 
 void test_timestamp_selection()
 {
@@ -175,6 +252,8 @@ int main()
   test_valid_pose();
   test_invalid_pose();
   test_frame_conversion();
+  test_yaw_frame_conversion();
+  test_roll_frame_conversion();
   test_timestamp_selection();
 
   std::cout << "PX4 mocap conversion tests passed.\n";

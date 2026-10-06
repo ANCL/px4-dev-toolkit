@@ -1,7 +1,6 @@
 # External source repositories fetched from config/sources/*.repos.
 /px4/PX4-Autopilot/
 /ros2/src/px4_msgs/
-/ros2/src/px4_ros_com/
 /ros2/src/vicon_receiver/
 /ros2/src/Micro-XRCE-DDS-Agent/
 /tools/MAVProxy/
@@ -17,11 +16,8 @@
 # Downloaded applications.
 /tools/qgroundcontrol/*.AppImage
 
-# MAVProxy runtime artifacts.
-mav.parm
-mav.tlog*
-
 # Python/editor/OS noise.
+.pytest_cache/
 __pycache__/
 *.py[cod]
 *~

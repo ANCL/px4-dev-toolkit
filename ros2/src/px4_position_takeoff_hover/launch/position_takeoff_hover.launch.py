@@ -124,16 +124,26 @@ def launch_setup(context):
 
     if not record:
         def on_flight_exit(event, _context):
-            reason = (
-                "position_takeoff_hover completed."
-                if event.returncode == 0
-                else
-                f"position_takeoff_hover exited with status {event.returncode}."
-            )
+            if event.returncode != 0:
+                returncode = event.returncode
+
+                def fail_launch(_context):
+                    raise RuntimeError(
+                        "position_takeoff_hover exited with status "
+                        f"{returncode}."
+                    )
+
+                return [
+                    OpaqueFunction(
+                        function=fail_launch
+                    )
+                ]
 
             return [
                 EmitEvent(
-                    event=Shutdown(reason=reason)
+                    event=Shutdown(
+                        reason="position_takeoff_hover completed."
+                    )
                 )
             ]
 
@@ -163,6 +173,10 @@ def launch_setup(context):
 
     bag_root.mkdir(parents=True, exist_ok=True)
 
+    flight_exit_code = {
+        "value": None,
+    }
+
     bag_process = ExecuteProcess(
         cmd=[
             "ros2",
@@ -179,6 +193,8 @@ def launch_setup(context):
     )
 
     def on_flight_exit(event, _context):
+        flight_exit_code["value"] = event.returncode
+
         if event.returncode == 0:
             message = (
                 "Position-mode flight complete; stopping recording."
@@ -199,12 +215,46 @@ def launch_setup(context):
         ]
 
     def on_bag_exit(_event, _context):
-        return [
+        actions = [
             LogInfo(msg=["Bag saved: ", str(bag_path)]),
-            EmitEvent(
-                event=Shutdown(reason="ROS bag recorder stopped.")
-            ),
         ]
+
+        flight_returncode = flight_exit_code["value"]
+
+        if flight_returncode is None:
+            failure = (
+                "Position-mode recorder exited "
+                "before the flight node."
+            )
+        elif flight_returncode != 0:
+            failure = (
+                "position_takeoff_hover exited with status "
+                f"{flight_returncode}."
+            )
+        else:
+            failure = None
+
+        if failure is not None:
+            def fail_launch(_context):
+                raise RuntimeError(failure)
+
+            actions.append(
+                OpaqueFunction(
+                    function=fail_launch
+                )
+            )
+
+            return actions
+
+        actions.append(
+            EmitEvent(
+                event=Shutdown(
+                    reason="ROS bag recorder stopped."
+                )
+            )
+        )
+
+        return actions
 
     return [
         LogInfo(msg=["Recording bag: ", str(bag_path)]),

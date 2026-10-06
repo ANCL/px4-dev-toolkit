@@ -5,8 +5,7 @@
 namespace offboard_controllers::se3
 {
 
-// ROS 2 and PX4 message handling stay outside this class. The runtime chooses
-// which controller stage is handed back to PX4.
+// Controller mathematics are independent of ROS 2 and PX4 transport.
 class Controller
 {
 public:
@@ -16,16 +15,15 @@ public:
     const State & state,
     const Reference & reference) const;
 
-  // Differentiate the geometric SE(3) translational control vector A
-  // analytically using
-  // the nominal quadrotor dynamics. Estimator acceleration is not required.
+  // Differentiate translational control vector A analytically from the
+  // nominal quadrotor dynamics; estimator acceleration is not required.
   Vector3 compute_force_derivative(
     const State & state,
     const Reference & reference,
     const Vector3 & force) const;
 
-  // Compute A_ddot from rigid-body thrust-axis kinematics. This requires the
-  // current body angular velocity, but never a finite-difference jerk signal.
+  // Compute A_ddot from rigid-body thrust-axis kinematics using the current
+  // body angular velocity rather than a finite-difference jerk signal.
   Vector3 compute_force_second_derivative(
     const State & state,
     const Reference & reference,
@@ -54,16 +52,14 @@ public:
     const RotationMatrix & attitude,
     const RotationMatrix & desired_attitude) const;
 
-  // Toolkit cascaded attitude-to-rate law used by the attitude_rate handoff.
-  // The returned value is a body-rate setpoint; the physical moment
-  // controller does not use this intermediate command.
+  // Cascaded attitude-to-rate law used by the attitude_rate handoff.
+  // Returns an FRD body-rate setpoint.
   Vector3 compute_attitude_rate_command(
     const RotationMatrix & attitude,
     const DesiredAttitudeRate & desired) const;
 
-  // Toolkit-specific normalized SO(3) controller. It uses geometric SO(3)
-  // error definitions but outputs PX4-normalized torque directly; it is not
-  // the physical moment equation.
+  // Geometric SO(3) controller that outputs PX4-normalized torque directly,
+  // rather than a physical body moment.
   GeometricNormalizedOutput compute_geometric_normalized_torque(
     const RotationMatrix & attitude,
     const Vector3 & angular_velocity,

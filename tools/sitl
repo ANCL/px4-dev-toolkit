@@ -10,6 +10,7 @@ RUNTIME_ENV="${ROOT}/ros2/runtime_env.sh"
 TMUX_CONFIG="${ROOT}/config/tmux.conf"
 MAVPROXY_BIN="${ROOT}/.venv/mavproxy/bin/mavproxy.py"
 MAVPROXY_MODULES_DIR="${ROOT}/tools/mavproxy_modules"
+MAVPROXY_STATE_DIR="${ROOT}/log/mavproxy"
 
 ACTION="${1:-}"
 HEADLESS=false
@@ -239,12 +240,19 @@ mavproxy_command() {
     local command
     local argument
 
+    # Keep MAVProxy telemetry logs and parameter snapshots out of the caller's
+    # working directory.
+    mkdir -p "${MAVPROXY_STATE_DIR}"
+
     printf -v command \
         'exec env -u PYTHONHOME PYTHONNOUSERSITE=1 PYTHONPATH=%q %q' \
         "${MAVPROXY_MODULES_DIR}" \
         "${MAVPROXY_BIN}"
 
     printf -v argument ' %q' "--master=${MAVPROXY_MASTER}"
+    command+="${argument}"
+
+    printf -v argument ' %q' "--state-basedir=${MAVPROXY_STATE_DIR}"
     command+="${argument}"
 
     printf -v argument ' %q' '--cmd=module load virtual_joystick'

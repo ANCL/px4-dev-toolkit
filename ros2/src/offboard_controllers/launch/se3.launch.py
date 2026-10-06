@@ -341,7 +341,7 @@ def launch_setup(context):
             ),
         ]
 
-    def on_bag_exit(event, _context):
+    def on_bag_exit(_event, _context):
         actions = [
             LogInfo(
                 msg=[
@@ -363,11 +363,6 @@ def launch_setup(context):
             failure = (
                 "SE3 controller exited with status "
                 f"{controller_returncode}."
-            )
-        elif event.returncode != 0:
-            failure = (
-                "SE3 recorder exited with status "
-                f"{event.returncode}."
             )
         else:
             failure = None

@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+session=""
+
+if [[ "${1:-}" == "--session" ]]; then
+    session="${2:-}"
+    [[ -n "${session}" ]] || {
+        echo "ERROR: --session requires a session name." >&2
+        exit 2
+    }
+    shift 2
+fi
+
+if [[ -z "${session}" ]]; then
+    mapfile -t sessions < <(
+        tmux list-sessions -F "#S" 2>/dev/null |
+            grep "^px4-" || true
+    )
+
+    if (( ${#sessions[@]} == 1 )); then
+        session="${sessions[0]}"
+    elif (( ${#sessions[@]} == 0 )); then
+        echo "ERROR: no px4-* tmux session is running." >&2
+        exit 1
+    else
+        echo "ERROR: multiple PX4 tmux sessions are running:" >&2
+        printf "  %s\\n" "${sessions[@]}" >&2
+        echo "Use --session SESSION." >&2
+        exit 1
+    fi
+fi
+
+
+
+usage() {
+    echo "Usage:"
+    echo "  ./tools/tmux_log [--session SESSION] <window> [lines]"
+    echo "  ./tools/tmux_log [--session SESSION] --list"
+}
+
+list_windows() {
+    tmux list-windows \
+        -t "${session}" \
+        -F '  #I: #W'
+}
+
+if ! tmux has-session -t "${session}" 2>/dev/null; then
+    echo "ERROR: tmux session '${session}' is not running." >&2
+    exit 1
+fi
+
+if [[ "${1:-}" == "--list" ]]; then
+    list_windows
+    exit 0
+fi
+
+if (( $# < 1 || $# > 2 )); then
+    usage
+    exit 2
+fi
+
+window="$1"
+lines="${2:-80}"
+
+if [[ ! "${lines}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "ERROR: lines must be a positive integer." >&2
+    exit 2
+fi
+
+if ! tmux capture-pane \
+    -pt "${session}:${window}" \
+    -S "-${lines}"
+then
+    echo >&2
+    echo "Available windows:" >&2
+    list_windows >&2
+    exit 1
+fi

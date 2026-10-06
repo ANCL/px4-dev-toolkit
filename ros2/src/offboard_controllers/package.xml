@@ -10,6 +10,8 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclcpp</depend>
+  <depend>geometry_msgs</depend>
+  <depend>std_msgs</depend>
   <depend>px4_msgs</depend>
   <depend>px4_control_common</depend>
   <depend>yaml-cpp</depend>

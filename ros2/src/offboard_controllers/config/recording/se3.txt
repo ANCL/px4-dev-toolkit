@@ -27,7 +27,37 @@ OUT_VEHICLE_ATTITUDE_SETPOINT
 OUT_VEHICLE_RATES_SETPOINT
 OUT_VEHICLE_THRUST_SETPOINT
 OUT_VEHICLE_TORQUE_SETPOINT
+OUT_CONTROL_ALLOCATOR_STATUS
 OUT_ACTUATOR_MOTORS
 
-# Toolkit-generated trajectory reference
-/px4_toolkit/se3/trajectory_reference
+# SE3 trajectory reference
+/se3/trajectory_reference
+
+# Optional SE3 controller diagnostics
+/se3/diagnostics/commanded_acceleration
+/se3/diagnostics/force_command_ned
+/se3/diagnostics/desired_attitude
+/se3/diagnostics/desired_angular_velocity
+/se3/diagnostics/body_rate_setpoint
+/se3/diagnostics/angular_acceleration_feedforward
+
+# Optional PX4-rate reproduction diagnostics
+/se3/diagnostics/px4_rate/rate_error
+/se3/diagnostics/px4_rate/proportional_feedback
+/se3/diagnostics/px4_rate/integral_feedback
+/se3/diagnostics/px4_rate/derivative_feedback
+/se3/diagnostics/px4_rate/feedforward
+/se3/diagnostics/px4_rate/unfiltered_torque
+/se3/diagnostics/px4_rate/integrator_state
+
+# Optional geometric-normalized controller diagnostics
+/se3/diagnostics/geometric_normalized/torque_attitude_feedback
+/se3/diagnostics/geometric_normalized/torque_angular_velocity_feedback
+/se3/diagnostics/geometric_normalized/torque_angular_acceleration_feedforward
+
+# Optional geometric-physical diagnostics
+/se3/diagnostics/geometric_physical/requested_moment_nm
+/se3/diagnostics/geometric_physical/applied_moment_nm
+/se3/diagnostics/geometric_physical/moment_scale
+/se3/diagnostics/geometric_physical/requested_collective_thrust_n
+/se3/diagnostics/geometric_physical/applied_collective_thrust_n

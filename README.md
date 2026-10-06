@@ -30,7 +30,7 @@ px4-dev-toolkit/
 ├── ros2/            ROS 2 workspace, runtime environment, and packages
 ├── setup/           installation and dependency setup
 ├── tools/           user-facing launch and analysis tools
-└── px4_env.repos    pinned external source repositories
+└── config/sources/  pinned external source manifests
 ```
 
 External projects such as PX4-Autopilot, `px4_msgs`, `px4_ros_com`, Micro-XRCE-DDS-Agent, and MAVProxy are fetched at pinned revisions and are not vendored into this repository.
@@ -44,16 +44,19 @@ git clone https://github.com/Hosnooo/px4-dev-toolkit.git
 cd px4-dev-toolkit
 ```
 
-Install the development environment:
+Install the required environment profile:
 
 ```bash
-./setup/install.sh
+./setup/install.sh common
+./setup/install.sh sitl
+./setup/install.sh experiment
+./setup/install.sh all
 ```
 
 External source revisions are defined in:
 
 ```text
-px4_env.repos
+config/sources/*.repos
 ```
 
 Validated host and tool versions are documented in:
@@ -85,7 +88,7 @@ Start the configured PX4 SITL environment with:
 Runtime settings are defined in:
 
 ```text
-config/env.env
+config/runtime/sitl.env
 ```
 
 The current default configuration uses:
@@ -191,7 +194,7 @@ Current external dependencies include:
 Their exact revisions are recorded in:
 
 ```text
-px4_env.repos
+config/sources/*.repos
 ```
 
 The PX4 revision used by this toolkit includes additional DDS publications required to observe the native controller pipeline from ROS 2.

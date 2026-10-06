@@ -8,11 +8,17 @@ PX4_TOPIC(IN_VEHICLE_RATES_SETPOINT, "/fmu/in/vehicle_rates_setpoint")
 PX4_TOPIC(IN_VEHICLE_THRUST_SETPOINT, "/fmu/in/vehicle_thrust_setpoint")
 PX4_TOPIC(IN_VEHICLE_TORQUE_SETPOINT, "/fmu/in/vehicle_torque_setpoint")
 
+// Motion-capture odometry routed through PX4 external-vision input.
+PX4_TOPIC(IN_VEHICLE_MOCAP_ODOMETRY, "/fmu/in/vehicle_visual_odometry")
+
 // ROS 2 -> PX4 discrete vehicle commands.
 PX4_TOPIC(IN_VEHICLE_COMMAND, "/fmu/in/vehicle_command")
 
 // Final actuator commands produced by PX4 control allocation.
 PX4_TOPIC(OUT_ACTUATOR_MOTORS, "/fmu/out/actuator_motors")
+
+// Control-allocation achievability feedback used by PX4 rate-loop anti-windup.
+PX4_TOPIC(OUT_CONTROL_ALLOCATOR_STATUS, "/fmu/out/control_allocator_status")
 
 // Battery state reported by PX4.
 PX4_TOPIC(OUT_BATTERY_STATUS, "/fmu/out/battery_status")

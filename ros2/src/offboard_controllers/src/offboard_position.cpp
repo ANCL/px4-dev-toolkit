@@ -2,8 +2,10 @@
 #include <cmath>
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
+#include <string>
 
-#include <offboard_controllers/offboard_config.hpp>
+#include <offboard_controllers/trajectory/trajectory.hpp>
 #include <px4_msgs/msg/offboard_control_mode.hpp>
 #include <px4_msgs/msg/trajectory_setpoint.hpp>
 #include <px4_msgs/msg/vehicle_command.hpp>
@@ -22,6 +24,8 @@ namespace px4_topics
 
 }  // namespace px4_topics
 
+namespace trajectory = offboard_controllers::trajectory;
+
 
 /*
  * Independent PX4 Offboard position controller.
@@ -32,22 +36,42 @@ namespace px4_topics
  *
  *   wait for PX4 status and a valid local position
  *       -> arm if the vehicle is not already armed
- *       -> prestream OffboardControlMode + configured TrajectorySetpoint
+ *       -> prestream OffboardControlMode + trajectory reference at t=0
  *       -> request Offboard
  *       -> wait until PX4 reports Offboard mode
- *       -> keep publishing the configured position and yaw
+ *       -> advance and publish the configured trajectory
  *
- * The initial setpoint is required from config/offboard.yaml. No fallback
- * setpoint is embedded in this source file.
+ * Trajectory generation is shared with the SE3 experiment. During prestream
+ * the trajectory remains anchored to the current vehicle position and begins
+ * advancing only after PX4 reports Offboard mode.
  */
 class OffboardPosition : public rclcpp::Node
 {
 public:
   OffboardPosition()
-  : Node("offboard_position"),
-    initial_setpoint_(
-      offboard_controllers::load_initial_setpoint(*this))
+  : Node("offboard_position")
   {
+    trajectory_name_ =
+      declare_parameter<std::string>(
+      "trajectory",
+      "hover");
+
+    const std::string trajectory_config =
+      declare_parameter<std::string>(
+      "trajectory_config",
+      "");
+
+    if (trajectory_config.empty()) {
+      throw std::invalid_argument(
+              "Offboard position trajectory_config must not be empty.");
+    }
+
+    configured_trajectory_ =
+      std::make_unique<trajectory::ConfiguredTrajectory>(
+      trajectory::load_trajectory(
+        trajectory_config,
+        trajectory_name_));
+
     const auto sensor_qos = rclcpp::SensorDataQoS();
 
     vehicle_status_sub_ =
@@ -99,12 +123,8 @@ public:
 
     RCLCPP_INFO(
       get_logger(),
-      "Configured Offboard setpoint: "
-      "x=%.2f y=%.2f z=%.2f yaw=%.2f",
-      static_cast<double>(initial_setpoint_.x),
-      static_cast<double>(initial_setpoint_.y),
-      static_cast<double>(initial_setpoint_.z),
-      static_cast<double>(initial_setpoint_.yaw));
+      "Configured Offboard trajectory: %s",
+      trajectory_name_.c_str());
 
     RCLCPP_INFO(
       get_logger(),
@@ -127,12 +147,14 @@ private:
     PRESTREAM,
     WAIT_OFFBOARD,
     RUN,
+    WAIT_POSITION,
     DONE,
   };
 
   static constexpr std::uint32_t kOffboardWarmupSamples = 30;
 
   static constexpr float kCustomModeEnabled = 1.0F;
+  static constexpr float kPositionMainMode = 3.0F;
   static constexpr float kOffboardMainMode = 6.0F;
   static constexpr float kOffboardSubMode = 0.0F;
 
@@ -167,6 +189,14 @@ private:
       std::isfinite(msg.x) &&
       std::isfinite(msg.y) &&
       std::isfinite(msg.z);
+
+    if (valid) {
+      local_position_ = {
+        static_cast<double>(msg.x),
+        static_cast<double>(msg.y),
+        static_cast<double>(msg.z),
+      };
+    }
 
     if (valid && !local_position_valid_) {
       RCLCPP_INFO(
@@ -239,24 +269,69 @@ private:
 
 
   void publish_trajectory_setpoint(
-    std::uint64_t timestamp)
+    std::uint64_t timestamp,
+    const trajectory::Reference & reference)
   {
     px4_msgs::msg::TrajectorySetpoint msg{};
 
     msg.timestamp = timestamp;
+
     msg.position = {
-      initial_setpoint_.x,
-      initial_setpoint_.y,
-      initial_setpoint_.z};
+      static_cast<float>(reference.position[0]),
+      static_cast<float>(reference.position[1]),
+      static_cast<float>(reference.position[2]),
+    };
 
-    msg.velocity = {NAN, NAN, NAN};
-    msg.acceleration = {NAN, NAN, NAN};
-    msg.jerk = {NAN, NAN, NAN};
+    msg.velocity = {
+      static_cast<float>(reference.velocity[0]),
+      static_cast<float>(reference.velocity[1]),
+      static_cast<float>(reference.velocity[2]),
+    };
 
-    msg.yaw = initial_setpoint_.yaw;
-    msg.yawspeed = NAN;
+    msg.acceleration = {
+      static_cast<float>(reference.acceleration[0]),
+      static_cast<float>(reference.acceleration[1]),
+      static_cast<float>(reference.acceleration[2]),
+    };
+
+    msg.jerk = {
+      static_cast<float>(reference.jerk[0]),
+      static_cast<float>(reference.jerk[1]),
+      static_cast<float>(reference.jerk[2]),
+    };
+
+    msg.yaw =
+      static_cast<float>(reference.yaw);
+
+    msg.yawspeed =
+      static_cast<float>(reference.yaw_rate);
 
     trajectory_setpoint_pub_->publish(msg);
+  }
+
+
+  trajectory::Reference current_trajectory_reference()
+  {
+    if (
+      phase_ != Phase::RUN &&
+      phase_ != Phase::WAIT_POSITION)
+    {
+      trajectory_origin_ =
+        trajectory::stationary_reference(
+        local_position_,
+        configured_trajectory_->yaw);
+
+      return configured_trajectory_->sequence.sample(
+        0.0,
+        trajectory_origin_);
+    }
+
+    const double elapsed_s =
+      (get_clock()->now() - trajectory_start_time_).seconds();
+
+    return configured_trajectory_->sequence.sample(
+      elapsed_s,
+      trajectory_origin_);
   }
 
 
@@ -264,8 +339,13 @@ private:
   {
     const std::uint64_t timestamp = now_us();
 
+    const trajectory::Reference reference =
+      current_trajectory_reference();
+
     publish_offboard_control_mode(timestamp);
-    publish_trajectory_setpoint(timestamp);
+    publish_trajectory_setpoint(
+      timestamp,
+      reference);
   }
 
 
@@ -309,6 +389,26 @@ private:
   }
 
 
+  void publish_position_mode_command()
+  {
+    px4_msgs::msg::VehicleCommand msg{};
+
+    msg.param1 = kCustomModeEnabled;
+    msg.param2 = kPositionMainMode;
+    msg.param3 = 0.0F;
+
+    msg.command =
+      px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE;
+
+    fill_command_metadata(msg);
+    vehicle_command_pub_->publish(msg);
+
+    RCLCPP_INFO(
+      get_logger(),
+      "PX4 Position mode command sent.");
+  }
+
+
   void fill_command_metadata(
     px4_msgs::msg::VehicleCommand & msg)
   {
@@ -344,6 +444,19 @@ private:
   {
     return std::chrono::duration<double>(
       SteadyClock::now() - phase_started_at_).count();
+  }
+
+
+  void complete()
+  {
+    RCLCPP_INFO(
+      get_logger(),
+      "Offboard position experiment complete.");
+
+    exit_code_ = 0;
+    set_phase(Phase::DONE);
+    timer_->cancel();
+    rclcpp::shutdown();
   }
 
 
@@ -479,9 +592,13 @@ private:
         publish_offboard_stream();
 
         if (nav_state_ == VehicleStatus::NAVIGATION_STATE_OFFBOARD) {
+          trajectory_start_time_ =
+            get_clock()->now();
+
           RCLCPP_INFO(
             get_logger(),
-            "PX4 Offboard mode active; tracking configured setpoint.");
+            "PX4 Offboard mode active; tracking trajectory '%s'.",
+            trajectory_name_.c_str());
 
           set_phase(Phase::RUN);
           return;
@@ -505,7 +622,49 @@ private:
           return;
         }
 
+        if (
+          (get_clock()->now() - trajectory_start_time_).seconds() >=
+          configured_trajectory_->sequence.duration_s())
+        {
+          publish_offboard_stream();
+
+          RCLCPP_INFO(
+            get_logger(),
+            "Trajectory '%s' complete after %.2f s; "
+            "requesting PX4 Position mode.",
+            trajectory_name_.c_str(),
+            configured_trajectory_->sequence.duration_s());
+
+          publish_position_mode_command();
+          set_phase(Phase::WAIT_POSITION);
+          return;
+        }
+
         publish_offboard_stream();
+        return;
+
+
+      case Phase::WAIT_POSITION:
+        if (arming_state_ != VehicleStatus::ARMING_STATE_ARMED) {
+          fail("Vehicle disarmed while returning to Position mode.");
+          return;
+        }
+
+        publish_offboard_stream();
+
+        if (nav_state_ == VehicleStatus::NAVIGATION_STATE_POSCTL) {
+          RCLCPP_INFO(
+            get_logger(),
+            "PX4 Position mode active.");
+
+          complete();
+          return;
+        }
+
+        if (phase_elapsed_seconds() > 5.0) {
+          fail("PX4 did not return to Position mode.");
+        }
+
         return;
 
 
@@ -523,7 +682,15 @@ private:
   }
 
 
-  const offboard_controllers::InitialSetpoint initial_setpoint_;
+  std::unique_ptr<trajectory::ConfiguredTrajectory>
+    configured_trajectory_;
+
+  trajectory::Reference trajectory_origin_{};
+  trajectory::Vector3 local_position_{};
+
+  std::string trajectory_name_;
+
+  rclcpp::Time trajectory_start_time_{0, 0, RCL_ROS_TIME};
 
   rclcpp::Subscription<px4_msgs::msg::VehicleStatus>::SharedPtr
     vehicle_status_sub_;

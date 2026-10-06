@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-source "${ROOT}/config/env.env"
+source "${ROOT}/config/runtime/common.env"
 
 # Build in a deliberately small environment so an already-sourced ROS/PX4
 # shell cannot leak paths or Python settings into colcon. Preserve only the
@@ -44,13 +44,6 @@ set -eo pipefail
 set +u
 source "/opt/ros/${ROS_DISTRO}/setup.bash"
 set -u
-
-# ros_gz_bridge is provided by the system ROS installation, not this workspace.
-if ! ros2 pkg prefix ros_gz_bridge >/dev/null 2>&1; then
-    echo "ERROR: ros_gz_bridge is not installed." >&2
-    echo "Run: ./setup/install_ros2_jazzy.sh" >&2
-    exit 1
-fi
 
 cd "${PX4_ENV_ROOT}/ros2"
 colcon build

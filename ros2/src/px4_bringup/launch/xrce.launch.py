@@ -1,55 +1,13 @@
-"""Launch the Micro XRCE-DDS Agent used by PX4 SITL and ROS 2."""
+"""Launch the Micro XRCE-DDS Agent for PX4 <-> ROS 2 communication."""
 
-from pathlib import Path
 import shutil
 
 from launch import LaunchDescription
-from launch.actions import ExecuteProcess, LogInfo
+from launch.substitutions import LaunchConfiguration
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, LogInfo, OpaqueFunction
 
 
-def find_repo_root() -> Path:
-    """Locate px4_env from the installed or source launch-file location."""
-    start = Path(__file__).resolve()
-
-    for path in (start.parent, *start.parents):
-        if (
-            (path / "px4_env.repos").is_file()
-            and (path / "config").is_dir()
-            and (path / "ros2").is_dir()
-        ):
-            return path
-
-    raise RuntimeError(f"Could not locate px4_env repository root from {start}")
-
-
-def read_env_file(path: Path) -> dict[str, str]:
-    """Read the repository's simple KEY=VALUE configuration files."""
-    values = {}
-
-    for raw_line in path.read_text().splitlines():
-        line = raw_line.strip()
-
-        if not line or line.startswith("#"):
-            continue
-
-        if "=" not in line:
-            raise RuntimeError(f"Invalid config line in {path}: {raw_line}")
-
-        key, value = line.split("=", 1)
-        values[key.strip()] = value.strip()
-
-    return values
-
-
-def generate_launch_description() -> LaunchDescription:
-    root = find_repo_root()
-    runtime = read_env_file(root / "config" / "env.env")
-
-    transport = runtime["XRCE_AGENT_TRANSPORT"]
-    port = runtime["XRCE_AGENT_PORT"]
-
-    # The agent executable comes from the built ROS workspace. Requiring it on
-    # PATH here catches an unsourced/unbuilt workspace before starting PX4 I/O.
+def launch_agent(context):
     agent = shutil.which("MicroXRCEAgent")
 
     if agent is None:
@@ -58,24 +16,66 @@ def generate_launch_description() -> LaunchDescription:
             "Source the ROS workspace before launching."
         )
 
+    transport = LaunchConfiguration("transport").perform(context)
+    port = LaunchConfiguration("port").perform(context)
+    device = LaunchConfiguration("device").perform(context)
+    baud = LaunchConfiguration("baud").perform(context)
+
+    if transport in {"udp4", "udp6"}:
+        command = [agent, transport, "-p", port]
+        description = f"{transport} port {port}"
+
+    elif transport == "serial":
+        if not device:
+            raise RuntimeError(
+                "XRCE serial transport requires device:=..."
+            )
+
+        command = [
+            agent,
+            "serial",
+            "--dev",
+            device,
+            "-b",
+            baud,
+        ]
+        description = f"serial {device} @ {baud} baud"
+
+    else:
+        raise RuntimeError(
+            "XRCE transport must be udp4, udp6, or serial."
+        )
+
+    return [
+        LogInfo(msg=["XRCE Agent: ", description]),
+        ExecuteProcess(
+            cmd=command,
+            output="screen",
+        ),
+    ]
+
+
+def generate_launch_description() -> LaunchDescription:
     return LaunchDescription(
         [
-            LogInfo(
-                msg=[
-                    "XRCE Agent: ",
-                    transport,
-                    " port ",
-                    port,
-                ]
+            DeclareLaunchArgument(
+                "transport",
+                default_value="udp4",
             ),
-            ExecuteProcess(
-                cmd=[
-                    agent,
-                    transport,
-                    "-p",
-                    port,
-                ],
-                output="screen",
+            DeclareLaunchArgument(
+                "port",
+                default_value="8888",
+            ),
+            DeclareLaunchArgument(
+                "device",
+                default_value="",
+            ),
+            DeclareLaunchArgument(
+                "baud",
+                default_value="921600",
+            ),
+            OpaqueFunction(
+                function=launch_agent,
             ),
         ]
     )

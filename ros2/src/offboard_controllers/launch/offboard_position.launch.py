@@ -36,7 +36,7 @@ def find_repo_root() -> Path:
 
     for path in (start.parent, *start.parents):
         if (
-            (path / "px4_env.repos").is_file()
+            (path / "config" / "px4_topics.def").is_file()
             and (path / "config").is_dir()
             and (path / "ros2").is_dir()
         ):
@@ -106,12 +106,6 @@ def make_control_node() -> Node:
     package_share = Path(
         get_package_share_directory("offboard_controllers")
     )
-    config_file = package_share / "config" / "offboard.yaml"
-
-    if not config_file.is_file():
-        raise RuntimeError(
-            f"Missing Offboard configuration: {config_file}"
-        )
 
     return Node(
         package="offboard_controllers",
@@ -119,7 +113,19 @@ def make_control_node() -> Node:
         name="offboard_position",
         output="screen",
         emulate_tty=True,
-        parameters=[str(config_file)],
+        parameters=[
+            {
+                "trajectory":
+                    LaunchConfiguration("trajectory"),
+                "trajectory_config":
+                    str(
+                        package_share
+                        / "config"
+                        / "trajectory"
+                        / "trajectories.yaml"
+                    ),
+            },
+        ],
     )
 
 
@@ -168,7 +174,7 @@ def launch_setup(context):
     topic_catalog = read_topic_catalog(topic_catalog_file)
     topics = read_recording_topics(topic_file, topic_catalog)
 
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     bag_root = repo_root / "bags" / "offboard_position"
     bag_path = bag_root / timestamp
 
@@ -253,6 +259,13 @@ def launch_setup(context):
 def generate_launch_description() -> LaunchDescription:
     return LaunchDescription(
         [
+            DeclareLaunchArgument(
+                "trajectory",
+                default_value="hover",
+                description=(
+                    "Named trajectory from the shared trajectory configuration."
+                ),
+            ),
             DeclareLaunchArgument(
                 "record",
                 default_value="false",

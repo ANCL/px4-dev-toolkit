@@ -183,12 +183,15 @@ def save_tracking_plot(
     title: str,
     unit: str,
     markers: list[tuple[float, str]] | None = None,
+    time_origin_s: float = 0.0,
+    xlabel: str = "Time from bag start [s]",
 ) -> None:
     """
-    Save a controller-tracking figure.
+    Save a compact multi-component tracking figure.
 
-    Three physical components are shown individually. When an actual/reference
-    pair exists, a final subplot contains all component tracking errors.
+    When measured/actual data and a meaningful reference are both present,
+    the final panel shows one vector error norm rather than three overlapping
+    component-error traces.
     """
     if not components:
         return
@@ -196,42 +199,59 @@ def save_tracking_plot(
     plt = _matplotlib()
 
     line_styles = {
+        "measured": "-",
         "actual": "-",
-        "trajectory": "--",
-        "controller setpoint": "-.",
+        "command": "--",
         "setpoint": "--",
+        "desired": "--",
+        "trajectory": ":",
+        "controller setpoint": "-.",
     }
 
     errors = []
 
     for component_name, signals in components:
-        actual = signals.get("actual")
+        actual = (
+            signals.get("measured")
+            or signals.get("actual")
+        )
 
         if actual is None:
             continue
 
-        if "controller setpoint" in signals:
-            reference_label = "controller setpoint"
-        elif "setpoint" in signals:
-            reference_label = "setpoint"
-        elif "trajectory" in signals:
-            reference_label = "trajectory"
-        else:
+        reference_label = None
+
+        for candidate in (
+            "command",
+            "controller setpoint",
+            "setpoint",
+            "desired",
+            "trajectory",
+        ):
+            if candidate in signals:
+                reference_label = candidate
+                break
+
+        if reference_label is None:
             continue
 
-        reference = signals[reference_label]
+        reference = signals[
+            reference_label
+        ]
 
         wrap_degrees = (
             unit == "[deg]"
             and "yaw" in component_name.lower()
         )
 
-        error_times, error_values = _tracking_error(
-            actual[0],
-            actual[1],
-            reference[0],
-            reference[1],
-            wrap_degrees=wrap_degrees,
+        error_times, error_values = (
+            _tracking_error(
+                actual[0],
+                actual[1],
+                reference[0],
+                reference[1],
+                wrap_degrees=wrap_degrees,
+            )
         )
 
         if error_times:
@@ -243,42 +263,155 @@ def save_tracking_plot(
                 )
             )
 
-    axis_count = len(components) + (1 if errors else 0)
+    axis_count = (
+        len(components)
+        + (1 if errors else 0)
+    )
 
     fig, axes = plt.subplots(
         axis_count,
         1,
         sharex=True,
-        figsize=(10.5, 2.25 * axis_count + 1.2),
+        figsize=(
+            10.5,
+            1.95 * axis_count + 1.25,
+        ),
     )
 
     if axis_count == 1:
         axes = [axes]
 
-    # Main tracking panels.
-    for axis, (component_name, signals) in zip(
+    for axis, (
+        component_name,
+        signals,
+    ) in zip(
         axes,
         components,
     ):
-        for label, (times_s, values) in signals.items():
-            axis.plot(
-                times_s,
-                values,
-                label=label,
-                linestyle=line_styles.get(label, "-"),
+        for label, (
+            times_s,
+            values,
+        ) in signals.items():
+            plot_times = (
+                np.asarray(
+                    times_s,
+                    dtype=float,
+                )
+                - time_origin_s
             )
 
-        _add_markers(axis, markers)
+            axis.plot(
+                plot_times,
+                values,
+                label=label,
+                linestyle=line_styles.get(
+                    label,
+                    "-",
+                ),
+            )
+
+        if markers:
+            shifted_markers = [
+                (
+                    time_s - time_origin_s,
+                    label,
+                )
+                for time_s, label in markers
+            ]
+        else:
+            shifted_markers = None
+
+        _add_markers(
+            axis,
+            shifted_markers,
+        )
         _decorate_axis(axis)
 
         axis.set_ylabel(
-            f"{component_name}\n{unit}"
+            f"{component_name} {unit}"
         )
 
-    _add_marker_labels(axes[0], markers)
+    handles, labels = (
+        axes[0].get_legend_handles_labels()
+    )
 
-    # One common legend for the entire figure.
-    handles, labels = axes[0].get_legend_handles_labels()
+    if errors:
+        error_axis = axes[-1]
+
+        start_time = max(
+            values[0]
+            for _, values, _ in errors
+        )
+        end_time = min(
+            values[-1]
+            for _, values, _ in errors
+        )
+
+        base_times = np.asarray(
+            errors[0][1],
+            dtype=float,
+        )
+
+        grid = base_times[
+            (
+                base_times >= start_time
+            )
+            & (
+                base_times <= end_time
+            )
+        ]
+
+        if grid.size:
+            aligned_errors = []
+
+            for _, times_s, values in errors:
+                aligned_errors.append(
+                    np.interp(
+                        grid,
+                        np.asarray(
+                            times_s,
+                            dtype=float,
+                        ),
+                        np.asarray(
+                            values,
+                            dtype=float,
+                        ),
+                    )
+                )
+
+            error_norm = np.sqrt(
+                np.sum(
+                    np.square(
+                        np.vstack(
+                            aligned_errors
+                        )
+                    ),
+                    axis=0,
+                )
+            )
+
+            error_axis.plot(
+                grid - time_origin_s,
+                error_norm,
+            )
+
+        _decorate_axis(
+            error_axis
+        )
+
+        error_axis.set_ylabel(
+            f"||e|| {unit}"
+        )
+
+    axes[-1].set_xlabel(
+        xlabel
+    )
+
+    fig.suptitle(
+        title,
+        fontsize=13,
+        y=0.995,
+    )
 
     if handles:
         fig.legend(
@@ -286,53 +419,29 @@ def save_tracking_plot(
             labels,
             frameon=False,
             loc="upper center",
-            ncol=len(labels),
-            bbox_to_anchor=(0.5, 0.935),
+            ncol=min(
+                4,
+                len(labels),
+            ),
+            bbox_to_anchor=(
+                0.5,
+                0.955,
+            ),
         )
 
-    # Final tracking-error panel.
-    if errors:
-        error_axis = axes[-1]
-
-        for component_name, times_s, values in errors:
-            error_axis.plot(
-                times_s,
-                values,
-                label=component_name,
-            )
-
-        error_axis.axhline(
-            0.0,
-            linewidth=0.8,
-            alpha=0.6,
-        )
-
-        _add_markers(error_axis, markers)
-        _decorate_axis(error_axis)
-
-        error_axis.set_ylabel(
-            f"error\n{unit}"
-        )
-
-        error_axis.legend(
-            frameon=False,
-            loc="best",
-            ncol=min(3, len(errors)),
-        )
-
-    axes[-1].set_xlabel(
-        r"Time from bag start, $t$ [s]"
-    )
-
-    # Separate vertical space for title and global legend.
-    fig.suptitle(
-        title,
-        fontsize=14,
-        y=0.985,
+    top = (
+        0.90
+        if handles
+        else 0.94
     )
 
     fig.tight_layout(
-        rect=(0.02, 0.02, 0.99, 0.89)
+        rect=(
+            0.02,
+            0.02,
+            0.99,
+            top,
+        )
     )
 
     fig.savefig(

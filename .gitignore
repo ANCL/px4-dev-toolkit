@@ -1,7 +1,8 @@
-# External source repositories fetched from px4_env.repos.
+# External source repositories fetched from config/sources/*.repos.
 /px4/PX4-Autopilot/
 /ros2/src/px4_msgs/
 /ros2/src/px4_ros_com/
+/ros2/src/vicon_receiver/
 /ros2/src/Micro-XRCE-DDS-Agent/
 /tools/MAVProxy/
 

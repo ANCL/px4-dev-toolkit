@@ -31,7 +31,7 @@ def find_repo_root() -> Path:
 
     for path in (start.parent, *start.parents):
         if (
-            (path / "px4_env.repos").is_file()
+            (path / "config" / "px4_topics.def").is_file()
             and (path / "config").is_dir()
             and (path / "ros2").is_dir()
         ):
@@ -141,7 +141,8 @@ def make_control_node() -> Node:
             str(
                 package_share
                 / "config"
-                / "se3.yaml"
+                / "se3"
+                / "controller.yaml"
             ),
             {
                 "vehicle":
@@ -150,6 +151,14 @@ def make_control_node() -> Node:
                     LaunchConfiguration("trajectory"),
                 "handoff":
                     LaunchConfiguration("handoff"),
+                "direct_controller":
+                    LaunchConfiguration(
+                        "direct_controller"
+                    ),
+                "publish_diagnostics":
+                    LaunchConfiguration(
+                        "publish_diagnostics"
+                    ),
                 "vehicle_config_dir":
                     str(
                         package_share
@@ -160,6 +169,7 @@ def make_control_node() -> Node:
                     str(
                         package_share
                         / "config"
+                        / "trajectory"
                         / "trajectories.yaml"
                     ),
             },
@@ -177,17 +187,26 @@ def launch_setup(context):
 
     if not record:
         def on_control_exit(event, _context):
-            reason = (
-                "SE3 controller completed."
-                if event.returncode == 0
-                else
-                f"SE3 controller exited with status "
-                f"{event.returncode}."
-            )
+            if event.returncode != 0:
+                returncode = event.returncode
+
+                def fail_launch(_context):
+                    raise RuntimeError(
+                        "SE3 controller exited with status "
+                        f"{returncode}."
+                    )
+
+                return [
+                    OpaqueFunction(
+                        function=fail_launch
+                    )
+                ]
 
             return [
                 EmitEvent(
-                    event=Shutdown(reason=reason)
+                    event=Shutdown(
+                        reason="SE3 controller completed."
+                    )
                 )
             ]
 
@@ -231,25 +250,54 @@ def launch_setup(context):
         topic_catalog,
     )
 
-    timestamp = datetime.now().strftime(
-        "%Y%m%d_%H%M%S"
+    recording_output = (
+        LaunchConfiguration("recording_output")
+        .perform(context)
+        .strip()
     )
 
-    bag_root = (
-        repo_root
-        / "bags"
-        / "se3"
-    )
+    if recording_output:
+        bag_path = (
+            Path(recording_output)
+            .expanduser()
+            .resolve()
+        )
 
-    bag_path = (
-        bag_root
-        / timestamp
-    )
+        if bag_path.exists():
+            raise RuntimeError(
+                "SE3 recording output already exists: "
+                f"{bag_path}"
+            )
 
-    bag_root.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
+        bag_path.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+    else:
+        timestamp = datetime.now().strftime(
+            "%Y%m%d_%H%M%S"
+        )
+
+        bag_root = (
+            repo_root
+            / "bags"
+            / "se3"
+        )
+
+        bag_path = (
+            bag_root
+            / timestamp
+        )
+
+        bag_root.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+    control_exit_code = {
+        "value": None,
+    }
 
     bag_process = ExecuteProcess(
         cmd=[
@@ -267,6 +315,10 @@ def launch_setup(context):
     )
 
     def on_control_exit(event, _context):
+        control_exit_code["value"] = (
+            event.returncode
+        )
+
         if event.returncode == 0:
             message = (
                 "SE3 controller complete; "
@@ -289,20 +341,60 @@ def launch_setup(context):
             ),
         ]
 
-    def on_bag_exit(_event, _context):
-        return [
+    def on_bag_exit(event, _context):
+        actions = [
             LogInfo(
                 msg=[
                     "Bag saved: ",
                     str(bag_path),
                 ]
             ),
+        ]
+
+        controller_returncode = (
+            control_exit_code["value"]
+        )
+
+        if controller_returncode is None:
+            failure = (
+                "SE3 recorder exited before the controller."
+            )
+        elif controller_returncode != 0:
+            failure = (
+                "SE3 controller exited with status "
+                f"{controller_returncode}."
+            )
+        elif event.returncode != 0:
+            failure = (
+                "SE3 recorder exited with status "
+                f"{event.returncode}."
+            )
+        else:
+            failure = None
+
+        if failure is not None:
+            def fail_launch(_context):
+                raise RuntimeError(
+                    failure
+                )
+
+            actions.append(
+                OpaqueFunction(
+                    function=fail_launch
+                )
+            )
+
+            return actions
+
+        actions.append(
             EmitEvent(
                 event=Shutdown(
                     reason="ROS bag recorder stopped."
                 )
-            ),
-        ]
+            )
+        )
+
+        return actions
 
     return [
         LogInfo(
@@ -354,10 +446,35 @@ def generate_launch_description() -> LaunchDescription:
                 default_value="acceleration",
             ),
             DeclareLaunchArgument(
+                "direct_controller",
+                default_value="geometric_normalized",
+                description=(
+                    "Rotational controller used when "
+                    "handoff:=thrust_and_torque."
+                ),
+            ),
+            DeclareLaunchArgument(
+                "publish_diagnostics",
+                default_value="false",
+                description=(
+                    "Publish optional SE3 internal "
+                    "controller diagnostics."
+                ),
+            ),
+            DeclareLaunchArgument(
                 "record",
                 default_value="false",
                 description=(
                     "Record the SE3 experiment."
+                ),
+            ),
+            DeclareLaunchArgument(
+                "recording_output",
+                default_value="",
+                description=(
+                    "Optional explicit rosbag output directory. "
+                    "An empty value preserves the standalone "
+                    "bags/se3/<timestamp> layout."
                 ),
             ),
             OpaqueFunction(

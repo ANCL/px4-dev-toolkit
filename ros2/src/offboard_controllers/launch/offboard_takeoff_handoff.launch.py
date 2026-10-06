@@ -36,7 +36,7 @@ def find_repo_root() -> Path:
 
     for path in (start.parent, *start.parents):
         if (
-            (path / "px4_env.repos").is_file()
+            (path / "config" / "px4_topics.def").is_file()
             and (path / "config").is_dir()
             and (path / "ros2").is_dir()
         ):
@@ -168,7 +168,7 @@ def launch_setup(context):
     topic_catalog = read_topic_catalog(topic_catalog_file)
     topics = read_recording_topics(topic_file, topic_catalog)
 
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     bag_root = repo_root / "bags" / "offboard_takeoff_handoff"
     bag_path = bag_root / timestamp
 

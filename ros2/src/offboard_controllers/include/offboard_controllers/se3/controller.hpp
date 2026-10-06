@@ -16,13 +16,21 @@ public:
     const State & state,
     const Reference & reference) const;
 
+  // Differentiate the geometric SE(3) translational control vector A
+  // analytically using
+  // the nominal quadrotor dynamics. Estimator acceleration is not required.
   Vector3 compute_force_derivative(
     const State & state,
-    const Reference & reference) const;
+    const Reference & reference,
+    const Vector3 & force) const;
 
+  // Compute A_ddot from rigid-body thrust-axis kinematics. This requires the
+  // current body angular velocity, but never a finite-difference jerk signal.
   Vector3 compute_force_second_derivative(
     const State & state,
-    const Reference & reference) const;
+    const Reference & reference,
+    const Vector3 & force,
+    const Vector3 & force_derivative) const;
 
   RotationMatrix compute_desired_attitude(
     const Vector3 & force,
@@ -46,17 +54,23 @@ public:
     const RotationMatrix & attitude,
     const RotationMatrix & desired_attitude) const;
 
+  // Toolkit cascaded attitude-to-rate law used by the attitude_rate handoff.
+  // The returned value is a body-rate setpoint; the physical moment
+  // controller does not use this intermediate command.
   Vector3 compute_attitude_rate_command(
     const RotationMatrix & attitude,
     const DesiredAttitudeRate & desired) const;
 
-  Vector3 compute_normalized_torque_command(
+  // Toolkit-specific normalized SO(3) controller. It uses geometric SO(3)
+  // error definitions but outputs PX4-normalized torque directly; it is not
+  // the physical moment equation.
+  GeometricNormalizedOutput compute_geometric_normalized_torque(
     const RotationMatrix & attitude,
     const Vector3 & angular_velocity,
     const DesiredAttitudeDynamics & desired) const;
 
-  // Strict Lee physical moment [N m]. This is intentionally not connected to
-  // PX4 VehicleTorqueSetpoint, whose xyz field is normalized/unitless.
+  // Physical geometric moment [N m]. This is intentionally not connected
+  // to PX4 VehicleTorqueSetpoint, whose xyz field is normalized/unitless.
   Vector3 compute_physical_moment_command(
     const RotationMatrix & attitude,
     const Vector3 & angular_velocity,

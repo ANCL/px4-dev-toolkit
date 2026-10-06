@@ -12,7 +12,7 @@ def find_repo_root() -> Path:
 
     for path in (start.parent, *start.parents):
         if (
-            (path / "px4_env.repos").is_file()
+            (path / "config" / "px4_topics.def").is_file()
             and (path / "config").is_dir()
             and (path / "tools").is_dir()
         ):

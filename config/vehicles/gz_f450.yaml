@@ -8,7 +8,7 @@ vehicle:
   type: quadrotor
 
 source:
-  px4_commit: fdba3a6f56465d05767d30cb617681acc07a6fd9
+  px4_commit: f5083ca2c5b919350880e8667e636ef70715db17
   airframe: ROMFS/px4fmu_common/init.d-posix/airframes/4022_gz_f450
   gazebo_model: Tools/simulation/gz/models/f450/model.sdf
 
@@ -32,19 +32,29 @@ plant:
     yz: 3.38813e-21
     zz: 0.0433006
 
-gazebo_propulsion:
+# Physical propulsion model shared by simulation and controller deployment.
+#
+# For the pinned F450 Gazebo/PX4 model:
+#
+#   T = 1.2e-5 * omega^2
+#   omega = 150 + 850 * u
+#   THR_MDL_FAC = 0
+#
+# which gives the exact normalized-control thrust curve:
+#
+#   T(u) = 0.27 + 3.06 u + 8.67 u^2  [N]
+#
+# The controller consumes this physical relationship rather than any
+# Gazebo-specific rotor-velocity or ESC representation.
+propulsion:
   frame: FLU
-  motor_count: 4
+  rotor_count: 4
+  moment_ratio_m: 0.0137
 
-  max_rot_velocity_rad_s: 1032.0
-  motor_constant: 1.2e-05
-  moment_constant: 0.0137
-  time_constant_up_s: 0.0125
-  time_constant_down_s: 0.0125
-  rotor_drag_coefficient: 8.06428e-05
-  rolling_moment_coefficient: 1.0e-06
-  rotor_velocity_slowdown_sim: 10.0
-  motor_type: velocity
+  actuator_thrust:
+    control_min: 0.0
+    control_max: 1.0
+    polynomial_n: [0.27, 3.06, 8.67]
 
   rotors:
     - index: 0
@@ -68,6 +78,10 @@ px4_allocator:
   airframe_type: 0
   rotor_count: 4
   hover_thrust: 0.60
+
+  # CA_ROTOR*_CT is not overridden by the F450 airframe, so the pinned PX4
+  # control_allocator/module.yaml default of 6.5 is active for all four rotors.
+  thrust_coefficient: 6.5
 
   rotors:
     - index: 0

@@ -9,6 +9,8 @@ include(CTest)
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(px4_msgs REQUIRED)
 find_package(px4_control_common REQUIRED)
 find_package(yaml-cpp REQUIRED)
@@ -22,19 +24,31 @@ add_executable(offboard_position
 )
 
 add_library(se3_controller
-  src/se3_controller.cpp
+  src/se3/controller.cpp
 )
 
 add_library(trajectory
-  src/trajectory.cpp
+  src/trajectory/trajectory.cpp
 )
 
 add_library(px4_wrench
-  src/px4_wrench.cpp
+  src/px4/wrench.cpp
+)
+
+add_library(px4_rate
+  src/px4/rate_controller.cpp
+)
+
+add_library(physical_wrench_adapter
+  src/se3/physical_wrench_adapter.cpp
+)
+
+add_library(vehicle_config
+  src/se3/vehicle_config.cpp
 )
 
 add_executable(se3
-  src/se3.cpp
+  src/se3/node.cpp
 )
 
 get_filename_component(
@@ -65,8 +79,29 @@ target_include_directories(px4_wrench PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
+target_include_directories(px4_rate PUBLIC
+  "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+
+target_include_directories(physical_wrench_adapter PUBLIC
+  "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+
+target_include_directories(vehicle_config PUBLIC
+  "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+
+target_link_libraries(vehicle_config PUBLIC
+  physical_wrench_adapter
+  yaml-cpp
+)
+
 target_link_libraries(trajectory PUBLIC
   yaml-cpp
+)
+
+target_link_libraries(offboard_position
+  trajectory
 )
 
 target_include_directories(se3 PRIVATE
@@ -87,19 +122,24 @@ ament_target_dependencies(offboard_position
 
 ament_target_dependencies(se3
   rclcpp
+  geometry_msgs
+  std_msgs
   px4_msgs
 )
 
 target_link_libraries(se3
   se3_controller
   trajectory
+  px4_rate
   px4_wrench
+  physical_wrench_adapter
+  vehicle_config
   yaml-cpp
 )
 
 if(BUILD_TESTING)
   add_executable(test_se3_controller
-    test/test_se3_controller.cpp
+    test/se3/test_controller.cpp
   )
 
   target_link_libraries(test_se3_controller
@@ -112,7 +152,7 @@ if(BUILD_TESTING)
   )
 
   add_executable(test_trajectory
-    test/test_trajectory.cpp
+    test/trajectory/test_trajectory.cpp
   )
 
   target_include_directories(test_trajectory PRIVATE
@@ -124,7 +164,7 @@ if(BUILD_TESTING)
   )
 
   target_compile_definitions(test_trajectory PRIVATE
-    TRAJECTORY_CONFIG_PATH="${CMAKE_CURRENT_SOURCE_DIR}/config/trajectories.yaml"
+    TRAJECTORY_CONFIG_PATH="${CMAKE_CURRENT_SOURCE_DIR}/config/trajectory/trajectories.yaml"
   )
 
   add_test(
@@ -146,7 +186,7 @@ if(BUILD_TESTING)
   )
 
   add_executable(test_px4_wrench
-    test/test_px4_wrench.cpp
+    test/px4/test_wrench.cpp
   )
 
   target_include_directories(test_px4_wrench PRIVATE
@@ -160,6 +200,49 @@ if(BUILD_TESTING)
   add_test(
     NAME px4_wrench
     COMMAND test_px4_wrench
+  )
+
+  add_executable(test_px4_rate
+    test/px4/test_rate_controller.cpp
+  )
+
+  target_link_libraries(test_px4_rate
+    px4_rate
+  )
+
+  add_test(
+    NAME px4_rate
+    COMMAND test_px4_rate
+  )
+
+  add_executable(test_physical_wrench_adapter
+    test/se3/test_physical_wrench_adapter.cpp
+  )
+
+  target_link_libraries(test_physical_wrench_adapter
+    physical_wrench_adapter
+  )
+
+  add_test(
+    NAME physical_wrench_adapter
+    COMMAND test_physical_wrench_adapter
+  )
+
+  add_executable(test_vehicle_config
+    test/se3/test_vehicle_config.cpp
+  )
+
+  target_link_libraries(test_vehicle_config
+    vehicle_config
+  )
+
+  target_compile_definitions(test_vehicle_config PRIVATE
+    VEHICLE_CONFIG_DIR="${PX4_ENV_ROOT}/config/vehicles"
+  )
+
+  add_test(
+    NAME vehicle_config
+    COMMAND test_vehicle_config
   )
 
   add_executable(test_offboard_lifecycle
@@ -185,7 +268,13 @@ install(
 )
 
 install(
-  TARGETS se3_controller trajectory px4_wrench
+  TARGETS
+    se3_controller
+    trajectory
+    px4_wrench
+    px4_rate
+    physical_wrench_adapter
+    vehicle_config
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
 )

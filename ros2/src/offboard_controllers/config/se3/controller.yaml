@@ -1,0 +1,73 @@
+se3:
+  ros__parameters:
+    # Geometric SE(3) translational gains normalized by vehicle mass:
+    #   kx = mass * kx_over_mass
+    #   kv = mass * kv_over_mass
+    kx_over_mass: 16.0
+    kv_over_mass: 5.6
+
+    # Toolkit cascaded attitude error -> FRD body-rate correction [1/s].
+    # Used by the attitude_rate handoff and by the outer attitude law of
+    # direct_controller=px4_rate. It is not part of the direct physical-
+    # moment controller. The current values match the verified active PX4
+    # MC_ROLL_P, MC_PITCH_P, and MC_YAW_P controller settings.
+    attitude_gain: [6.5, 6.5, 2.8]
+
+    # Pinned PX4 multicopter rate-controller configuration.
+    #
+    # Parameter semantics reproduce PX4 at commit:
+    #   f5083ca2c5b919350880e8667e636ef70715db17
+    #
+    # These values were verified from the active PX4 configuration used by
+    # the current baseline experiment. They are controller tuning values,
+    # not physical vehicle properties.
+    px4_rate_p: [0.15, 0.15, 0.20]
+    px4_rate_i: [0.20, 0.20, 0.10]
+    px4_rate_d: [0.003, 0.003, 0.0]
+    px4_rate_ff: [0.0, 0.0, 0.0]
+    px4_rate_k: [1.0, 1.0, 1.0]
+    px4_rate_integrator_limit: [0.30, 0.30, 0.30]
+    px4_rate_yaw_torque_cutoff_hz: 2.0
+    px4_rate_battery_scale_enabled: false
+
+    # Geometric physical rotational gains used only by
+    # direct_controller=geometric_physical:
+    #
+    #   M = -K_R e_R - K_Omega e_Omega
+    #       + Omega x J Omega + J alpha_ff
+    #
+    # Units are N m for K_R and N m s for K_Omega. These are controller
+    # tuning values, not vehicle properties. The initial values locally match
+    # the existing geometric-normalized feedback scale around the current
+    # gz_f450 hover operating point through the physical PX4 adapter.
+    geometric_physical_k_r: [5.955179, 5.955179, 0.407475]
+    geometric_physical_k_omega: [0.916181, 0.916181, 0.145527]
+
+    # Toolkit geometric-normalized controller gains. These act directly on
+    # e_R, e_Omega, and the transported desired angular acceleration to produce
+    # PX4-normalized torque; they are not physical moment gains.
+    #
+    # K_R^n is chosen as attitude_gain * K_Omega^n component-wise so the
+    # attitude/rate feedback scaling is consistent with the toolkit's
+    # cascaded attitude-rate path without introducing an intermediate rate
+    # command in this controller.
+    normalized_attitude_gain: [0.975, 0.975, 0.56]
+
+    # Maps angular-velocity error [rad/s] into normalized torque. Initial
+    # values follow the pinned PX4 rate-loop P scale only as a starting
+    # numerical scale; this is not the PX4 rate controller.
+    normalized_angular_velocity_gain: [0.15, 0.15, 0.20]
+
+    # Maps transported desired angular acceleration [rad/s^2] into normalized
+    # torque. Initial magnitudes follow the pinned PX4 roll/pitch rate-D scale
+    # only as a starting numerical scale. This is desired-acceleration
+    # feed-forward, not PX4's measured-angular-acceleration D feedback; the
+    # pinned PX4 yaw D gain is zero.
+    normalized_angular_acceleration_gain: [0.003, 0.003, 0.0]
+
+    # External toolkit control/update rate.
+    control_rate_hz: 100.0
+
+    # Offboard lifecycle durations remain invariant if the control rate changes.
+    warmup_duration_s: 1.5
+    offboard_retry_interval_s: 1.0

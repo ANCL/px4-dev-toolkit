@@ -1,0 +1,5 @@
+repositories:
+  tools/MAVProxy:
+    type: git
+    url: https://github.com/ArduPilot/MAVProxy.git
+    version: 932f6945cfc7fbc6579e166667d43e327fe44f2d

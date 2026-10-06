@@ -1,0 +1,5 @@
+repositories:
+  ros2/src/vicon_receiver:
+    type: git
+    url: https://github.com/ANCL/ros2-vicon-receiver.git
+    version: 49a026301e0f009e0ae9b21f86bed1e7cae73f0d

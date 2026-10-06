@@ -27,7 +27,7 @@ def find_repo_root() -> Path:
 
     for path in (start.parent, *start.parents):
         if (
-            (path / "px4_env.repos").is_file()
+            (path / "config" / "px4_topics.def").is_file()
             and (path / "config").is_dir()
             and (path / "ros2").is_dir()
         ):
@@ -77,6 +77,16 @@ def load_sequence(path: Path) -> dict[str, object]:
         raise ValueError("Sequence configuration must be a YAML mapping.")
 
     name = validate_name(data.get("name"), "Sequence name")
+
+    profile = validate_name(
+        data.get("profile"),
+        "Sequence profile",
+    )
+
+    recording_output_argument = validate_name(
+        data.get("recording_output_argument"),
+        "Sequence recording_output_argument",
+    )
 
     settle_seconds = data.get("settle_seconds", 0.0)
 
@@ -143,12 +153,18 @@ def load_sequence(path: Path) -> dict[str, object]:
 
     return {
         "name": name,
+        "profile": profile,
+        "recording_output_argument":
+            recording_output_argument,
         "settle_seconds": float(settle_seconds),
         "steps": steps,
     }
 
 
-def command_for_step(step: dict[str, object]) -> list[str]:
+def command_for_step(
+    step: dict[str, object],
+    overrides: dict[str, str] | None = None,
+) -> list[str]:
     command = [
         "ros2",
         "launch",
@@ -156,12 +172,32 @@ def command_for_step(step: dict[str, object]) -> list[str]:
         str(step["launch"]),
     ]
 
-    arguments = step["arguments"]
+    arguments = dict(step["arguments"])
+
+    if overrides:
+        arguments.update(overrides)
 
     for key, value in arguments.items():
         command.append(f"{key}:={value}")
 
     return command
+
+
+def launch_argument_is_true(
+    arguments: dict[str, str],
+    name: str,
+) -> bool:
+    return (
+        arguments.get(name, "")
+        .strip()
+        .lower()
+        in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+    )
 
 
 def stop_process(process: subprocess.Popen[str]) -> None:
@@ -201,17 +237,31 @@ def write_manifest(path: Path, manifest: dict[str, object]) -> None:
     )
 
 
-def bag_directories(root: Path) -> set[Path]:
-    """Return rosbag directories currently present below the toolkit bag root."""
-    bag_root = root / "bags"
+def write_experiment_metadata(
+    bag_path: Path,
+    profile: str,
+    sequence_name: str,
+    step: dict[str, object],
+) -> None:
+    """Write analysis metadata beside a directly recorded sequence bag."""
+    experiment_path = (
+        bag_path / "experiment.json"
+    )
 
-    if not bag_root.is_dir():
-        return set()
-
-    return {
-        metadata.parent.resolve()
-        for metadata in bag_root.rglob("metadata.yaml")
+    experiment = {
+        "profile": profile,
+        "sequence": sequence_name,
+        "step": str(step["name"]),
+        "arguments": dict(step["arguments"]),
     }
+
+    experiment_path.write_text(
+        json.dumps(
+            experiment,
+            indent=2,
+        )
+        + "\n"
+    )
 
 
 def run_step(
@@ -275,12 +325,17 @@ def main() -> int:
     run_dir = (
         root
         / "bags"
-        / "sequences"
         / str(sequence["name"])
         / timestamp
     )
 
     run_dir.mkdir(parents=True, exist_ok=False)
+
+    logs_dir = run_dir / "logs"
+    logs_dir.mkdir()
+
+    bags_dir = run_dir / "bags"
+    bags_dir.mkdir()
 
     manifest_path = run_dir / "manifest.json"
 
@@ -301,10 +356,35 @@ def main() -> int:
 
     try:
         for index, step in enumerate(sequence["steps"], start=1):
-            command = command_for_step(step)
+            recording_output = None
+            command_overrides = {}
+
+            if launch_argument_is_true(
+                step["arguments"],
+                "record",
+            ):
+                recording_output = (
+                    bags_dir
+                    / f"{index:02d}-{step['name']}"
+                )
+
+                command_overrides[
+                    str(
+                        sequence[
+                            "recording_output_argument"
+                        ]
+                    )
+                ] = str(
+                    recording_output.resolve()
+                )
+
+            command = command_for_step(
+                step,
+                command_overrides,
+            )
 
             log_path = (
-                run_dir
+                logs_dir
                 / f"{index:02d}-{step['name']}.log"
             )
 
@@ -312,14 +392,12 @@ def main() -> int:
                 "index": index,
                 "name": step["name"],
                 "command": command,
-                "log": log_path.name,
+                "log": str(log_path.relative_to(run_dir)),
                 "started_at": utc_now(),
                 "finished_at": None,
                 "exit_code": None,
                 "recorded_bags": [],
             }
-
-            bags_before = bag_directories(root)
 
             manifest["steps"].append(record)
             write_manifest(manifest_path, manifest)
@@ -335,14 +413,49 @@ def main() -> int:
                 log_path,
             )
 
-            bags_after = bag_directories(root)
-
             record["finished_at"] = utc_now()
             record["exit_code"] = exit_code
-            record["recorded_bags"] = sorted(
-                str(path.relative_to(root))
-                for path in bags_after - bags_before
-            )
+
+            if recording_output is not None:
+                metadata_path = (
+                    recording_output
+                    / "metadata.yaml"
+                )
+
+                if metadata_path.is_file():
+                    write_experiment_metadata(
+                        recording_output,
+                        str(sequence["profile"]),
+                        str(sequence["name"]),
+                        step,
+                    )
+
+                    record["recorded_bags"] = [
+                        str(
+                            recording_output.relative_to(
+                                run_dir
+                            )
+                        )
+                    ]
+
+                elif exit_code == 0:
+                    manifest["result"] = "failed"
+                    manifest["finished_at"] = utc_now()
+
+                    write_manifest(
+                        manifest_path,
+                        manifest,
+                    )
+
+                    print(
+                        "ERROR: step "
+                        f"'{step['name']}' exited successfully "
+                        "but its expected bag was not finalized: "
+                        f"{recording_output}",
+                        file=sys.stderr,
+                    )
+
+                    return 1
 
             write_manifest(manifest_path, manifest)
 
@@ -366,7 +479,7 @@ def main() -> int:
 
                 if settle_seconds > 0.0:
                     print(
-                        f"Settling in Position mode for "
+                        f"Settling for "
                         f"{settle_seconds:.1f} s..."
                     )
                     time.sleep(settle_seconds)

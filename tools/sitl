@@ -3,7 +3,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-source "${ROOT}/config/env.env"
+source "${ROOT}/config/runtime/common.env"
+source "${ROOT}/config/runtime/sitl.env"
 
 RUNTIME_ENV="${ROOT}/ros2/runtime_env.sh"
 TMUX_CONFIG="${ROOT}/config/tmux.conf"
@@ -37,7 +38,7 @@ require_config_value() {
     local name="$1"
 
     if [[ -z "${!name-}" ]]; then
-        echo "ERROR: missing ${name} in config/env.env."
+        echo "ERROR: missing ${name} in config/runtime/sitl.env."
         exit 1
     fi
 }
@@ -129,11 +130,20 @@ session_exists() {
 # each tmux window gets the same sourced runtime environment.
 launch_command() {
     local launch_file="$1"
+    shift
+
     local command
+    local argument
+    local escaped
 
     printf -v command \
         'source %q && exec ros2 launch px4_bringup %q' \
         "${RUNTIME_ENV}" "${launch_file}"
+
+    for argument in "$@"; do
+        printf -v escaped ' %q' "${argument}"
+        command+="${escaped}"
+    done
 
     printf 'bash -lc %q' "${command}"
 }
@@ -210,7 +220,9 @@ px4_command() {
 }
 
 # MAVProxy runs from its isolated repository-managed Python environment.
-# In headless mode it also loads the repository's software joystick.
+# The repository's software joystick is always loaded because automated
+# takeoff/staging controllers use its local control socket independently of
+# whether Gazebo is running with a GUI.
 mavproxy_command() {
     if [[ ! -x "${MAVPROXY_BIN}" ]]; then
         echo "ERROR: MAVProxy is not installed:" >&2
@@ -218,8 +230,7 @@ mavproxy_command() {
         exit 1
     fi
 
-    if [[ "${HEADLESS}" == "true" ]] &&
-        [[ ! -f "${MAVPROXY_MODULES_DIR}/virtual_joystick.py" ]]; then
+    if [[ ! -f "${MAVPROXY_MODULES_DIR}/virtual_joystick.py" ]]; then
         echo "ERROR: virtual joystick module is missing:" >&2
         echo "  ${MAVPROXY_MODULES_DIR}/virtual_joystick.py" >&2
         exit 1
@@ -236,10 +247,8 @@ mavproxy_command() {
     printf -v argument ' %q' "--master=${MAVPROXY_MASTER}"
     command+="${argument}"
 
-    if [[ "${HEADLESS}" == "true" ]]; then
-        printf -v argument ' %q' '--cmd=module load virtual_joystick'
-        command+="${argument}"
-    fi
+    printf -v argument ' %q' '--cmd=module load virtual_joystick'
+    command+="${argument}"
 
     printf 'bash -lc %q' "${command}"
 }
@@ -274,7 +283,7 @@ start_stack() {
 
     if [[ "${START_XRCE_AGENT}" == "true" ]]; then
         local xrce_command
-        xrce_command="$(launch_command xrce.launch.py)"
+        xrce_command="$(launch_command xrce.launch.py "transport:=${XRCE_AGENT_TRANSPORT}" "port:=${XRCE_AGENT_PORT}")"
 
         tmux new-window \
             -t "${TMUX_SESSION}:" \

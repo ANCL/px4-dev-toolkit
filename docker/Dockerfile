@@ -11,7 +11,7 @@ ENV TZ=Etc/UTC
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 
-LABEL org.opencontainers.image.source="https://github.com/Hosnooo/px4-dev-toolkit"
+LABEL org.opencontainers.image.source="https://github.com/ANCL/px4-dev-toolkit"
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \

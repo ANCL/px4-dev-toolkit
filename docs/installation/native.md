@@ -17,7 +17,7 @@ Other hosts are not currently covered by these installation instructions.
 ## Clone
 
 ```bash
-git clone https://github.com/Hosnooo/px4-dev-toolkit.git
+git clone https://github.com/ANCL/px4-dev-toolkit.git
 cd px4-dev-toolkit
 ```
 

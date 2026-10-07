@@ -26,10 +26,10 @@ The complete documentation map is in [`docs/index.md`](docs/index.md).
 The lowest-setup path is the published SITL image:
 
 ```bash
-docker pull ghcr.io/hosnooo/px4-dev-toolkit-sitl:latest
+docker pull ghcr.io/ancl/px4-dev-toolkit-sitl:latest
 
 docker run --rm -it --network host \
-  ghcr.io/hosnooo/px4-dev-toolkit-sitl:latest bash
+  ghcr.io/ancl/px4-dev-toolkit-sitl:latest bash
 ```
 
 Inside the container:

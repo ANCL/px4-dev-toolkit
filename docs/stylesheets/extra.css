@@ -152,50 +152,22 @@
   }
 }
 
-/* Tables */
-
-.md-typeset__table {
-  display: block;
+/* Tables: use Material's existing scroll container, never a nested one. */
+.md-typeset table:not([class]) {
   width: 100%;
-  overflow-x: auto;
-}
-
-.md-typeset__table table {
-  width: 100%;
-  min-width: 900px;
   table-layout: auto;
 }
 
 .md-typeset table:not([class]) th,
 .md-typeset table:not([class]) td {
-  padding: 0.8rem 1rem;
+  padding: 0.65rem 0.8rem;
   vertical-align: top;
-  overflow-wrap: normal;
+  overflow-wrap: break-word;
   word-break: normal;
 }
 
-/* Keep identifiers such as `experiment` on one line. */
+/* Allow long source paths to wrap instead of expanding the entire page. */
 .md-typeset table:not([class]) code {
-  white-space: nowrap;
-  word-break: keep-all;
-}
-
-/* Give the common three-column documentation tables useful proportions. */
-.md-typeset table:not([class]) th:first-child,
-.md-typeset table:not([class]) td:first-child {
-  min-width: 140px;
-  width: 16%;
-  white-space: nowrap;
-}
-
-.md-typeset table:not([class]) th:nth-child(2),
-.md-typeset table:not([class]) td:nth-child(2) {
-  min-width: 280px;
-  width: 32%;
-}
-
-.md-typeset table:not([class]) th:nth-child(3),
-.md-typeset table:not([class]) td:nth-child(3) {
-  min-width: 420px;
-  width: 52%;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }

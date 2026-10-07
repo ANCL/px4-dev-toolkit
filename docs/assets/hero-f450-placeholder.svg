@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" fill="none">
+  <rect width="1600" height="900" rx="24" fill="#0B1320"/>
+  <rect x="36" y="36" width="1528" height="828" rx="18" fill="#101826" stroke="#334155" stroke-width="2"/>
+
+  <rect x="90" y="90" width="1420" height="720" rx="18" fill="url(#sky)"/>
+  <rect x="90" y="620" width="1420" height="190" rx="0" fill="#16324F"/>
+  <rect x="90" y="700" width="1420" height="110" rx="0" fill="#0F5132"/>
+
+  <g transform="translate(800 390)">
+    <circle r="54" fill="#D1D5DB"/>
+    <rect x="-24" y="0" width="48" height="105" rx="18" fill="#F8FAFC"/>
+    <line x1="0" y1="0" x2="-135" y2="-95" stroke="#F8FAFC" stroke-width="16" stroke-linecap="round"/>
+    <line x1="0" y1="0" x2="135" y2="-95" stroke="#F8FAFC" stroke-width="16" stroke-linecap="round"/>
+    <line x1="0" y1="18" x2="-145" y2="105" stroke="#F8FAFC" stroke-width="16" stroke-linecap="round"/>
+    <line x1="0" y1="18" x2="145" y2="105" stroke="#F8FAFC" stroke-width="16" stroke-linecap="round"/>
+
+    <circle cx="-145" cy="105" r="38" fill="#38BDF8"/>
+    <circle cx="145" cy="105" r="38" fill="#38BDF8"/>
+    <circle cx="-135" cy="-95" r="38" fill="#38BDF8"/>
+    <circle cx="135" cy="-95" r="38" fill="#38BDF8"/>
+  </g>
+
+  <text x="800" y="165" text-anchor="middle" fill="#E2E8F0" font-family="Arial, sans-serif" font-size="40" font-weight="700">
+    F450 flight placeholder
+  </text>
+
+  <text x="800" y="760" text-anchor="middle" fill="#E2E8F0" font-family="Arial, sans-serif" font-size="26">
+    Replace this with a real hardware or realistic flight image later
+  </text>
+
+  <defs>
+    <linearGradient id="sky" x1="800" y1="90" x2="800" y2="620" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#60A5FA"/>
+      <stop offset="1" stop-color="#BFDBFE"/>
+    </linearGradient>
+  </defs>
+</svg>

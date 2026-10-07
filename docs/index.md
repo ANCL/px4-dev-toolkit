@@ -1,56 +1,97 @@
-# PX4 Development Toolkit documentation
+---
+hide:
+  - navigation
+  - toc
+---
 
-Use this page to go directly to the task you are trying to complete. You should not need to browse the repository tree to discover the workflow.
+<div class="px4-hero">
+  <h1>PX4 Development Toolkit</h1>
+  <p class="px4-tagline">Reproducible PX4 and ROS 2 development from simulation to physical flight.</p>
+  <p class="px4-description">
+    Build, run, record, and analyze PX4 experiments using the same toolkit
+    across Gazebo SITL and physical hardware.
+  </p>
+  <div class="px4-actions">
+    <a href="#choose-an-installation" class="md-button md-button--primary">Get started</a>
+    <a href="https://github.com/ANCL/px4-dev-toolkit" class="md-button">View on GitHub</a>
+  </div>
+</div>
 
-## Install the toolkit
+<div class="px4-hero-images">
+  <img src="assets/hero-gazebo-placeholder.svg" alt="PX4 F450 running in Gazebo simulation" class="px4-hero-image">
+  <img src="assets/hero-f450-placeholder.svg" alt="F450 quadrotor in flight" class="px4-hero-image">
+</div>
 
-Choose one installation method:
+<div class="px4-card-grid">
+  <a class="px4-card" href="#choose-an-installation">
+    <h3>Installation</h3>
+    <p>Start with the published Docker images or install the toolkit natively on Ubuntu 24.04.</p>
+    <span>Choose an installation →</span>
+  </a>
 
-- **[Docker](installation/docker.md)** — use the published images immediately, or clone the repository and build the toolkit images with Compose.
-- **[Native](installation/native.md)** — install ROS 2, PX4 dependencies, pinned sources, and the toolkit workspace directly on Ubuntu 24.04.
+  <a class="px4-card" href="environments/sitl/">
+    <h3>Simulation</h3>
+    <p>Run PX4 SITL with Gazebo, uXRCE-DDS, MAVProxy, and QGroundControl.</p>
+    <span>Run SITL →</span>
+  </a>
 
-Docker and native installation are alternatives. The runtime pages below are the same conceptual workflows after installation.
+  <a class="px4-card" href="environments/hardware/">
+    <h3>Hardware</h3>
+    <p>Run the same ROS 2 workflows with a physical PX4 vehicle, serial XRCE-DDS, and Vicon motion capture.</p>
+    <span>Run on hardware →</span>
+  </a>
 
-## Run an environment
+  <a class="px4-card" href="controllers/overview/">
+    <h3>Control</h3>
+    <p>Develop and evaluate Offboard controllers, geometric SE(3) control, and reusable trajectories.</p>
+    <span>Explore controllers →</span>
+  </a>
 
-- **[SITL](environments/sitl.md)** — PX4 SITL + Gazebo + uXRCE-DDS + MAVProxy/QGroundControl.
-- **[Hardware](environments/hardware.md)** — physical PX4 + serial uXRCE-DDS + Vicon/mocap bridge.
+  <a class="px4-card" href="analysis/analysis/">
+    <h3>Analysis</h3>
+    <p>Record repeatable experiments and analyze trajectories, controller behavior, and the PX4 control pipeline.</p>
+    <span>Analyze results →</span>
+  </a>
+</div>
 
-## Run a controller
+## Choose an installation
 
-Start with **[Controller overview](controllers/overview.md)** to choose the right workflow.
+Use either installation path depending on how you want to work.
 
-- **[SE(3)](controllers/se3.md)** — controller architecture, handoff modes, direct rotational controllers, frames, timing, and vehicle requirements.
-- **[Trajectories](controllers/trajectories.md)** — shared NED trajectory definitions and timing/anchoring semantics.
+**[Docker](installation/docker.md)** provides the lowest-setup path using the published SITL and hardware images.
 
-## Run repeatable experiments
+**[Native](installation/native.md)** installs ROS 2, PX4 dependencies, pinned sources, and the toolkit workspace directly on Ubuntu 24.04.
 
-- **[Recording](workflows/recording.md)** — how controller launch files own rosbag lifecycle and bag placement.
-- **[Sequences](workflows/sequences.md)** — run ordered controller studies with deterministic bag paths, logs, manifests, and settle intervals.
+Both provide the same toolkit workflows after installation.
 
-## Analyze results
+## From simulation to hardware
 
-- **[Single-run analysis](analysis/analysis.md)** — `px4_analyze`, profile detection, summaries, plots, and timing alignment.
-- **[Comparison](analysis/comparison.md)** — `px4_compare`, confirmed-Offboard alignment, controller labels, and trajectory-segment metrics.
+The toolkit keeps the workflow consistent across the two runtime environments.
 
-## Understand or extend the toolkit
-
-These pages are for development and deeper system work; they are not prerequisites for the basic run workflow.
-
-- **[Architecture](reference/architecture.md)** — how the repository, runtime environments, ROS 2 packages, and PX4 data flow fit together.
-- **[Configuration](reference/configuration.md)** — where each kind of configuration belongs.
-- **[Extending](reference/extending.md)** — add controllers, trajectories, vehicles, sequences, analysis profiles, tools, ROS packages, or external sources.
-- **[Troubleshooting](reference/troubleshooting.md)** — recurring actionable failures and checks.
+```mermaid
+flowchart LR
+    D[Install toolkit] --> E{Environment}
+    E -->|Simulation| S[PX4 SITL + Gazebo]
+    E -->|Physical platform| H[PX4 hardware + Vicon]
+    S --> C[ROS 2 controllers]
+    H --> C
+    C --> R[Recording]
+    R --> A[Analysis and comparison]
+```
 
 ## Suggested first journey
 
 For a new simulation user:
 
-1. [Docker installation](installation/docker.md) or [Native installation](installation/native.md)
-2. [Run SITL](environments/sitl.md)
-3. [Controller overview](controllers/overview.md)
-4. [Run SE(3)](controllers/se3.md)
-5. [Record](workflows/recording.md) or [run a sequence](workflows/sequences.md)
-6. [Analyze](analysis/analysis.md) and [compare](analysis/comparison.md)
+1. [Install with Docker](installation/docker.md) or [install natively](installation/native.md).
+2. [Run the SITL environment](environments/sitl.md).
+3. Review the [controller overview](controllers/overview.md).
+4. [Run the SE(3) controller](controllers/se3.md).
+5. [Record a run](workflows/recording.md) or [run a sequence](workflows/sequences.md).
+6. [Analyze](analysis/analysis.md) and [compare](analysis/comparison.md) the results.
 
-[Back to repository README](../README.md)
+## Documentation
+
+The documentation covers installation, simulation and hardware environments, controllers, experiment workflows, analysis, architecture, configuration, extension points, and troubleshooting.
+
+[Browse the repository](https://github.com/ANCL/px4-dev-toolkit)

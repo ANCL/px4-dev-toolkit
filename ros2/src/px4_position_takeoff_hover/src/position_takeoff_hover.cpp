@@ -34,9 +34,13 @@ namespace px4_topics
  *       -> ask PX4 to land at the current position
  *       -> wait for PX4 to land and disarm
  *
- * MAVProxy owns the continuous MANUAL_CONTROL stream. This node only changes
- * the virtual-joystick state through the local control socket; it does not
- * publish PX4 manual-control input through DDS.
+ * Ownership:
+ *   MAVProxy owns the continuous MANUAL_CONTROL stream. This node changes
+ *   virtual-joystick state through the local control socket and sends PX4
+ *   mode/arm/land commands; it does not publish manual-control input via DDS.
+ *
+ * PX4 retains the native Position controller and lower control loops for the
+ * entire sequence.
  */
 class PositionTakeoffHover : public rclcpp::Node
 {
@@ -44,6 +48,9 @@ public:
   PositionTakeoffHover()
   : Node("position_takeoff_hover")
   {
+    // PX4 uXRCE-DDS output topics are live vehicle-state streams. Use
+    // SensorDataQoS so consumers prefer fresh state over retransmission of
+    // stale samples.
     const auto sensor_qos = rclcpp::SensorDataQoS();
 
     vehicle_status_sub_ =
@@ -103,6 +110,8 @@ public:
   }
 
 private:
+  // State-machine deadlines are safety/lifecycle timeouts and must continue
+  // monotonically even if ROS/simulation time is paused or reset.
   using SteadyClock = std::chrono::steady_clock;
 
   enum class Phase
@@ -249,6 +258,8 @@ private:
 
   void leave_joystick_safe()
   {
+    // An armed Position-mode vehicle is left with centered sticks so PX4 holds
+    // its current state. Minimum throttle is restored only when disarmed.
     try {
       if (
         arming_state_ ==
@@ -307,6 +318,9 @@ private:
   {
     px4_msgs::msg::VehicleCommand msg{};
 
+    // Leave optional MAV_CMD_NAV_LAND parameters unspecified. PX4 therefore
+    // performs its native landing behavior rather than receiving a separate
+    // externally supplied landing location or heading.
     msg.param1 = NAN;
     msg.param2 = NAN;
     msg.param3 = NAN;
@@ -389,6 +403,12 @@ private:
   }
 
 
+  // State-machine contract:
+  //   Inputs: PX4 status/local position/land state and virtual-joystick access.
+  //   Action: enter Position mode, arm, climb, hold centered sticks, then issue
+  //           PX4's native land command.
+  //   Exit: success after landing and automatic disarm; invalid state,
+  //         unexpected disarm, or phase timeout is a failure.
   void run()
   {
     using VehicleStatus = px4_msgs::msg::VehicleStatus;
@@ -437,6 +457,8 @@ private:
 
 
       case Phase::WARMUP_JOYSTICK:
+        // Establish the continuously streamed MAVLink manual-control state
+        // before issuing mode or arming commands.
         if (phase_elapsed_seconds() < kJoystickWarmupSeconds) {
           return;
         }
@@ -451,6 +473,9 @@ private:
           start_x_ = local_x_;
           start_y_ = local_y_;
           start_z_ = local_z_;
+
+          // PX4 local NED uses positive z Down; an upward climb therefore
+          // subtracts the requested height from the starting z coordinate.
           target_z_ = start_z_ - kClimbHeightM;
 
           RCLCPP_INFO(
@@ -522,6 +547,8 @@ private:
           return;
         }
 
+        // Crossing to a smaller NED z means the requested upward climb has
+        // reached or passed its target altitude.
         if (local_z_ <= target_z_) {
           if (!center_joystick()) {
             return;

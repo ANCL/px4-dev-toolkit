@@ -12,6 +12,10 @@ source:
   airframe: ROMFS/px4fmu_common/init.d-posix/airframes/4006_gz_px4vision
   gazebo_model: Tools/simulation/gz/models/px4vision/model.sdf
 
+# Mass and PX4 hover-thrust data support the non-physical SE(3) handoffs.
+# No validated physical actuator-thrust mapping is curated here, so the
+# geometric_physical direct controller is not supported for this vehicle.
+
 plant:
   frame: FLU
 

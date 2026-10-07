@@ -1,4 +1,16 @@
-"""MAVProxy virtual joystick for PX4 SITL."""
+"""MAVProxy-owned software joystick for PX4 SITL.
+
+Ownership:
+    MAVProxy is the sole continuous MAVLink MANUAL_CONTROL publisher.
+
+Control path:
+    console command or local Unix datagram socket
+      -> update persistent normalized joystick state
+      -> transmit MANUAL_CONTROL at 20 Hz
+
+The local socket lets ROS staging nodes change stick state without creating a
+second MANUAL_CONTROL publisher.
+"""
 
 import os
 import socket
@@ -33,7 +45,19 @@ def _buttons(value):
 
 
 def _manual_control_values(roll, pitch, throttle, yaw):
-    """Convert normalized joystick axes to MAVLink MANUAL_CONTROL fields."""
+    """Convert normalized joystick axes to MAVLink MANUAL_CONTROL.
+
+    Inputs:
+        Roll, pitch, throttle, and yaw in the toolkit's normalized [-1, 1]
+        convention.
+
+    Mapping:
+        Roll/pitch/yaw map to [-1000, 1000]. MAVLink throttle uses [0, 1000],
+        so symmetric toolkit throttle is shifted and scaled.
+
+    Returns:
+        MAVLink x/y/z/r integer fields.
+    """
     return (
         int(round(_axis(pitch) * 1000.0)),
         int(round(_axis(roll) * 1000.0)),
@@ -79,6 +103,9 @@ class VirtualJoystick(mp_module.MPModule):
         print("Virtual joystick control socket: %s" % CONTROL_SOCKET_PATH)
 
     def _open_control_socket(self):
+        # A local datagram socket lets ROS-side staging nodes change joystick
+        # state without becoming a second MAVLink MANUAL_CONTROL publisher.
+        # MAVProxy remains the sole owner of the continuous MAVLink stream.
         try:
             os.unlink(CONTROL_SOCKET_PATH)
         except FileNotFoundError:

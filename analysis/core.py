@@ -1,5 +1,15 @@
 
-"""Common ROS bag loading and PX4 state-analysis utilities."""
+"""Common ROS bag loading and PX4 state-analysis utilities.
+
+Data flow:
+    rosbag2 records
+      -> deserialize only profile-selected topics
+      -> retain rosbag receive timestamps as the common cross-topic clock
+      -> expose BagData to profile and pipeline analyzers
+
+PX4 message-internal timestamps are intentionally not used for cross-topic
+alignment because they may be boot-relative, sample-relative, or absent.
+"""
 
 from __future__ import annotations
 
@@ -65,12 +75,20 @@ def read_bag(
     requested_topics: Iterable[str],
     optional_topics: Iterable[str] = (),
 ) -> BagData:
-    """
-    Deserialize only the topics needed by the selected experiment profile.
+    """Load one experiment bag onto the common analysis clock.
 
-    ROS imports are intentionally local to this function. Pure analysis logic
-    remains testable without a running ROS installation, while real bag reads
-    use the ROS 2 environment sourced by the user.
+    Inputs:
+        Bag directory plus required and optional topic names.
+
+    Method:
+        Deserialize only selected topics. Use rosbag receive timestamps as the
+        cross-topic clock so PX4 boot-relative timestamps are never mixed with
+        host/ROS timestamps.
+
+    Returns:
+        BagData containing complete bag start/end time and selected samples.
+
+    ROS imports remain local so pure analysis code is testable without ROS.
     """
 
     try:
@@ -140,6 +158,9 @@ def read_bag(
 
         bag_end_ns = timestamp_ns
 
+        # The reader still advances through every record so start/end time
+        # describe the complete bag even though only selected topics are
+        # deserialized and retained.
         if topic not in available:
             continue
 

@@ -1,4 +1,11 @@
-"""Analysis profile for the PX4 Offboard position experiment."""
+"""Analysis profile for the PX4 Offboard position experiment.
+
+Profile flow:
+    PX4 lifecycle/status + Offboard input records
+      -> identify arming, prestream, and confirmed Offboard entry
+      -> analyze the native PX4 controller pipeline
+      -> report lifecycle timing, tracking, and standard figures
+"""
 
 from __future__ import annotations
 
@@ -64,7 +71,19 @@ def _first_arming_time(
 
 
 def analyze(bag: BagData) -> AnalysisResult:
-    """Analyze Offboard entry plus the generic PX4 control pipeline."""
+    """Analyze one Offboard-position experiment.
+
+    Inputs:
+        BagData containing lifecycle, Offboard-input, trajectory, and native
+        PX4 pipeline topics.
+
+    Method:
+        Resolve arming and confirmed Offboard entry from PX4 status, measure
+        prestream timing, then extract the common native controller pipeline.
+
+    Returns:
+        Lifecycle/performance metrics, human-readable summary, and plot data.
+    """
 
     status = _required(bag, STATUS_TOPIC)
     offboard_mode = _required(bag, OFFBOARD_MODE_TOPIC)

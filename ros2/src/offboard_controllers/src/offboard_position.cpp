@@ -40,10 +40,17 @@ namespace trajectory = offboard_controllers::trajectory;
  *       -> request Offboard
  *       -> wait until PX4 reports Offboard mode
  *       -> advance and publish the configured trajectory
+ *       -> request Position mode while keeping the Offboard stream valid
+ *       -> exit after PX4 confirms Position mode
  *
- * Trajectory generation is shared with the SE3 experiment. During prestream
- * the trajectory remains anchored to the current vehicle position and begins
- * advancing only after PX4 reports Offboard mode.
+ * Ownership:
+ *   PX4 owns the position controller and all lower control loops; this node
+ *   supplies only Offboard trajectory references and mode/arming commands.
+ *
+ * Timing:
+ *   lifecycle deadlines use steady time, while trajectory progression uses
+ *   the ROS clock. During prestream the reference stays at t=0 and is
+ *   continuously re-anchored to the current local position.
  */
 class OffboardPosition : public rclcpp::Node
 {
@@ -72,6 +79,9 @@ public:
         trajectory_config,
         trajectory_name_));
 
+    // PX4 uXRCE-DDS output topics are live vehicle-state streams. Use
+    // SensorDataQoS so consumers prefer fresh state over retransmission of
+    // stale samples.
     const auto sensor_qos = rclcpp::SensorDataQoS();
 
     vehicle_status_sub_ =
@@ -137,6 +147,8 @@ public:
   }
 
 private:
+  // State-machine deadlines are safety/lifecycle timeouts and must continue
+  // monotonically even if ROS/simulation time is paused or reset.
   using SteadyClock = std::chrono::steady_clock;
 
   enum class Phase
@@ -151,6 +163,8 @@ private:
     DONE,
   };
 
+  // The controller timer runs at 20 Hz. Thirty valid samples provide a
+  // 1.5-second Offboard heartbeat/setpoint prestream before the mode request.
   static constexpr std::uint32_t kOffboardWarmupSamples = 30;
 
   static constexpr float kCustomModeEnabled = 1.0F;
@@ -337,6 +351,8 @@ private:
 
   void publish_offboard_stream()
   {
+    // Publish the Offboard heartbeat and trajectory setpoint as one logical
+    // sample with the same timestamp.
     const std::uint64_t timestamp = now_us();
 
     const trajectory::Reference reference =
@@ -474,6 +490,12 @@ private:
   }
 
 
+  // State-machine contract:
+  //   Inputs: latest PX4 arming/nav state, valid local position, and timer.
+  //   Action: arm if needed, prestream position Offboard setpoints, request
+  //           Offboard, execute the configured trajectory, then request POSCTL.
+  //   Exit: success only after PX4 confirms Position mode; invalid state,
+  //         disarm, or phase timeout terminates the experiment as failure.
   void run()
   {
     using VehicleStatus = px4_msgs::msg::VehicleStatus;
@@ -592,6 +614,9 @@ private:
         publish_offboard_stream();
 
         if (nav_state_ == VehicleStatus::NAVIGATION_STATE_OFFBOARD) {
+          // Unlike phase deadlines, trajectory time intentionally follows the
+          // ROS clock so simulation time and the generated reference advance
+          // on the same clock used by the ROS/PX4 experiment.
           trajectory_start_time_ =
             get_clock()->now();
 
@@ -650,6 +675,9 @@ private:
           return;
         }
 
+        // Continue a valid Offboard stream until PX4 confirms Position mode.
+        // This makes the explicit mode command, rather than heartbeat loss, the
+        // reason PX4 relinquishes Offboard control.
         publish_offboard_stream();
 
         if (nav_state_ == VehicleStatus::NAVIGATION_STATE_POSCTL) {

@@ -53,6 +53,9 @@ void require_finite(
 }
 
 
+// Fixed-size Gauss-Jordan inversion with partial pivoting. The conventional
+// quadrotor adapter has four independent wrench coordinates and four rotors,
+// so both physical and PX4 effectiveness matrices are square 4x4 systems.
 Matrix4 inverse(
   Matrix4 matrix)
 {
@@ -248,6 +251,10 @@ Matrix4 allocator_effectiveness(
 Vector4 allocator_normalization_scale(
   const Matrix4 & effectiveness)
 {
+  // Reproduce the normalization applied by the pinned PX4
+  // ControlAllocationPseudoInverse. Roll and pitch share the larger column
+  // norm, while yaw and thrust use their respective mixer-column scales.
+  //
   // For four independent multicopter controls, the Moore-Penrose
   // pseudo-inverse is the ordinary matrix inverse.
   const Matrix4 mix =
@@ -374,6 +381,9 @@ double thrust_from_control(
 }
 
 
+// Invert the configured monotonic actuator thrust curve T(u). Linear curves
+// use the direct inverse; quadratic curves evaluate both roots and accept only
+// the one inside the configured normalized-control interval.
 double control_from_thrust(
   const Parameters & parameters,
   double thrust_n)
@@ -520,6 +530,10 @@ struct FeasiblePhysicalAllocation
 };
 
 
+// Apply feasibility without changing the requested moment direction. Clamp
+// collective thrust to the propulsion envelope first, then uniformly scale the
+// complete requested moment until every rotor thrust lies inside its physical
+// range. A single scale preserves roll/pitch/yaw moment ratios.
 FeasiblePhysicalAllocation allocate_feasible_physical_wrench(
   const Matrix4 & inverse_physical_matrix,
   const Parameters & parameters,
@@ -687,6 +701,8 @@ void validate_parameters(
       parameters,
       parameters.actuator_control_max);
 
+  // A strictly increasing thrust curve over the complete configured control
+  // interval guarantees a unique physical thrust -> control inversion.
   const double derivative_at_minimum =
     parameters.actuator_thrust.linear_n +
     2.0 *

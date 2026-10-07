@@ -1,4 +1,16 @@
-"""Generic native-PX4 multicopter control-pipeline analysis."""
+"""Generic native-PX4 multicopter control-pipeline analysis.
+
+Data flow:
+    BagData on the rosbag receive-time clock
+      -> finite native PX4 signal extraction
+      -> trajectory / state / attitude / rate / wrench / motor layers
+      -> timestamp-aligned tracking statistics
+      -> textual summaries and standard plots
+
+Each topic keeps its own recorded timestamps. Cross-topic errors are computed
+only over common time intervals, with references interpolated onto actual-signal
+timestamps rather than assuming synchronized publication.
+"""
 
 from __future__ import annotations
 
@@ -221,11 +233,19 @@ def _motor_series(
 def analyze_control_pipeline(
     bag: BagData,
 ) -> dict[str, object]:
-    """
-    Extract the standard native-PX4 multicopter control pipeline.
+    """Extract a common view of the native PX4 multicopter control pipeline.
 
-    Missing topics simply produce empty series so this common analyzer can also
-    be reused by experiments that intentionally bypass part of the pipeline.
+    Inputs:
+        BagData containing any available native PX4 observation topics.
+
+    Method:
+        Convert each available layer into finite, rosbag-time-aligned position,
+        velocity, attitude, rate, wrench, and motor series. Missing layers are
+        preserved as empty series because some handoffs intentionally bypass
+        portions of the native cascade.
+
+    Returns:
+        A layer-organized dictionary used by summaries, plots, and comparisons.
     """
     actual_position = _series3(
         bag,
@@ -370,7 +390,6 @@ def _components(
     return components
 
 
-
 def _aligned_error_stats(
     actual: dict[str, list[float]],
     reference: dict[str, list[float]],
@@ -378,7 +397,18 @@ def _aligned_error_stats(
     *,
     wrap_degrees: bool = False,
 ) -> tuple[float, float] | None:
-    """Return RMS and maximum absolute tracking error on common timestamps."""
+    """Compute tracking-error statistics on independently timed signals.
+
+    Inputs:
+        Actual and reference series plus the component to compare.
+
+    Method:
+        Restrict to their common interval and interpolate the reference onto
+        actual-signal timestamps. Angular errors are wrapped when requested.
+
+    Returns:
+        RMS and maximum absolute tracking error, or None when no overlap exists.
+    """
     actual_times = np.asarray(actual["times_s"], dtype=float)
     reference_times = np.asarray(reference["times_s"], dtype=float)
 
@@ -388,7 +418,7 @@ def _aligned_error_stats(
     actual_values = np.asarray(actual[component], dtype=float)
     reference_values = np.asarray(reference[component], dtype=float)
 
-    order = np.argsort(reference_times)
+    order = np.argsort(reference_times, kind="stable")
     reference_times = reference_times[order]
     reference_values = reference_values[order]
 
@@ -410,6 +440,7 @@ def _aligned_error_stats(
         return None
 
     times = actual_times[mask]
+
     error = actual_values[mask] - np.interp(
         times,
         reference_times,
@@ -445,7 +476,19 @@ def _axis_range(
 def control_pipeline_summary(
     pipeline: dict[str, object],
 ) -> list[str]:
-    """Build a layer-by-layer summary of the native PX4 control pipeline."""
+    """Summarize the extracted native PX4 control pipeline.
+
+    Inputs:
+        Layer-organized output from analyze_control_pipeline().
+
+    Method:
+        Report signal ranges and actual-reference tracking statistics at each
+        available control layer. Missing/bypassed layers remain explicitly
+        unavailable rather than being inferred.
+
+    Returns:
+        Human-readable summary lines in controller-cascade order.
+    """
 
     def tracking_lines(
         actual,
@@ -745,7 +788,19 @@ def write_control_pipeline_plots(
     *,
     markers: list[tuple[float, str]] | None = None,
 ) -> list[Path]:
-    """Write the standard PX4 controller and control-allocation plots."""
+    """Write the standard native-PX4 pipeline figures.
+
+    Inputs:
+        Extracted pipeline, output directory, and optional bag-relative event
+        markers.
+
+    Method:
+        Plot each available controller layer with its measured/setpoint signals
+        using the same timestamp-alignment rules as the numerical analysis.
+
+    Returns:
+        Paths of figures actually generated.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
     generated = []
 

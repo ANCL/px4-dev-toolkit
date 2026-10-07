@@ -1,4 +1,6 @@
+#include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -24,6 +26,30 @@ void require(bool condition, const char * message)
 bool near(double actual, double expected)
 {
   return std::abs(actual - expected) <= kTolerance;
+}
+
+
+// Invariant:
+//   q and -q encode the same attitude. Accept only one global sign flip;
+//   independent absolute-component comparison could accept another rotation.
+bool quaternion_near(
+  const std::array<float, 4> & actual,
+  const std::array<double, 4> & expected)
+{
+  bool same_sign = true;
+  bool opposite_sign = true;
+
+  for (std::size_t index = 0; index < actual.size(); ++index) {
+    same_sign =
+      same_sign &&
+      near(actual[index], expected[index]);
+
+    opposite_sign =
+      opposite_sign &&
+      near(actual[index], -expected[index]);
+  }
+
+  return same_sign || opposite_sign;
 }
 
 geometry_msgs::msg::PoseStamped identity_pose()
@@ -65,6 +91,9 @@ void test_invalid_pose()
     "zero quaternion should be invalid");
 }
 
+// Oracle:
+ //   ENU position [1, 2, 3] becomes NED [2, 1, -3]. ROS identity
+ //   ENU/FLU orientation becomes the fixed NED/FRD frame-conversion rotation.
 void test_frame_conversion()
 {
   const auto odometry =
@@ -85,17 +114,15 @@ void test_frame_conversion()
   const double half_sqrt = std::sqrt(0.5);
 
   require(
-    near(std::abs(odometry.q[0]), half_sqrt),
-    "converted quaternion w");
-  require(
-    near(odometry.q[1], 0.0),
-    "converted quaternion x");
-  require(
-    near(odometry.q[2], 0.0),
-    "converted quaternion y");
-  require(
-    near(std::abs(odometry.q[3]), half_sqrt),
-    "converted quaternion z");
+    quaternion_near(
+      odometry.q,
+      std::array<double, 4>{
+        half_sqrt,
+        0.0,
+        0.0,
+        half_sqrt,
+      }),
+    "converted identity orientation");
 
   require(
     odometry.velocity_frame ==
@@ -128,6 +155,71 @@ void test_frame_conversion()
   require(odometry.quality == 1, "quality should be valid");
 }
 
+void test_yaw_frame_conversion()
+{
+  auto pose = identity_pose();
+
+  const double half_sqrt = std::sqrt(0.5);
+
+  // Expected:
+  //   +90 deg ENU yaw points FLU forward toward North. After converting both
+  //   world and body conventions, FRD is aligned with NED.
+  pose.pose.orientation.w = half_sqrt;
+  pose.pose.orientation.z = half_sqrt;
+
+  const auto odometry =
+    px4_mocap_bridge::convert_pose(
+      pose,
+      123456,
+      false);
+
+  require(
+    quaternion_near(
+      odometry.q,
+      std::array<double, 4>{
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+      }),
+    "converted +90 degree ENU yaw orientation");
+}
+
+
+// Oracle:
+ //   Exercise a non-yaw rotation so the test verifies body-frame FLU -> FRD
+ //   conversion rather than only the ENU -> NED world-axis remapping.
+void test_roll_frame_conversion()
+{
+  auto pose = identity_pose();
+
+  const double half_sqrt = std::sqrt(0.5);
+
+  pose.pose.orientation.w = half_sqrt;
+  pose.pose.orientation.x = half_sqrt;
+
+  const auto odometry =
+    px4_mocap_bridge::convert_pose(
+      pose,
+      123456,
+      false);
+
+  require(
+    quaternion_near(
+      odometry.q,
+      std::array<double, 4>{
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+      }),
+    "converted +90 degree ENU roll orientation");
+}
+
+
+// Invariant:
+ //   Publication time always populates timestamp. timestamp_sample uses a
+ //   non-zero source header only when header-time use is enabled.
 void test_timestamp_selection()
 {
   auto pose = identity_pose();
@@ -175,6 +267,8 @@ int main()
   test_valid_pose();
   test_invalid_pose();
   test_frame_conversion();
+  test_yaw_frame_conversion();
+  test_roll_frame_conversion();
   test_timestamp_selection();
 
   std::cout << "PX4 mocap conversion tests passed.\n";

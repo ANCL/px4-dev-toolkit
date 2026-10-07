@@ -1,4 +1,18 @@
-"""Analysis profile for geometric SE3 trajectory tracking."""
+"""Analysis profile for geometric SE(3) trajectory tracking.
+
+Profile flow:
+    recorded OffboardControlMode
+      -> resolve the authoritative PX4 handoff level
+      -> resolve direct-controller identity from experiment metadata
+      -> locate confirmed PX4 Offboard entry and Position-mode return
+      -> extract toolkit references, selected handoff, native PX4 pipeline,
+         and optional controller diagnostics
+      -> produce lifecycle, tracking, feasibility, and plotting data
+
+All cross-topic timing uses the rosbag receive-time clock from BagData.
+PX4 nav_state defines controller ownership; topic presence is not used as a
+substitute for confirmed Offboard entry.
+"""
 
 from __future__ import annotations
 
@@ -197,6 +211,8 @@ DIRECT_CONTROLLERS = {
 
 @dataclass
 class AnalysisResult:
+    """Single-run SE(3) analysis consumed by reporting/comparison code."""
+
     summary: str
     metrics: dict[str, float | bool | str]
     plot_data: dict[str, object]
@@ -220,6 +236,18 @@ def _handoff_samples(
     bag: BagData,
     offboard_mode: list[TimedSample],
 ) -> tuple[str, list[tuple[str, list[TimedSample]]]]:
+    """Resolve the single PX4 Offboard handoff used by the run.
+
+    Inputs:
+        Recorded OffboardControlMode history and bag topics.
+
+    Method:
+        Treat OffboardControlMode as authoritative. Reject simultaneous or
+        changing handoff levels instead of inferring ownership downstream.
+
+    Returns:
+        Handoff name and the required recorded input streams.
+    """
     active_modes = set()
 
     for sample in offboard_mode:
@@ -278,7 +306,22 @@ def _direct_controller_name(
     bag: BagData,
     handoff_mode: str,
 ) -> str | None:
-    """Identify the direct controller without guessing from PX4 outputs."""
+    """Resolve the controller used below a thrust-and-torque handoff.
+
+    Inputs:
+        Bag metadata, selected Offboard handoff, and optional toolkit
+        diagnostic topics.
+
+    Method:
+        Prefer explicit experiment metadata. When metadata is absent, identify
+        geometric_normalized only from its controller-owned diagnostic topics;
+        do not guess px4_rate versus geometric_physical from native PX4 wrench
+        output alone.
+
+    Returns:
+        Direct-controller name, "unknown" when it cannot be distinguished, or
+        None when the selected handoff does not use a direct controller.
+    """
     if handoff_mode != "thrust_and_torque":
         return None
 
@@ -330,9 +373,10 @@ def _direct_controller_name(
 
             return str(direct_controller)
 
-    # Older geometric-normalized bags can still be identified from their
-    # controller-owned diagnostic topics. px4_rate and geometric_physical cannot
-    # be distinguished reliably from native PX4 wrench topics alone.
+    # Without explicit direct-controller metadata, geometric_normalized can
+    # still be identified from its controller-owned diagnostic topics. px4_rate
+    # and geometric_physical cannot be distinguished reliably from native PX4
+    # wrench topics alone.
     if any(
         bag.samples.get(topic)
         for topic in (
@@ -350,7 +394,19 @@ def extract_se3_layers(
     bag: BagData,
     handoff_mode: str = "acceleration",
 ) -> dict[str, object]:
-    """Extract toolkit-owned trajectory and selected handoff signals."""
+    """Extract toolkit-owned reference and selected handoff signals.
+
+    Inputs:
+        BagData and the handoff resolved from OffboardControlMode.
+
+    Method:
+        Preserve the generated SE(3) trajectory separately from native PX4
+        pipeline topics, then extract only the signal actually handed to PX4
+        at the selected ownership boundary.
+
+    Returns:
+        Generated trajectory-reference series and selected-handoff series.
+    """
 
     trajectory_samples = bag.samples[TRAJECTORY_REFERENCE_TOPIC]
 
@@ -704,7 +760,18 @@ def _boolean_activity_duration(
     times_s: list[float],
     active: list[bool],
 ) -> tuple[float, float]:
-    """Return trapezoidal active duration and fraction."""
+    """Measure time spent in a sampled boolean state.
+
+    Inputs:
+        Sample timestamps and corresponding boolean activity values.
+
+    Method:
+        Integrate the boolean history trapezoidally so irregular sampling does
+        not bias the result toward regions containing more messages.
+
+    Returns:
+        Active duration and active fraction of covered time.
+    """
     count = min(
         len(times_s),
         len(active),
@@ -762,6 +829,18 @@ def _boolean_activity_duration(
 def _geometric_physical_summary(
     diagnostics: dict[str, object],
 ) -> list[str]:
+    """Summarize physical-wrench feasibility intervention.
+
+    Inputs:
+        Requested/applied collective thrust and moment-scale diagnostics.
+
+    Method:
+        Interpret moment_scale < 1 as uniform moment reduction and a
+        requested/applied collective difference as collective saturation.
+
+    Returns:
+        Human-readable saturation duration, fraction, scale, and thrust ranges.
+    """
     title = "Geometric physical-wrench feasibility"
 
     lines = [
@@ -1159,7 +1238,21 @@ def _se3_summary(
 
 
 def analyze(bag: BagData) -> AnalysisResult:
-    """Analyze the selected SE3 handoff through the PX4 control pipeline."""
+    """Analyze one recorded SE(3) Offboard run.
+
+    Inputs:
+        BagData containing PX4 lifecycle, OffboardControlMode, generated
+        reference, handoff, native pipeline, and optional diagnostic topics.
+
+    Method:
+        Resolve the authoritative handoff and direct-controller identity,
+        measure lifecycle events on the rosbag clock, then extract controller
+        and PX4 pipeline data beginning at confirmed Offboard entry.
+
+    Returns:
+        Lifecycle metrics, human-readable summary, and structured data used by
+        plots and Offboard-interval performance comparison.
+    """
 
     status = _required(bag, STATUS_TOPIC)
     offboard_mode = _required(bag, OFFBOARD_MODE_TOPIC)
@@ -1291,8 +1384,9 @@ def analyze(bag: BagData) -> AnalysisResult:
 
     transitions = mode_transitions(status)
 
-    # Controller-pipeline metrics begin only after PX4 actually enters
-    # Offboard. Lifecycle analysis above still uses the complete bag.
+    # Controller/pipeline extraction begins only after PX4 confirms Offboard.
+    # Lifecycle analysis above still uses the complete bag. Performance
+    # comparison later clips these series to the recorded Offboard interval.
     tracking_bag = BagData(
         path=bag.path,
         start_ns=bag.start_ns,
@@ -1501,7 +1595,19 @@ def write_plots(
     result: AnalysisResult,
     output_dir: Path,
 ) -> list[Path]:
-    """Write general SE3 analysis plus optional controller diagnostics."""
+    """Write the single-run SE(3) figures.
+
+    Inputs:
+        Structured analysis result and output directory.
+
+    Method:
+        Shift presentation time to confirmed Offboard entry, plot only signals
+        relevant to the selected handoff, and place controller-specific
+        internals under the diagnostics directory.
+
+    Returns:
+        Paths of figures actually generated.
+    """
     output_dir.mkdir(
         parents=True,
         exist_ok=True,
@@ -2190,7 +2296,19 @@ def enrich_summary(
     result,
     bag: BagData,
 ) -> str:
-    """Append common performance metrics to one SE3 bag summary."""
+    """Append Offboard-interval performance metrics to one SE(3) summary.
+
+    Inputs:
+        Single-run analysis result and its source bag.
+
+    Method:
+        Build the common physical comparison view aligned to confirmed Offboard
+        entry. When experiment metadata identifies the configured trajectory,
+        also resolve maneuver boundaries for step/yaw/figure-eight metrics.
+
+    Returns:
+        Lifecycle/controller summary followed by common performance metrics.
+    """
     from .comparison import (
         build_run,
         single_run_summary,

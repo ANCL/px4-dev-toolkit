@@ -1,3 +1,16 @@
+/*
+ * Trajectory generation flow:
+ *
+ *   YAML configuration
+ *     -> reusable Segment definitions
+ *     -> analytic segment sampling through snap
+ *     -> Sequence chaining through terminal references
+ *     -> complete NED position/yaw reference
+ *
+ * Public reference/segment/sequence contracts live in trajectory.hpp. This
+ * file documents the analytic primitives and configuration expansion.
+ */
+
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -167,6 +180,9 @@ struct ScalarDynamics
 };
 
 
+// Evaluate a sinusoid and its first four time derivatives by repeated chain
+// rule. SE(3) attitude feed-forward needs trajectory derivatives through snap,
+// so these are generated analytically rather than finite-differenced.
 ScalarDynamics sinusoid_dynamics(
   double amplitude,
   double phase,
@@ -247,6 +263,8 @@ Reference sample_figure_eight(
       angle_d3,
       angle_d4);
 
+  // y runs at twice the x phase, producing the planar 1:2 Lissajous
+  // trajectory used for the configured figure-eight excitation.
   const ScalarDynamics y =
     sinusoid_dynamics(
       y_amplitude_m,
@@ -712,6 +730,9 @@ Reference Sequence::sample(
         segment_origin);
     }
 
+    // The terminal reference of each completed segment becomes the origin of
+    // the next segment. This preserves position/yaw continuity for reusable
+    // relative segments without accumulating state outside the sequence.
     segment_origin =
       segment.sample(
         segment.duration_s(),

@@ -13,6 +13,18 @@
  *   commit f5fcb51c3b962152a4895a9d2e86e4a184655741
  *   cpp/src/fdcl_control.cpp, control::position_control()
  *
+ * Controller flow:
+ *
+ *   position/velocity tracking
+ *     -> desired inertial force A
+ *     -> A_dot, A_ddot
+ *     -> desired body basis R_d
+ *     -> Omega_d, Omegadot_d
+ *     -> attitude/rate errors
+ *     -> rate setpoint, normalized torque, or physical body moment
+ *
+ * Public input/output contracts live in controller.hpp. This file documents
+ * the mathematical construction and non-obvious implementation details.
  * Controller mathematics stay independent of ROS 2 and PX4 transport.
  */
 
@@ -87,6 +99,11 @@ Vector3 normalized_direction(
 }
 
 
+// Normalized-direction dynamics:
+//   Inputs: v, v_dot, and v_ddot expressed in one common frame.
+//   Logic:  analytically differentiate n = v / ||v||.
+//   Output: n, n_dot, and n_ddot in the same frame.
+//   Invalid: v must remain non-zero so its direction is defined.
 DirectionDynamics normalized_direction_dynamics(
   const Vector3 & vector,
   const Vector3 & derivative,
@@ -104,6 +121,14 @@ DirectionDynamics normalized_direction_dynamics(
     throw std::invalid_argument(error_message);
   }
 
+  // For n = v / ||v||:
+  //
+  //   ||v||_dot = n . v_dot
+  //   n_dot     = (v_dot - ||v||_dot n) / ||v||
+  //
+  // Differentiate these expressions analytically again for n_ddot. This
+  // avoids finite-difference noise in the desired attitude-rate and
+  // attitude-acceleration feed-forward paths.
   const Vector3 direction =
     vector / magnitude;
 
@@ -138,6 +163,12 @@ DirectionDynamics normalized_direction_dynamics(
 }
 
 
+// Desired-basis dynamics:
+//   Inputs: A, A_dot, A_ddot in NED and yaw through yaw acceleration.
+//   Logic:  construct b3_d from thrust direction and b1c from yaw, then form
+//           and analytically differentiate the right-handed desired body basis.
+//   Output: b1_d, b2_d, b3_d and their first two derivatives in NED.
+//   Invalid: thrust direction and commanded heading must not be degenerate.
 BasisDynamics desired_basis_dynamics(
   const Vector3 & force,
   const Vector3 & force_derivative,
@@ -170,6 +201,9 @@ BasisDynamics desired_basis_dynamics(
   const double cosine = std::cos(yaw);
   const double sine = std::sin(yaw);
 
+  // b1c is the commanded horizontal heading direction associated with yaw.
+  // Combining it with the desired thrust direction b3_d constructs the
+  // right-handed desired body basis used by Lee's geometric controller.
   const Vector3 b1c{
     cosine,
     sine,
@@ -188,6 +222,9 @@ BasisDynamics desired_basis_dynamics(
     0.0,
   };
 
+  // b2_d = normalize(b3_d x b1c). This becomes singular when the desired
+  // thrust direction is parallel to the commanded heading direction; reject
+  // that geometry rather than constructing an undefined attitude.
   const Vector3 b2_raw =
     cross(b3.value, b1c);
 
@@ -273,6 +310,10 @@ Vector3 desired_angular_acceleration(
 }
 
 
+// Desired-rate frame conversion:
+//   Input:  Omega_d expressed in the desired FRD body frame.
+//   Logic:  desired body -> NED -> current body.
+//   Output: R^T R_d Omega_d in the current FRD body frame.
 Vector3 desired_angular_velocity_in_current_body(
   const RotationMatrix & attitude,
   const RotationMatrix & desired_attitude,
@@ -534,6 +575,8 @@ RotationMatrix Controller::compute_desired_attitude(
       cross(b3d, b1c),
       "SE3 desired attitude heading is degenerate.");
 
+  // Complete the orthonormal right-handed basis after fixing b3_d from
+  // thrust direction and b2_d from the commanded heading.
   const Vector3 b1d =
     cross(b2d, b3d);
 

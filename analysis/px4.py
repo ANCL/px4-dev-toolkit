@@ -48,7 +48,18 @@ TOPICS = _load_topics()
 def quaternion_to_euler(
     quaternion: Sequence[float],
 ) -> tuple[float, float, float]:
-    """Convert PX4 [w, x, y, z] quaternion to roll, pitch, yaw."""
+    """Convert a PX4 attitude quaternion to aerospace Euler angles.
+
+    Input:
+        Hamilton quaternion [w, x, y, z] mapping FRD body vectors into NED.
+
+    Method:
+        Apply the corresponding roll/pitch/yaw decomposition, clamping the
+        pitch argument for numerical robustness.
+
+    Returns:
+        Roll, pitch, and yaw [rad].
+    """
     w, x, y, z = (
         float(value)
         for value in quaternion

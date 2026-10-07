@@ -1,6 +1,17 @@
 # Trajectory references use PX4 local NED coordinates.
 # Each trajectory is anchored to the vehicle position when Offboard starts.
-# After the final segment, the last reference is held indefinitely.
+#
+# Units:
+#   duration: seconds
+#   offset/radius/height/amplitude: metres
+#   yaw/yaw_offset: radians
+#   turns: revolutions
+#
+# At an exact segment boundary, the segment that is ending owns that sample;
+# the following segment begins immediately afterward. A step therefore changes
+# reference immediately after its start boundary.
+#
+# After the final segment, the terminal position/yaw is held indefinitely.
 
 default_yaw: 0.0
 

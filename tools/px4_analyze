@@ -1,6 +1,19 @@
 #!/usr/bin/python3 -s
 
-"""Analyze one recorded PX4 experiment bag."""
+"""Analyze one recorded PX4 experiment bag.
+
+Flow:
+    bag directory
+      -> detect analysis profile
+      -> load only required/optional topics
+      -> run profile analysis
+      -> optionally enrich the textual report
+      -> write analysis/summary.txt
+      -> write profile figures
+
+The textual summary is primary output. Missing plotting dependencies therefore
+produce a warning after summary generation rather than invalidating analysis.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +22,7 @@ import sys
 
 
 def find_repo_root() -> Path:
-    """Locate px4_env from this executable."""
+    """Locate the toolkit root from this executable."""
     start = Path(__file__).resolve()
 
     for path in (
@@ -24,7 +37,7 @@ def find_repo_root() -> Path:
             return path
 
     raise RuntimeError(
-        "Could not locate px4_env repository root "
+        "Could not locate toolkit repository root "
         f"from {start}"
     )
 

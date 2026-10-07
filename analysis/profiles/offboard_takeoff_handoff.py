@@ -1,4 +1,11 @@
-"""Analysis profile for Position-mode takeoff and Offboard handoff."""
+"""Analysis profile for Position-mode staging and Offboard handoff.
+
+Profile flow:
+    PX4 status + manual-control stream
+      -> identify Position-mode staging, arming, climb, and centered-stick hold
+      -> identify confirmed Offboard takeover
+      -> analyze the native PX4 controller pipeline around that lifecycle
+"""
 
 from __future__ import annotations
 
@@ -87,7 +94,19 @@ def _first_throttle_time(
 
 
 def analyze(bag: BagData) -> AnalysisResult:
-    """Analyze Position staging, Offboard takeover, and the generic pipeline."""
+    """Analyze one Position-staging -> Offboard-handoff experiment.
+
+    Inputs:
+        BagData containing PX4 status, manual-control, Offboard-input, and
+        native controller-pipeline topics.
+
+    Method:
+        Resolve Position-mode staging, arming/climb/centered-stick events and
+        the authoritative PX4 Offboard entry, then analyze the native pipeline.
+
+    Returns:
+        Lifecycle metrics, textual summary, and plot-ready pipeline data.
+    """
 
     status = _required(bag, STATUS_TOPIC)
     manual = _required(bag, MANUAL_CONTROL_TOPIC)

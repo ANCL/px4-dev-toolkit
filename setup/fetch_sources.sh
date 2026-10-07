@@ -25,6 +25,9 @@ fetch_scope() {
         ' "${manifest}"
     )
 
+    # Treat each manifest as an all-or-nothing checkout set. Automatically
+    # importing into a partially populated source tree could mix user-modified
+    # or manually checked-out repositories with different pinned revisions.
     for relative in "${repositories[@]}"; do
         repository="${ROOT}/${relative}"
 
@@ -37,6 +40,8 @@ fetch_scope() {
         echo "Fetching ${scope} sources..."
         vcs import --input "${manifest}" "${ROOT}"
     elif (( existing == ${#repositories[@]} )); then
+        # Existing repositories are deliberately not reset or updated here.
+        # fetch_sources.sh must never discard local work in external checkouts.
         echo "${scope} sources already exist; keeping current checkouts."
     else
         echo "ERROR: ${scope} source tree is partially populated." >&2

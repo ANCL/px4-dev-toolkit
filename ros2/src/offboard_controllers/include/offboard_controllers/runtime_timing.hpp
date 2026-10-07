@@ -8,6 +8,9 @@
 namespace offboard_controllers
 {
 
+// Warmup and retry timing is represented in control-loop samples rather than
+// independent wall-clock timers. This keeps Offboard heartbeat publication and
+// mode-request cadence phase-locked to the controller timer.
 struct RuntimeTiming
 {
   std::chrono::nanoseconds control_period{};
@@ -20,6 +23,8 @@ inline int duration_to_samples(
   double control_rate_hz,
   double duration_s)
 {
+  // Round to the nearest control sample so configured durations remain as
+  // close as possible to their requested wall-clock values.
   const long long samples =
     std::llround(control_rate_hz * duration_s);
 
@@ -35,6 +40,18 @@ inline int duration_to_samples(
 }
 
 
+// Runtime-timing contract:
+//
+// Inputs:
+//   control-loop rate [Hz], Offboard warmup duration [s], and mode-request
+//   retry interval [s].
+//
+// Logic:
+//   derive the timer period and convert configured durations to nearest whole
+//   control-loop sample counts so heartbeat and mode requests share one cadence.
+//
+// Output:
+//   validated timer period, warmup sample count, and retry sample count.
 inline RuntimeTiming make_runtime_timing(
   double control_rate_hz,
   double warmup_duration_s,

@@ -33,7 +33,7 @@ px4-dev-toolkit/
 └── config/sources/  pinned external source manifests
 ```
 
-External projects such as PX4-Autopilot, `px4_msgs`, `px4_ros_com`, Micro-XRCE-DDS-Agent, and MAVProxy are fetched at pinned revisions and are not vendored into this repository.
+External projects such as PX4-Autopilot, `px4_msgs`, Micro-XRCE-DDS-Agent, and MAVProxy are fetched at pinned revisions and are not vendored into this repository.
 
 ## Setup
 
@@ -187,7 +187,6 @@ Current external dependencies include:
 
 - PX4-Autopilot
 - `px4_msgs`
-- `px4_ros_com`
 - Micro-XRCE-DDS-Agent
 - MAVProxy
 

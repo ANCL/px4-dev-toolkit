@@ -1,3 +1,7 @@
+# Initial local staging/setpoint reference in PX4 NED coordinates.
+# Position is in metres; yaw is in radians. NED z is positive Down, so a
+# negative initial_z commands a point above the local origin.
+
 /**:
   ros__parameters:
     initial_x: 0.0

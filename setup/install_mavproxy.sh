@@ -79,6 +79,7 @@ expected = {
     "pynmeagps": "1.1.7",
     "lxml": "6.1.3",
     "fastcrc": "0.3.6",
+    "Pillow": "11.3.0",
 }
 
 for package, required in expected.items():

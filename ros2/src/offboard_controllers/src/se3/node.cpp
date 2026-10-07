@@ -1,9 +1,56 @@
 /*
  * PX4 Offboard runtime for the geometric SE(3) controller.
  *
- * The controller mathematics remain independent of ROS 2 and PX4. This node
- * owns vehicle/config loading, trajectory timing, PX4 Offboard lifecycle, and
- * selection of the PX4 handoff level.
+ * Runtime flow:
+ *
+ *   valid PX4 state
+ *     -> prestream Offboard heartbeat + trajectory reference at t=0
+ *     -> request Offboard
+ *     -> PX4 nav_state confirms controller ownership
+ *     -> anchor trajectory at the current local position
+ *     -> run the controller only down to the configured handoff boundary
+ *     -> request Position mode after trajectory completion
+ *     -> keep the Offboard stream valid until PX4 confirms Position mode
+ *
+ * Handoff ownership:
+ *
+ *   acceleration
+ *     toolkit: translation controller
+ *     PX4:     acceleration -> attitude -> rate -> allocation
+ *
+ *   attitude
+ *     toolkit: translation + desired attitude
+ *     PX4:     attitude -> rate -> allocation
+ *
+ *   attitude_rate
+ *     toolkit: translation + desired attitude/rate command
+ *     PX4:     rate -> allocation
+ *
+ *   thrust_and_torque / px4_rate
+ *     toolkit: SE(3) outer loop + reproduced pinned PX4 rate controller
+ *     PX4:     control allocation
+ *
+ *   thrust_and_torque / geometric_normalized
+ *     toolkit: complete normalized geometric controller
+ *     PX4:     control allocation
+ *
+ *   thrust_and_torque / geometric_physical
+ *     toolkit: physical geometric moment + physical-wrench/PX4 adapter
+ *     PX4:     control allocation
+ *
+ * Timing:
+ *   the wall timer drives heartbeat and SE(3) outer-loop cadence; the ROS
+ *   clock timestamps messages and advances trajectory time. The reproduced
+ *   px4_rate inner loop instead uses VehicleAngularVelocity.timestamp_sample,
+ *   matching PX4's gyro-sample timing.
+ *
+ * PX4 nav_state is the authoritative ownership signal. If Offboard is lost
+ * before the requested return to Position mode, controller output stops and
+ * the next confirmed Offboard entry re-anchors and restarts the trajectory.
+ *
+ * Controller mathematics remain independent of ROS 2 and PX4 transport; this
+ * node owns configuration, state ingestion, lifecycle, handoff selection, and
+ * publication.
  */
 
 #include <array>
@@ -532,6 +579,10 @@ public:
 
     mass_ = mass;
 
+    // The PX4-normalized attitude/rate/direct-normalized paths use hover
+    // thrust as the physical-force -> normalized-collective scale. The
+    // geometric_physical path instead uses the vehicle propulsion curve and
+    // therefore does not depend on MPC_THR_HOVER.
     const bool requires_px4_hover_thrust =
       handoff_ == "attitude" ||
       handoff_ == "attitude_rate" ||
@@ -1120,6 +1171,10 @@ private:
         offboard);
 
     if (transition == OffboardTransition::ENTERED) {
+      // PX4 nav_state is the authoritative controller-handoff boundary.
+      // Re-anchor trajectory t=0 at every genuine Offboard entry so a failed
+      // or interrupted takeover cannot advance the experiment trajectory while
+      // another PX4 mode still owns the vehicle.
       if (!controller_state_ready()) {
         RCLCPP_ERROR(
           get_logger(),
@@ -1705,7 +1760,6 @@ private:
   }
 
 
-
   void publish_geometric_physical_diagnostics(
     double requested_collective_thrust_n,
     const se3::Vector3 & requested_moment_nm,
@@ -1818,9 +1872,12 @@ private:
 
   trajectory::Reference current_trajectory_reference()
   {
-    // During pre-streaming, continuously anchor t=0 to the current vehicle
-    // position. The actual trajectory therefore does not advance before PX4
-    // has transferred control to Offboard.
+    // Reference-timing contract:
+    //   Before Offboard: continuously re-anchor t=0 to current NED position.
+    //   During Offboard: sample elapsed trajectory time on the ROS clock from
+    //                    the most recent confirmed Offboard entry.
+    //
+    // The trajectory therefore cannot advance while PX4 owns another mode.
     if (!offboard_active_) {
       trajectory_origin_ =
         trajectory::stationary_reference(
@@ -1849,6 +1906,16 @@ private:
     const se3::Reference & reference,
     const se3::TranslationalOutput & output)
   {
+    // Handoff contract:
+    //   Input:  common SE(3) translation result and current vehicle state.
+    //   Logic:  stop the external cascade exactly at the configured PX4
+    //           ownership boundary.
+    //   Output:
+    //     acceleration   -> NED acceleration
+    //     attitude       -> attitude + collective thrust
+    //     attitude_rate  -> FRD body-rate + collective thrust
+    //     px4_rate       -> reproduced PX4 normalized torque + thrust
+    //     geometric_*    -> direct normalized or physical-adapted wrench
     publish_translation_diagnostics(
       output);
 
@@ -1914,6 +1981,10 @@ private:
         return;
       }
 
+      // px4_rate is intentionally split across two clocks. This 100 Hz SE3
+      // outer stage computes and holds the body-rate/collective setpoint; the
+      // reproduced PX4 inner rate loop runs from each
+      // VehicleAngularVelocity callback using its timestamp_sample.
       px4_rate_setpoint_ =
         body_rate_setpoint;
 
@@ -2009,6 +2080,17 @@ private:
   }
 
 
+  // Runtime-state-machine contract:
+  //   Inputs: latest PX4 state, nav-state ownership, configured trajectory,
+  //           and selected handoff boundary.
+  //   Action: prestream while PX4 owns another mode; once nav_state confirms
+  //           Offboard, run only the controller stages required by the handoff.
+  //   Recovery: unavailable required state pauses controller output. Unexpected
+  //             Offboard loss stops trajectory advancement; a later confirmed
+  //             entry re-anchors and restarts the trajectory.
+  //   Exit: after trajectory completion, repeatedly request Position mode while
+  //         keeping the Offboard stream valid; shut down only after PX4
+  //         confirms Position mode.
   void update()
   {
     publish_offboard_control_mode();
@@ -2047,6 +2129,9 @@ private:
         return;
       }
 
+      // Only valid controller states contribute to the Offboard prestream.
+      // After the configured warmup, repeat the mode request at the configured
+      // retry interval while continuing to publish the heartbeat/reference.
       ++valid_setpoint_count_;
 
       if (
@@ -2095,6 +2180,9 @@ private:
         position_return_last_request_at_
       ).seconds() >= 1.0)
     {
+      // Keep explicitly requesting Position mode while the Offboard stream
+      // remains valid. PX4 should leave Offboard because it accepts the mode
+      // request, not because the heartbeat disappears.
       request_position_mode();
     }
   }

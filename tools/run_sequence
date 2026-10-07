@@ -1,6 +1,21 @@
 #!/usr/bin/python3 -s
 
-"""Run ROS 2 launch experiments sequentially from a YAML configuration."""
+"""Run ROS 2 launch experiments sequentially from a YAML configuration.
+
+Runtime flow:
+    sequence YAML
+      -> validate ordered launch steps
+      -> create one study directory
+      -> launch each step in its own process group
+      -> stream output to terminal + per-step log
+      -> finalize rosbag metadata before advertising a bag in the manifest
+      -> optionally settle between steps
+      -> persist final study result
+
+Process ownership:
+    Each ros2 launch step owns a separate process group so interruption can
+    terminate the complete launch tree rather than only its parent process.
+"""
 
 from __future__ import annotations
 
@@ -34,7 +49,7 @@ def find_repo_root() -> Path:
             return path
 
     raise RuntimeError(
-        f"Could not locate px4_env repository root from {start}"
+        f"Could not locate toolkit repository root from {start}"
     )
 
 
@@ -68,6 +83,19 @@ def launch_value(value: object) -> str:
 
 
 def load_sequence(path: Path) -> dict[str, object]:
+    """Load and normalize one sequence definition.
+
+    Inputs:
+        YAML path describing profile, recording argument, settle time, and
+        ordered launch steps.
+
+    Method:
+        Validate names and launch arguments before any study directory or
+        process is created.
+
+    Returns:
+        Normalized sequence data suitable for deterministic execution.
+    """
     if not path.is_file():
         raise ValueError(f"Sequence file does not exist: {path}")
 
@@ -201,6 +229,18 @@ def launch_argument_is_true(
 
 
 def stop_process(process: subprocess.Popen[str]) -> None:
+    """Stop one ROS launch process group.
+
+    Input:
+        Popen object whose PID is also the process-group leader.
+
+    Method:
+        Escalate SIGINT -> SIGTERM -> SIGKILL only when the group survives the
+        previous shutdown stage.
+
+    Returns:
+        Nothing; the process is reaped before returning.
+    """
     if process.poll() is not None:
         return
 
@@ -243,7 +283,12 @@ def write_experiment_metadata(
     sequence_name: str,
     step: dict[str, object],
 ) -> None:
-    """Write analysis metadata beside a directly recorded sequence bag."""
+    """Write immutable analysis context beside one finalized sequence bag.
+
+    The metadata records profile, sequence/step identity, and effective launch
+    arguments so later analysis does not infer controller configuration from
+    downstream PX4 topics.
+    """
     experiment_path = (
         bag_path / "experiment.json"
     )
@@ -268,11 +313,26 @@ def run_step(
     command: list[str],
     log_path: Path,
 ) -> int:
+    """Run one experiment step while preserving process and log ownership.
+
+    Inputs:
+        Complete ros2 launch command and the step log path.
+
+    Method:
+        Start the launch in its own process group, stream combined output to
+        both terminal and log, and stop the whole group on interruption.
+
+    Returns:
+        Launch-process exit status.
+    """
     print()
     print("$", " ".join(command))
     print()
 
     with log_path.open("w") as log:
+        # ros2 launch can create several descendants. A new session gives the
+        # step its own process group so interruption can stop the complete
+        # launch tree rather than only the parent process.
         process = subprocess.Popen(
             command,
             stdout=subprocess.PIPE,
@@ -363,6 +423,9 @@ def main() -> int:
                 step["arguments"],
                 "record",
             ):
+                # Give every recorded step a deterministic bag directory owned
+                # by this study. The launch file receives it as an override
+                # instead of independently creating a timestamped path.
                 recording_output = (
                     bags_dir
                     / f"{index:02d}-{step['name']}"
@@ -399,6 +462,8 @@ def main() -> int:
                 "recorded_bags": [],
             }
 
+            # Persist the running step before launch so an interrupted study
+            # still records which command was active and where its log lives.
             manifest["steps"].append(record)
             write_manifest(manifest_path, manifest)
 
@@ -423,6 +488,9 @@ def main() -> int:
                 )
 
                 if metadata_path.is_file():
+                    # metadata.yaml is rosbag's completion contract. Only after
+                    # it exists does the toolkit attach experiment metadata and
+                    # advertise the bag as finalized in the study manifest.
                     write_experiment_metadata(
                         recording_output,
                         str(sequence["profile"]),

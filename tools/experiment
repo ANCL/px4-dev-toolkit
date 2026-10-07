@@ -64,6 +64,11 @@ session_exists() {
     tmux has-session -t "${TMUX_SESSION}" 2>/dev/null
 }
 
+# Launch-command contract:
+#   Inputs: package, launch file, and ROS launch arguments.
+#   Action: source the repository runtime inside the tmux pane, then exec the
+#           launch process so tmux owns the actual ROS process tree.
+#   Output: one shell-escaped command suitable for tmux.
 ros_launch_command() {
     local package="$1"
     local launch_file="$2"
@@ -208,6 +213,10 @@ pid_is_alive() {
     [[ -n "${state}" && "${state}" != "Z" ]]
 }
 
+# Process-tree contract:
+#   Input:  one tmux pane/root PID.
+#   Action: capture the complete descendant tree before tmux is destroyed.
+#   Output: PIDs retained for deterministic shutdown even if parent shells exit.
 collect_process_tree() {
     local root_pid="$1"
     local -a queue=("${root_pid}")
@@ -272,6 +281,11 @@ signal_alive_pids() {
     done
 }
 
+# Shutdown contract:
+#   Input:  the tmux-owned experiment process tree.
+#   Action: request Ctrl-C first, then escalate SIGINT -> SIGTERM -> SIGKILL
+#           only for processes that remain alive.
+#   Output: no stale experiment process is allowed to contaminate the next run.
 stop_stack() {
     if ! session_exists; then
         echo "tmux session '${TMUX_SESSION}' is not running."

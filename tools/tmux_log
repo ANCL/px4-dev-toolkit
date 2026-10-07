@@ -31,8 +31,6 @@ if [[ -z "${session}" ]]; then
     fi
 fi
 
-
-
 usage() {
     echo "Usage:"
     echo "  ./tools/tmux_log [--session SESSION] <window> [lines]"

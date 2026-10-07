@@ -9,6 +9,10 @@ QGC_DIR="${ROOT}/tools/qgroundcontrol"
 QGC_PATH="${QGC_DIR}/${QGC_FILENAME}"
 TMP_PATH="${QGC_PATH}.download"
 
+# Remove an incomplete download if installation exits before the verified
+# AppImage is moved into place.
+trap 'rm -f "${TMP_PATH}"' EXIT
+
 # QGroundControl is kept as a repository-managed AppImage rather than a system
 # package. Install only the host libraries required to run that AppImage.
 sudo apt update

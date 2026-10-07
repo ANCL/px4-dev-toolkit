@@ -341,7 +341,6 @@ void test_force_direction_rate_feedforward()
 }
 
 
-
 void test_rate_feedforward_is_rotated_into_current_body_frame()
 {
   using namespace offboard_controllers::se3;
@@ -392,6 +391,10 @@ void test_desired_angular_acceleration_matches_rate_derivative()
       yaw_rate,
       yaw_acceleration);
 
+  // Oracle:
+  //   Compare analytic desired angular acceleration with an independent
+  //   central finite difference of desired angular velocity. The test varies
+  //   input force/yaw polynomials rather than reusing internal derivatives.
   constexpr double h = 1.0e-5;
 
   const auto sample_rate =
@@ -619,6 +622,9 @@ void test_physical_moment_is_in_physical_dynamics_form()
     4.0,
   };
 
+  // Invariant:
+  //   Non-spherical inertia and non-zero rates exercise both damping and the
+  //   gyroscopic Omega x J Omega term in Lee's physical moment law.
   const Vector3 moment =
     controller.compute_physical_moment_command(
       yaw_rotation(0.0),
@@ -653,6 +659,9 @@ void test_physical_moment_includes_desired_angular_acceleration()
     4.0,
   };
 
+  // Expected:
+  //   With zero attitude/rate error and current rate, the physical moment
+  //   reduces to J * Omegadot_d; Jxx=2 therefore gives 2 N m.
   expect_vector_near(
     "physical angular-acceleration feedforward",
     controller.compute_physical_moment_command(

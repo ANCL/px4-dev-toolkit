@@ -1,3 +1,14 @@
+"""Launch the finite native Position-mode takeoff/hover/land experiment.
+
+Without recording:
+    launch the flight node and propagate its exit status.
+
+With recording:
+    start rosbag first, allow DDS discovery, then start the flight node. The
+    flight node owns maneuver completion; its exit stops rosbag, and launch
+    terminates only after the recorder has finalized.
+"""
+
 from datetime import datetime
 from pathlib import Path
 
@@ -26,11 +37,12 @@ RECORDER_STARTUP_SECONDS = 1.0
 
 def find_repo_root() -> Path:
     """
-    Locate px4_env from either the source or installed launch-file path.
+    Locate the toolkit root from either the source or installed launch path.
 
     colcon installs this launch file below ros2/install/, which is still inside
-    the repository. Repository markers keep bag output anchored to px4_env/bags
-    instead of depending on the shell's current working directory.
+    the repository. Repository markers keep bag output anchored to the
+    repository's bags/ directory instead of depending on the shell's current
+    working directory.
     """
     start = Path(__file__).resolve()
 
@@ -43,7 +55,7 @@ def find_repo_root() -> Path:
             return path
 
     raise RuntimeError(
-        f"Could not locate px4_env repository root from {start}"
+        f"Could not locate toolkit repository root from {start}"
     )
 
 
@@ -124,16 +136,26 @@ def launch_setup(context):
 
     if not record:
         def on_flight_exit(event, _context):
-            reason = (
-                "position_takeoff_hover completed."
-                if event.returncode == 0
-                else
-                f"position_takeoff_hover exited with status {event.returncode}."
-            )
+            if event.returncode != 0:
+                returncode = event.returncode
+
+                def fail_launch(_context):
+                    raise RuntimeError(
+                        "position_takeoff_hover exited with status "
+                        f"{returncode}."
+                    )
+
+                return [
+                    OpaqueFunction(
+                        function=fail_launch
+                    )
+                ]
 
             return [
                 EmitEvent(
-                    event=Shutdown(reason=reason)
+                    event=Shutdown(
+                        reason="position_takeoff_hover completed."
+                    )
                 )
             ]
 
@@ -163,6 +185,10 @@ def launch_setup(context):
 
     bag_root.mkdir(parents=True, exist_ok=True)
 
+    flight_exit_code = {
+        "value": None,
+    }
+
     bag_process = ExecuteProcess(
         cmd=[
             "ros2",
@@ -179,6 +205,8 @@ def launch_setup(context):
     )
 
     def on_flight_exit(event, _context):
+        flight_exit_code["value"] = event.returncode
+
         if event.returncode == 0:
             message = (
                 "Position-mode flight complete; stopping recording."
@@ -199,12 +227,50 @@ def launch_setup(context):
         ]
 
     def on_bag_exit(_event, _context):
-        return [
-            LogInfo(msg=["Bag saved: ", str(bag_path)]),
-            EmitEvent(
-                event=Shutdown(reason="ROS bag recorder stopped.")
-            ),
+        # The recorder is deliberately stopped with SIGINT after the flight
+        # process exits. A signal-based recorder return code is therefore not
+        # itself an experiment failure. Failure is determined by premature
+        # recorder exit or by the flight/controller process return code.
+        actions = [
+            LogInfo(msg=["Bag output: ", str(bag_path)]),
         ]
+
+        flight_returncode = flight_exit_code["value"]
+
+        if flight_returncode is None:
+            failure = (
+                "Position-mode recorder exited "
+                "before the flight node."
+            )
+        elif flight_returncode != 0:
+            failure = (
+                "position_takeoff_hover exited with status "
+                f"{flight_returncode}."
+            )
+        else:
+            failure = None
+
+        if failure is not None:
+            def fail_launch(_context):
+                raise RuntimeError(failure)
+
+            actions.append(
+                OpaqueFunction(
+                    function=fail_launch
+                )
+            )
+
+            return actions
+
+        actions.append(
+            EmitEvent(
+                event=Shutdown(
+                    reason="ROS bag recorder stopped."
+                )
+            )
+        )
+
+        return actions
 
     return [
         LogInfo(msg=["Recording bag: ", str(bag_path)]),

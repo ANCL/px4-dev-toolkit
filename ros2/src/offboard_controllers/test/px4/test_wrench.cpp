@@ -27,14 +27,9 @@ void expect_near(
   }
 }
 
-
-
-
-
-
-
-
-
+// Expected:
+//   Aligned hover force is exactly mg, so normalization reproduces the
+//   configured PX4 hover-thrust value.
 void test_projected_thrust_matches_hover_when_aligned()
 {
   using offboard_controllers::px4_wrench::
@@ -103,6 +98,9 @@ void test_projected_thrust_uses_current_body_z()
 }
 
 
+// Expected:
+//   Force opposite the available multicopter thrust direction cannot produce
+//   negative collective thrust and therefore clamps to zero.
 void test_projected_thrust_clamps_negative_projection()
 {
   using offboard_controllers::px4_wrench::
@@ -136,6 +134,9 @@ void test_projected_thrust_clamps_negative_projection()
 }
 
 
+// Expected:
+//   Twice-hover thrust with hover_thrust=0.60 normalizes to 1.20 before the
+//   VehicleThrustSetpoint upper bound clamps it to 1.0.
 void test_projected_thrust_clamps_upper_limit()
 {
   using offboard_controllers::px4_wrench::
@@ -190,6 +191,9 @@ void test_identity_rotation_maps_to_identity_quaternion()
 }
 
 
+// Expected:
+//   +90 deg NED yaw maps to Hamilton
+//   [sqrt(1/2), 0, 0, sqrt(1/2)] in PX4 [w, x, y, z] ordering.
 void test_yaw_90_rotation_maps_to_px4_quaternion()
 {
   using offboard_controllers::px4_wrench::quaternion_from_rotation;

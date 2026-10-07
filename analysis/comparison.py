@@ -1,4 +1,15 @@
-"""Reusable math for comparing multiple experiment runs."""
+"""Reusable numerical operations for comparing experiment runs.
+
+Comparison flow:
+    independently timestamped recorded series
+      -> shift to a common experiment origin
+      -> restrict to common valid intervals
+      -> interpolate only where cross-signal alignment is required
+      -> compute time-weighted tracking/activity metrics
+
+These helpers do not infer controller semantics; profile-specific code decides
+which physical quantities and experiment windows are comparable.
+"""
 
 from __future__ import annotations
 
@@ -55,8 +66,14 @@ def _ordered_unique_series(
     series: dict[str, list[float]],
     components: tuple[str, ...],
 ):
+    """Sort by time and keep the first recorded sample at duplicates.
+
+    A stable sort preserves original bag ordering for equal timestamps before
+    np.unique selects the first occurrence. This gives interpolation helpers a
+    deterministic strictly increasing time base.
+    """
     times = np.asarray(series["times_s"], dtype=float)
-    order = np.argsort(times)
+    order = np.argsort(times, kind="stable")
     times = times[order]
     times, unique = np.unique(times, return_index=True)
 
@@ -80,7 +97,20 @@ def tracking_error_series(
     components: tuple[str, ...] = ("x", "y", "z"),
     wrap_degrees: bool = False,
 ) -> dict[str, list[float]]:
-    """Return actual-reference error over the selected experiment interval."""
+    """Compute tracking error for independently timestamped signals.
+
+    Inputs:
+        Actual/reference series, experiment time origin, optional end time,
+        component selection, and optional angular wrapping.
+
+    Method:
+        Restrict both streams to their common recorded interval and interpolate
+        the reference onto actual-signal timestamps.
+
+    Returns:
+        actual - reference error shifted to the requested experiment origin,
+        plus Euclidean norm across the selected components.
+    """
     actual_times, actual_values = _ordered_unique_series(
         actual,
         components,
@@ -217,7 +247,18 @@ def timed_stats(
     times_s: list[float],
     values: list[float],
 ) -> dict[str, float]:
-    """Return time-weighted RMS, peak, and covered duration."""
+    """Compute time-weighted signal statistics.
+
+    Inputs:
+        Sample timestamps and scalar values.
+
+    Method:
+        Integrate squared magnitude with the trapezoidal rule over positive,
+        finite sample intervals.
+
+    Returns:
+        RMS, peak absolute value, and covered duration.
+    """
     times = np.asarray(
         times_s,
         dtype=float,
@@ -296,7 +337,18 @@ def activity_stats(
     times_s: list[float],
     values: list[float],
 ) -> dict[str, float]:
-    """Measure magnitude and time-weighted signal roughness."""
+    """Measure signal magnitude and temporal roughness.
+
+    Inputs:
+        Sample timestamps and scalar values.
+
+    Method:
+        Reuse time-weighted magnitude statistics and evaluate the RMS
+        finite-difference derivative over valid sample intervals.
+
+    Returns:
+        Magnitude statistics plus roughness RMS in signal-units per second.
+    """
     times = np.asarray(
         times_s,
         dtype=float,
@@ -360,7 +412,18 @@ def effort_stats(
     limit: float = 1.0,
     near_limit_ratio: float = 0.99,
 ) -> dict[str, float]:
-    """Measure command activity and time spent near its nominal limit."""
+    """Measure command effort and near-limit activity.
+
+    Inputs:
+        Command history, nominal magnitude limit, and near-limit ratio.
+
+    Method:
+        Compute activity statistics, then integrate the binary near-limit
+        condition over time so irregular sample density does not bias it.
+
+    Returns:
+        Activity statistics plus near-limit duration and time fraction.
+    """
     times = np.asarray(
         times_s,
         dtype=float,
@@ -459,7 +522,19 @@ def vector_magnitude_series(
 def motor_envelope(
     motors: dict[str, tuple[list[float], list[float]]],
 ) -> tuple[list[float], list[float]]:
-    """Return the maximum absolute motor command on a common time grid."""
+    """Return the maximum absolute motor command on the recorded motor grid.
+
+    Inputs:
+        Per-motor command histories from the same actuator-motors stream.
+
+    Method:
+        Use the first available channel's recorded timestamps as the comparison
+        grid. Stable-sort and deduplicate each channel before interpolating it
+        onto that grid, then take the per-time maximum absolute command.
+
+    Returns:
+        Comparison-grid timestamps and the motor-command envelope.
+    """
     if not motors:
         return [], []
 
@@ -489,7 +564,7 @@ def motor_envelope(
         if times.size == 0:
             continue
 
-        order = np.argsort(times)
+        order = np.argsort(times, kind="stable")
         times = times[order]
         values = values[order]
         times, unique = np.unique(

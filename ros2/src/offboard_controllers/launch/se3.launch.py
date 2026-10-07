@@ -1,3 +1,17 @@
+"""Launch one finite SE(3) Offboard experiment.
+
+Without recording:
+    launch the SE(3) runtime and propagate its exit status.
+
+With recording:
+    start rosbag first, allow DDS discovery, then start the controller. The
+    controller owns experiment completion; its exit stops rosbag, and launch
+    terminates only after the recorder has finalized.
+
+An explicit recording_output lets the sequence runner own bag placement;
+standalone launches otherwise use bags/se3/<timestamp>.
+"""
+
 from datetime import datetime
 from pathlib import Path
 
@@ -22,6 +36,8 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
+# Start rosbag before control and allow DDS discovery so prestream and
+# controller-takeover traffic are present from the beginning of the bag.
 RECORDER_STARTUP_SECONDS = 1.0
 
 
@@ -38,7 +54,7 @@ def find_repo_root() -> Path:
             return path
 
     raise RuntimeError(
-        f"Could not locate px4_env repository root from {start}"
+        f"Could not locate toolkit repository root from {start}"
     )
 
 
@@ -109,6 +125,7 @@ def launch_argument_is_true(
     context,
     name: str,
 ) -> bool:
+    """Interpret one ROS launch boolean argument using common truthy forms."""
     value = (
         LaunchConfiguration(name)
         .perform(context)
@@ -125,6 +142,7 @@ def launch_argument_is_true(
 
 
 def make_control_node() -> Node:
+    """Create the configured SE(3) node used by recorded and unrecorded runs."""
     package_share = Path(
         get_package_share_directory(
             "offboard_controllers"
@@ -178,6 +196,7 @@ def make_control_node() -> Node:
 
 
 def launch_setup(context):
+    """Build direct control launch or recorder-owned experiment orchestration."""
     record = launch_argument_is_true(
         context,
         "record",
@@ -342,10 +361,14 @@ def launch_setup(context):
         ]
 
     def on_bag_exit(_event, _context):
+        # The recorder is deliberately stopped with SIGINT after the flight
+        # process exits. A signal-based recorder return code is therefore not
+        # itself an experiment failure. Failure is determined by premature
+        # recorder exit or by the flight/controller process return code.
         actions = [
             LogInfo(
                 msg=[
-                    "Bag saved: ",
+                    "Bag output: ",
                     str(bag_path),
                 ]
             ),

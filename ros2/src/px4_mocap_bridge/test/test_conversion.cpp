@@ -1,4 +1,6 @@
+#include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -27,6 +29,9 @@ bool near(double actual, double expected)
 }
 
 
+// Invariant:
+//   q and -q encode the same attitude. Accept only one global sign flip;
+//   independent absolute-component comparison could accept another rotation.
 bool quaternion_near(
   const std::array<float, 4> & actual,
   const std::array<double, 4> & expected)
@@ -86,6 +91,9 @@ void test_invalid_pose()
     "zero quaternion should be invalid");
 }
 
+// Oracle:
+ //   ENU position [1, 2, 3] becomes NED [2, 1, -3]. ROS identity
+ //   ENU/FLU orientation becomes the fixed NED/FRD frame-conversion rotation.
 void test_frame_conversion()
 {
   const auto odometry =
@@ -153,8 +161,9 @@ void test_yaw_frame_conversion()
 
   const double half_sqrt = std::sqrt(0.5);
 
-  // +90 deg ENU yaw points FLU forward toward North. After converting both
-  // world and body conventions, FRD is aligned with NED.
+  // Expected:
+  //   +90 deg ENU yaw points FLU forward toward North. After converting both
+  //   world and body conventions, FRD is aligned with NED.
   pose.pose.orientation.w = half_sqrt;
   pose.pose.orientation.z = half_sqrt;
 
@@ -177,6 +186,9 @@ void test_yaw_frame_conversion()
 }
 
 
+// Oracle:
+ //   Exercise a non-yaw rotation so the test verifies body-frame FLU -> FRD
+ //   conversion rather than only the ENU -> NED world-axis remapping.
 void test_roll_frame_conversion()
 {
   auto pose = identity_pose();
@@ -205,6 +217,9 @@ void test_roll_frame_conversion()
 }
 
 
+// Invariant:
+ //   Publication time always populates timestamp. timestamp_sample uses a
+ //   non-zero source header only when header-time use is enabled.
 void test_timestamp_selection()
 {
   auto pose = identity_pose();

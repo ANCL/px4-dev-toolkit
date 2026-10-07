@@ -1,4 +1,16 @@
-"""Multi-run comparison for SE3 trajectory-tracking experiments."""
+"""Multi-run comparison for SE(3) trajectory-tracking experiments.
+
+Comparison flow:
+    single-run SE(3) analyses
+      -> align t=0 to confirmed PX4 Offboard entry
+      -> clip common physical signals to each recorded Offboard interval
+      -> evaluate whole-run tracking/actuation metrics
+      -> optionally evaluate configured maneuver windows
+      -> produce common-quantity summaries and overlays
+
+Comparisons intentionally use physical quantities common to all handoff levels;
+controller-internal diagnostic terms are not used to rank unlike controllers.
+"""
 
 from __future__ import annotations
 
@@ -28,7 +40,7 @@ from analysis.plots import (
 
 @dataclass
 class ComparisonRun:
-    """Common physical comparison view of one analyzed SE3 run."""
+    """Common physical comparison view of one analyzed SE(3) run."""
 
     label: str
     bag_path: Path
@@ -51,12 +63,24 @@ class ComparisonRun:
         tuple[list[float], list[float]],
     ]
 
+
 def build_run(
     result,
     bag_path: Path,
     label: str,
 ) -> ComparisonRun:
-    """Build one common physical view from analyzed SE3 data."""
+    """Build the common comparison view for one analyzed SE(3) run.
+
+    Inputs:
+        Single-run analysis result, bag path, and display label.
+
+    Method:
+        Shift physical signals so t=0 is PX4's confirmed Offboard entry. This
+        removes arming/prestream timing from controller-performance comparison.
+
+    Returns:
+        ComparisonRun containing aligned tracking, wrench, rate, and motor data.
+    """
     layers = result.plot_data["layers"]
     pipeline = result.plot_data["pipeline"]
 
@@ -137,11 +161,25 @@ def build_run(
         ),
     )
 
+
 def trajectory_segments(
     config_path: Path,
     trajectory_name: str,
-) -> list[dict[str, float | str]]:
-    """Resolve configured segment boundaries relative to Offboard entry."""
+) -> list[dict[str, object]]:
+    """Resolve trajectory segments relative to confirmed Offboard entry.
+
+    Inputs:
+        Trajectory YAML and the same trajectory/segment name passed to runtime.
+
+    Method:
+        Expand a named trajectory into reusable segments. A reusable segment
+        selected directly is treated as a one-segment trajectory, matching
+        trajectory::load_trajectory() runtime behavior.
+
+    Returns:
+        Ordered segment metadata with cumulative start/end times beginning at
+        Offboard-relative t=0.
+    """
     data = yaml.safe_load(
         config_path.read_text()
     )
@@ -151,16 +189,24 @@ def trajectory_segments(
         {},
     )
 
-    if trajectory_name not in trajectories:
+    if trajectory_name in trajectories:
+        segment_names = trajectories[
+            trajectory_name
+        ]["segments"]
+    elif trajectory_name in segments:
+        segment_names = [
+            trajectory_name
+        ]
+    else:
         raise ValueError(
-            f"Unknown trajectory: {trajectory_name}"
+            f"Unknown trajectory or segment: {trajectory_name}"
         )
 
     elapsed = 0.0
     result = []
 
     for index, segment_name in enumerate(
-        trajectories[trajectory_name]["segments"],
+        segment_names,
         start=1,
     ):
         if segment_name not in segments:
@@ -218,6 +264,18 @@ def _ordered_component(
     series: dict[str, list[float]],
     component: str,
 ) -> tuple[np.ndarray, np.ndarray]:
+    """Prepare one recorded component for interpolation.
+
+    Inputs:
+        One component and its recorded timestamps.
+
+    Method:
+        Stable-sort by time and retain the first recorded value at duplicate
+        timestamps, yielding a deterministic strictly increasing time base.
+
+    Returns:
+        Ordered unique timestamps and matching component values.
+    """
     times = np.asarray(
         series["times_s"],
         dtype=float,
@@ -231,7 +289,7 @@ def _ordered_component(
     if times.size == 0:
         return times, values
 
-    order = np.argsort(times)
+    order = np.argsort(times, kind="stable")
 
     times = times[order]
     values = values[order]
@@ -252,6 +310,7 @@ def _interp_component(
     component: str,
     times: np.ndarray,
 ) -> np.ndarray:
+    """Interpolate one recorded component onto an explicit comparison grid."""
     source_times, source_values = (
         _ordered_component(
             series,
@@ -279,6 +338,18 @@ def _first_crossing(
     *,
     not_before: float | None = None,
 ) -> float | None:
+    """Find the first sampled threshold crossing.
+
+    Inputs:
+        Sampled response, threshold, and optional earliest allowed time.
+
+    Method:
+        Search recorded samples directly; no synthetic crossing time is
+        interpolated.
+
+    Returns:
+        Crossing timestamp, or None when the threshold is never reached.
+    """
     mask = (
         values
         >= threshold
@@ -311,7 +382,18 @@ def _settling_time(
     start_s: float,
     tolerance: float,
 ) -> float:
-    """Return settling time over the configured response window."""
+    """Measure settling time within the supplied response window.
+
+    Inputs:
+        Response timestamps, tracking error, step start, and tolerance.
+
+    Method:
+        Find the first post-step sample for which that sample and every
+        remaining sample stay inside the tolerance band.
+
+    Returns:
+        Settling time relative to step start, or NaN when not settled.
+    """
     for index in range(len(times)):
         if (
             times[index] < start_s
@@ -337,6 +419,7 @@ def _integral_absolute_error(
     times: np.ndarray,
     error: np.ndarray,
 ) -> float:
+    """Integrate |tracking error| over time with the trapezoidal rule."""
     if times.size < 2:
         return float("nan")
 
@@ -369,6 +452,12 @@ def _integral_absolute_error(
 def _step_axis(
     segment: dict[str, object],
 ) -> tuple[int, float] | None:
+    """Return commanded axis and signed amplitude for a single-axis step.
+
+    Step-response metrics are defined only for segments with exactly one
+    non-zero translational offset. Multi-axis steps are deliberately excluded
+    rather than assigning their coupled response to an arbitrary axis.
+    """
     offset = segment.get(
         "offset"
     )
@@ -438,7 +527,21 @@ def step_response_metrics(
     segment: dict[str, object],
     response_end_s: float,
 ) -> dict[str, float | str]:
-    """Measure one configured position step and its following hold."""
+    """Measure one single-axis position-step response.
+
+    Inputs:
+        Offboard-aligned run, configured step metadata, and response-window end.
+
+    Method:
+        Use the configured step amplitude to normalize the measured response,
+        compute sampled 10-90 % rise time, overshoot, settling, IAE, final
+        residual, and uncommanded-axis coupling. The immediately following hold
+        may extend the response window.
+
+    Returns:
+        Step-response metrics, or an empty mapping when the segment/data cannot
+        support a single-axis response measurement.
+    """
     axis_info = _step_axis(
         segment
     )
@@ -489,9 +592,12 @@ def step_response_metrics(
         )
     )
 
+    # Sequence semantics give the exact boundary sample to the preceding
+    # segment. Select the first reference strictly after the step boundary so
+    # an exactly sampled boundary cannot be mistaken for the new step target.
     target_indices = np.flatnonzero(
         reference_times
-        >= start
+        > start
     )
 
     if target_indices.size == 0:
@@ -503,6 +609,9 @@ def step_response_metrics(
         ]
     )
 
+    # Normalize the measured response from the pre-step baseline to the
+    # configured target. This gives a dimensionless response where 0 is the
+    # starting value and 1 is the requested step.
     baseline = (
         target
         - amplitude
@@ -513,6 +622,8 @@ def step_response_metrics(
         - baseline
     ) / amplitude
 
+    # Standard 10-90 percent rise time, measured from the actual response
+    # crossings rather than from the configured segment boundaries.
     t10 = _first_crossing(
         times,
         progress,
@@ -558,6 +669,8 @@ def step_response_metrics(
         - target
     )
 
+    # Settling requires the response to remain inside the larger of a
+    # 2-centimetre absolute band or a 5-percent step-amplitude band.
     tolerance = max(
         0.02,
         0.05
@@ -576,6 +689,8 @@ def step_response_metrics(
         error,
     )
 
+    # Residual error is measured over the final 0.5 s of the response window,
+    # including the post-step hold when one is configured.
     tail_start = max(
         start,
         response_end_s
@@ -596,6 +711,9 @@ def step_response_metrics(
         ].tolist(),
     )["rms"]
 
+    # Cross-axis RMS exposes coupling that a single commanded-axis metric
+    # would hide. Compare the two uncommanded axes on the commanded-axis time
+    # grid and combine them as a Euclidean norm.
     cross_errors = []
 
     for cross_axis, cross_component in enumerate(
@@ -661,7 +779,11 @@ def yaw_segment_metrics(
     run: ComparisonRun,
     segment: dict[str, object],
 ) -> dict[str, float]:
-    """Measure wrapped yaw tracking over one configured yaw maneuver."""
+    """Measure wrapped yaw tracking over one configured yaw maneuver.
+
+    The metric window is [segment start, segment end), and angular error is
+    already wrapped to [-180, 180) degrees in build_run().
+    """
     start = float(
         segment["start_s"]
     )
@@ -709,7 +831,12 @@ def figure_eight_metrics(
     run: ComparisonRun,
     segment: dict[str, object],
 ) -> dict[str, float]:
-    """Measure common tracking and actuation over a figure-eight."""
+    """Measure common physical performance over a figure-eight window.
+
+    Returns time-weighted position/velocity tracking, measured body-rate,
+    normalized wrench, and motor-envelope metrics that are comparable across
+    all controller handoff choices.
+    """
     start = float(
         segment["start_s"]
     )
@@ -832,7 +959,12 @@ def figure_eight_metrics(
 def summarize_run(
     run: ComparisonRun,
 ) -> dict[str, object]:
-    """Compute common whole-Offboard tracking and activity metrics."""
+    """Compute common metrics over one recorded Offboard interval.
+
+    Tracking uses actual-reference error norms. Actuation/response metrics use
+    signal magnitudes and time weighting so different logging rates do not
+    change the interpretation of a run.
+    """
     thrust_times, thrust_magnitude = (
         vector_magnitude_series(
             run.thrust
@@ -917,7 +1049,12 @@ def single_run_summary(
         dict[str, object]
     ] | None = None,
 ) -> str:
-    """Build detailed performance metrics for one SE3 run."""
+    """Build the detailed performance report for one SE(3) run.
+
+    Whole-run statistics cover the confirmed Offboard interval. When segment
+    metadata is available, maneuver-specific metrics use their configured
+    Offboard-relative windows.
+    """
     metrics = summarize_run(
         run
     )
@@ -1344,7 +1481,12 @@ def comparison_summary(
         dict[str, object]
     ] | None = None,
 ) -> str:
-    """Build the focused common-quantity SE3 comparison report."""
+    """Build a common-quantity comparison across SE(3) controllers.
+
+    Each run is independently aligned to its confirmed Offboard entry. Only
+    quantities available with the same physical meaning across controllers are
+    compared; controller-specific internal terms remain diagnostic only.
+    """
     metrics = {
         run.label:
             summarize_run(
@@ -1710,7 +1852,15 @@ def write_comparison_plots(
         dict[str, object]
     ] | None = None,
 ) -> list[Path]:
-    """Write focused common-quantity SE3 comparison figures."""
+    """Write Offboard-aligned common-quantity comparison figures.
+
+    Inputs:
+        Comparison runs plus optional configured maneuver boundaries.
+
+    Output:
+        Overlay plots for tracking error, body response, normalized wrench, and
+        motor effort; controller-specific diagnostics are deliberately omitted.
+    """
     output_dir.mkdir(
         parents=True,
         exist_ok=True,

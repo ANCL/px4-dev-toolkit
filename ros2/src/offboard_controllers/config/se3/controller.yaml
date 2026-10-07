@@ -3,6 +3,8 @@ se3:
     # Geometric SE(3) translational gains normalized by vehicle mass:
     #   kx = mass * kx_over_mass
     #   kv = mass * kv_over_mass
+    #
+    # kx_over_mass has units [1/s^2]; kv_over_mass has units [1/s].
     kx_over_mass: 16.0
     kv_over_mass: 5.6
 

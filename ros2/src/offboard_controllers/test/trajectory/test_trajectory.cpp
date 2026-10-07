@@ -96,6 +96,9 @@ void test_step_response()
       {1.0, 0.0, 0.0}),
   });
 
+  // Invariant:
+  //   Step segments are right-discontinuous: the preceding segment owns the
+  //   exact boundary, and the offset appears immediately afterward.
   const auto before_step =
     sequence.sample(1.0, origin);
 
@@ -297,6 +300,9 @@ void test_figure_eight()
   const auto end =
     sequence.sample(20.0, origin);
 
+  // Invariant:
+  //   The 1:2 Lissajous figure eight is closed: start, midpoint, and end cross
+  //   the origin while the midpoint retains non-zero velocity.
   require_vector(start.position, origin.position, "figure-eight start");
   require_vector(middle.position, origin.position, "figure-eight midpoint");
   require_vector(end.position, origin.position, "figure-eight end");
@@ -403,7 +409,6 @@ void test_configuration()
 }
 
 }  // namespace
-
 
 
 void test_full_excitation_configuration()

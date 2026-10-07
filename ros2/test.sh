@@ -43,6 +43,8 @@ set -u
 
 cd "${PX4_ENV_ROOT}/ros2"
 
+# Test only packages maintained by this toolkit. Fetched third-party
+# repositories retain their own upstream test suites.
 TOOLKIT_PACKAGES=(
     offboard_controllers
     px4_bringup
@@ -55,14 +57,44 @@ RESULT_BASE="build/toolkit_test_results"
 
 rm -rf "${RESULT_BASE}"
 
+# Test-runner contract:
+#   Action: run pure-Python analysis regressions and maintained ROS package
+#           tests, then always print verbose collected colcon results.
+#   Failure: preserve the first failing suite after all available diagnostics
+#            have been emitted.
+set +e
+
+cd "${PX4_ENV_ROOT}"
+
+python3 -m unittest discover \
+    -s analysis/tests \
+    -p 'test_*.py'
+analysis_status=$?
+
+cd "${PX4_ENV_ROOT}/ros2"
+
 colcon test \
     --packages-select "${TOOLKIT_PACKAGES[@]}" \
     --test-result-base "${RESULT_BASE}" \
     --return-code-on-test-failure
+test_status=$?
 
 colcon test-result \
     --test-result-base "${RESULT_BASE}" \
     --verbose
+result_status=$?
+
+set -e
+
+if (( analysis_status != 0 )); then
+    exit "${analysis_status}"
+fi
+
+if (( test_status != 0 )); then
+    exit "${test_status}"
+fi
+
+exit "${result_status}"
 EOF_TEST
 
 echo

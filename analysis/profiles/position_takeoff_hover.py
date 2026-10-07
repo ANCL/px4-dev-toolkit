@@ -1,4 +1,11 @@
-"""Analysis profile for the headless PX4 Position-mode takeoff/hover test."""
+"""Analysis profile for the native PX4 Position-mode takeoff/hover test.
+
+Profile flow:
+    PX4 status + manual-control + local position
+      -> resolve Position entry, arming, climb, hover, landing, and disarm
+      -> measure centered-stick hover drift
+      -> analyze the native PX4 controller pipeline over the recorded flight
+"""
 
 from __future__ import annotations
 
@@ -115,7 +122,18 @@ def _hover_drift(
     start_ns: int,
     end_ns: int,
 ) -> tuple[float, float]:
-    """Measure local-position drift while the virtual sticks are centered."""
+    """Measure centered-stick hover drift.
+
+    Inputs:
+        Local-position samples and the hover-window boundaries.
+
+    Method:
+        Use the first finite sample as the hold origin; this intentionally
+        measures drift rather than absolute setpoint error.
+
+    Returns:
+        Horizontal and vertical drift over the hover window.
+    """
 
     window = [
         sample
@@ -152,7 +170,20 @@ def _hover_drift(
 
 
 def analyze(bag: BagData) -> AnalysisResult:
-    """Analyze Position-mode semantics plus the common PX4 control pipeline."""
+    """Analyze one native Position-mode takeoff/hover/land experiment.
+
+    Inputs:
+        BagData containing PX4 lifecycle, manual-control, local-position, and
+        native controller-pipeline topics.
+
+    Method:
+        Resolve each flight phase from recorded PX4 state/manual input, measure
+        hover drift from the centered-stick hold origin, and extract the common
+        controller pipeline.
+
+    Returns:
+        Lifecycle/hover metrics, textual summary, and plot-ready pipeline data.
+    """
 
     status_samples = bag.samples[STATUS_TOPIC]
     local_position_samples = bag.samples[LOCAL_POSITION_TOPIC]
@@ -337,8 +368,8 @@ def write_plots(
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Each analyzer run owns its generated figures. Remove stale plots from
-    # earlier layouts or filename conventions before writing the new report.
+    # Each analyzer run owns its generated figures. Remove stale PNGs before
+    # writing the report so output never mixes figures from separate analyses.
     for old_plot in output_dir.glob("*.png"):
         old_plot.unlink()
 

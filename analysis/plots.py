@@ -1,4 +1,12 @@
-"""Publication-style plotting helpers for PX4 flight-data analysis."""
+"""Plotting helpers for PX4 flight-data analysis.
+
+Inputs are already expressed on the analysis rosbag clock, usually as seconds
+from bag start. Functions may shift that clock to a profile-specific origin
+such as confirmed Offboard entry.
+
+When measured and reference signals have independent timestamps, plotting uses
+the same common-interval/interpolation semantics as the numerical analysis.
+"""
 
 from __future__ import annotations
 
@@ -92,10 +100,17 @@ def _tracking_error(
     *,
     wrap_degrees: bool = False,
 ) -> tuple[list[float], list[float]]:
-    """
-    Compute actual - reference on actual-signal timestamps.
+    """Compute aligned actual-reference error for plotting.
 
-    The reference is interpolated only over the common recorded interval.
+    Inputs:
+        Independently timestamped actual/reference scalar histories.
+
+    Method:
+        Restrict to their common interval and interpolate reference values onto
+        actual-signal timestamps. Degree-valued angles may be wrapped.
+
+    Returns:
+        Actual timestamps and actual - reference error.
     """
     if not actual_times or not reference_times:
         return [], []
@@ -105,7 +120,7 @@ def _tracking_error(
     reference_t = np.asarray(reference_times, dtype=float)
     reference_y = np.asarray(reference_values, dtype=float)
 
-    order = np.argsort(reference_t)
+    order = np.argsort(reference_t, kind="stable")
     reference_t = reference_t[order]
     reference_y = reference_y[order]
 
@@ -186,12 +201,21 @@ def save_tracking_plot(
     time_origin_s: float = 0.0,
     xlabel: str = "Time from bag start [s]",
 ) -> None:
-    """
-    Save a compact multi-component tracking figure.
+    """Save a multi-component tracking figure.
 
-    When measured/actual data and a meaningful reference are both present,
-    the final panel shows one vector error norm rather than three overlapping
-    component-error traces.
+    Inputs:
+        Per-component signal histories, display metadata, optional event
+        markers, and the time origin to subtract for presentation.
+
+    Method:
+        Plot recorded signals on their own timestamps. Where an actual and
+        reference signal both exist, interpolate the reference onto actual
+        timestamps over their common interval. Component errors are then
+        aligned to a common grid before forming the vector error norm.
+
+    Output:
+        One figure containing component histories and, when available, a final
+        actual-reference error-norm panel.
     """
     if not components:
         return
@@ -338,6 +362,9 @@ def save_tracking_plot(
     if errors:
         error_axis = axes[-1]
 
+        # Component errors may originate from independently timestamped topics.
+        # Restrict them to one common interval and interpolate onto the first
+        # component's grid before forming the Euclidean error norm.
         start_time = max(
             values[0]
             for _, values, _ in errors

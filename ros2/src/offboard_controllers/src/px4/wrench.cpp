@@ -70,6 +70,10 @@ std::array<double, 4> quaternion_from_rotation(
   const double trace =
     r00 + r11 + r22;
 
+  // Use the standard trace/major-diagonal branches rather than a single
+  // trace-only formula. Selecting the numerically strongest quaternion
+  // component avoids division by a value near zero for rotations close to
+  // 180 degrees.
   if (trace > 0.0) {
     const double s =
       2.0 * std::sqrt(trace + 1.0);
@@ -169,6 +173,8 @@ math::RotationMatrix rotation_from_quaternion(
   y /= quaternion_norm;
   z /= quaternion_norm;
 
+  // The returned matrix maps FRD body coordinates into NED, matching the
+  // RotationMatrix column convention used throughout the controller.
   const double r00 = 1.0 - 2.0 * (y * y + z * z);
   const double r01 = 2.0 * (x * y - w * z);
   const double r02 = 2.0 * (x * z + w * y);

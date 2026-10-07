@@ -1,4 +1,17 @@
-"""Measure arrival rates for live ROS 2 topics."""
+"""Measure callback-arrival rates for live ROS 2 topics.
+
+Measurement flow:
+    ROS graph discovery
+      -> retain requested/live publisher-backed topics
+      -> subscribe with best-effort volatile QoS
+      -> allow DDS matching to warm up
+      -> reset statistics
+      -> measure callback arrivals with time.monotonic_ns()
+      -> report rate and interval jitter
+
+These are host-side ROS callback-arrival statistics, not PX4 message timestamp
+or sensor-sample-rate measurements.
+"""
 
 from __future__ import annotations
 
@@ -35,6 +48,20 @@ class TopicStats:
     max_interval_ns: int | None = None
 
     def add(self, now_ns: int) -> None:
+        """
+        Incorporate one topic-arrival timestamp.
+
+        Inputs:
+            Monotonic callback-arrival time [ns].
+
+        Method:
+            Update sample count, interval extrema, and Welford online interval
+            variance without retaining the complete arrival history.
+
+        Effects:
+            Mutates this TopicStats instance; derived rate/jitter properties
+            consume the accumulated state.
+        """
         self.samples += 1
 
         if self.first_ns is None:
@@ -60,6 +87,9 @@ class TopicStats:
         ):
             self.max_interval_ns = interval_ns
 
+        # Welford's online update accumulates interval variance without
+        # retaining every arrival interval or suffering the cancellation of
+        # E[x^2] - E[x]^2.
         delta = interval_ns - self.mean_interval_ns
         self.mean_interval_ns += delta / self.interval_count
         self.interval_m2 += (
@@ -457,6 +487,9 @@ def main() -> int:
         if args.warmup > 0.0:
             spin_for(node, args.warmup)
 
+        # DDS discovery and subscription matching can distort the first arrival
+        # intervals. Discard warm-up statistics and measure only after all
+        # subscriptions have had time to establish.
         for topic in topics:
             stats[topic] = TopicStats()
 

@@ -8,6 +8,14 @@ from launch.actions import DeclareLaunchArgument, ExecuteProcess, LogInfo, Opaqu
 
 
 def launch_agent(context):
+    """Construct one validated PX4 uXRCE-DDS Agent process.
+
+    Inputs:
+        udp4/udp6 port or serial device/baud launch arguments.
+
+    Output:
+        One foreground MicroXRCEAgent process owned by ros2 launch.
+    """
     agent = shutil.which("MicroXRCEAgent")
 
     if agent is None:

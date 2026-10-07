@@ -28,6 +28,9 @@ void expect_near(
 }
 
 
+// Invariant:
+//   Lock F450 physical-model -> FRD conversion and PX4 allocator/propulsion
+//   parameters to the configured values, including frame and sign conventions.
 void test_f450_physical_wrench_configuration()
 {
   using namespace offboard_controllers;

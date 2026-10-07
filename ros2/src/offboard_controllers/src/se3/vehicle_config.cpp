@@ -12,6 +12,10 @@
 namespace offboard_controllers::vehicle_config
 {
 
+// This loader serves the direct physical-wrench path. Vehicle files may store
+// physical model data in FLU, but everything leaving this module is normalized
+// to the FRD convention used by the SE(3) rotational controller and PX4 allocator.
+
 namespace
 {
 
@@ -189,6 +193,8 @@ se3::Vector3 sequence_vector3(
 }
 
 
+// PX4 rotor geometry may be represented as planar [x, y] coordinates. Treat
+// an omitted z component as zero while still accepting explicit [x, y, z].
 se3::Vector3 allocator_position(
   const YAML::Node & node,
   const std::string & name)
@@ -281,6 +287,9 @@ void validate_inertia(
             "Vehicle inertia must be finite.");
   }
 
+  // For a symmetric 3x3 inertia tensor, Sylvester's criterion requires all
+  // leading principal minors to be positive. This rejects non-physical or
+  // malformed tensors before they reach the geometric moment controller.
   const double second_minor =
     inertia.xx * inertia.yy -
     inertia.xy * inertia.xy;
@@ -500,6 +509,8 @@ PhysicalWrenchConfiguration load_physical_wrench_configuration(
           "propulsion.rotors[].position_m"),
         propulsion_frame);
 
+    // The wrench model needs each rotor arm relative to the vehicle center
+    // of mass, not relative to the Gazebo model origin.
     physical[
       static_cast<std::size_t>(index)] = {
       rotor_position_frd -
@@ -637,6 +648,9 @@ PhysicalWrenchConfiguration load_physical_wrench_configuration(
       km,
     };
 
+    // The physical propulsion model and PX4 allocator must assign the same
+    // yaw-moment sign to a rotor. A mismatch would silently invert yaw control
+    // when translating a physical wrench into PX4-normalized coordinates.
     if (
       physical[
         static_cast<std::size_t>(index)].

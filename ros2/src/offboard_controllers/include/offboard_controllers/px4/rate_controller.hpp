@@ -47,22 +47,32 @@ class Controller
 public:
   explicit Controller(const Parameters & parameters);
 
+  // Allocator-saturation feedback:
+  //   Inputs: per-axis positive/negative torque-saturation flags.
+  //   Logic:  update() blocks only integral error that would push an already
+  //           saturated axis farther into saturation.
+  //   Output: anti-windup state used by subsequent rate-controller updates.
   void set_saturation_status(
     const std::array<bool, 3> & positive,
     const std::array<bool, 3> & negative);
 
   void reset_integral();
 
-  // MulticopterRateControl advances its timing state on every
-  // VehicleAngularVelocity callback, even while rate control is inactive.
-  // Use this for samples that do not run the controller so the next active
-  // update sees the same sample-to-sample dt as PX4.
+  // Timing-only update:
+  //   Input:  gyro timestamp_sample [us].
+  //   Logic:  advance the same sample clock used by PX4
+  //           MulticopterRateControl while rate control is inactive.
+  //   Output: no control command; the next active update sees the correct dt.
   void observe_timestamp_sample(
     uint64_t timestamp_sample_us);
 
-  // Run one PX4-equivalent rate-controller update from a new
-  // VehicleAngularVelocity sample. timestamp_sample_us drives dt exactly as
-  // MulticopterRateControl does in the pinned PX4 implementation.
+  // Rate-controller contract:
+  //   Inputs: timestamp_sample [us], measured/setpoint FRD body rates [rad/s],
+  //           measured FRD angular acceleration [rad/s^2], and landed state.
+  //   Logic:  reproduce the pinned PX4 P/I/D/feed-forward law, dt limiting,
+  //           allocator-aware anti-windup, and yaw-torque filtering.
+  //   Output: normalized body torque plus diagnostic terms and the
+  //           post-update integrator state.
   Output update(
     uint64_t timestamp_sample_us,
     const math::Vector3 & rate,

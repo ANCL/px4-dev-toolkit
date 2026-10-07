@@ -1,3 +1,14 @@
+"""Launch the finite native Position-mode takeoff/hover/land experiment.
+
+Without recording:
+    launch the flight node and propagate its exit status.
+
+With recording:
+    start rosbag first, allow DDS discovery, then start the flight node. The
+    flight node owns maneuver completion; its exit stops rosbag, and launch
+    terminates only after the recorder has finalized.
+"""
+
 from datetime import datetime
 from pathlib import Path
 
@@ -26,11 +37,12 @@ RECORDER_STARTUP_SECONDS = 1.0
 
 def find_repo_root() -> Path:
     """
-    Locate px4_env from either the source or installed launch-file path.
+    Locate the toolkit root from either the source or installed launch path.
 
     colcon installs this launch file below ros2/install/, which is still inside
-    the repository. Repository markers keep bag output anchored to px4_env/bags
-    instead of depending on the shell's current working directory.
+    the repository. Repository markers keep bag output anchored to the
+    repository's bags/ directory instead of depending on the shell's current
+    working directory.
     """
     start = Path(__file__).resolve()
 
@@ -43,7 +55,7 @@ def find_repo_root() -> Path:
             return path
 
     raise RuntimeError(
-        f"Could not locate px4_env repository root from {start}"
+        f"Could not locate toolkit repository root from {start}"
     )
 
 
@@ -215,8 +227,12 @@ def launch_setup(context):
         ]
 
     def on_bag_exit(_event, _context):
+        # The recorder is deliberately stopped with SIGINT after the flight
+        # process exits. A signal-based recorder return code is therefore not
+        # itself an experiment failure. Failure is determined by premature
+        # recorder exit or by the flight/controller process return code.
         actions = [
-            LogInfo(msg=["Bag saved: ", str(bag_path)]),
+            LogInfo(msg=["Bag output: ", str(bag_path)]),
         ]
 
         flight_returncode = flight_exit_code["value"]

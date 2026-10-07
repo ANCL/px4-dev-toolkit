@@ -41,6 +41,9 @@ void expect_vector_near(
 }
 
 
+// Fixture:
+//   Representative F450/PX4 rate-loop parameters. Expected controller terms
+//   are derived independently from these values.
 offboard_controllers::px4_rate::Parameters
 f450_parameters(
   double yaw_cutoff_hz = 0.0)
@@ -57,6 +60,9 @@ f450_parameters(
 }
 
 
+// Oracle:
+//   Independent expression of the pinned PX4
+//   RateControl::updateIntegral() attenuation.
 double integration_factor(
   double error)
 {
@@ -224,6 +230,9 @@ void test_dt_limits_match_px4_wrapper()
 }
 
 
+// Invariant:
+//   PX4 anti-windup blocks only error that drives farther into saturation;
+//   opposite-sign error remains available to unwind the axis.
 void test_allocator_saturation_blocks_matching_integration()
 {
   using namespace offboard_controllers;

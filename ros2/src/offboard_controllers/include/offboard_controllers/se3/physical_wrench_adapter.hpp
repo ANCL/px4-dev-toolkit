@@ -89,21 +89,22 @@ struct Output
 };
 
 
-// Convert a feasible physical body wrench into the normalized control
-// coordinates expected by the pinned PX4 control allocator.
+// Physical-wrench adapter contract:
 //
-// collective_thrust_n is the positive magnitude along body -Z.
-// moment_nm is an FRD body moment.
+// Inputs:
+//   collective_thrust_n  positive collective magnitude along FRD body -Z [N]
+//   moment_nm             requested FRD body moment [N m]
+//   parameters            physical rotors, propulsion curve, and pinned PX4
+//                         allocator geometry
 //
-// The conversion explicitly composes:
+// Logic:
+//   physical wrench -> feasible rotor thrusts -> normalized motor controls
+//   -> pinned-PX4 allocator coordinates. Collective is bounded first; body
+//   moment is uniformly scaled only when required for rotor feasibility.
 //
-//   physical wrench
-//     -> physical rotor thrusts
-//     -> normalized motor controls
-//     -> normalized PX4 torque/thrust setpoint
-//
-// The final step reproduces the pinned PX4 multirotor pseudo-inverse
-// normalization. No guessed maximum-torque constant is used.
+// Output:
+//   PX4-normalized torque/thrust plus physical allocation diagnostics.
+//   No assumed maximum-torque constant is introduced.
 Output adapt(
   const Parameters & parameters,
   double collective_thrust_n,

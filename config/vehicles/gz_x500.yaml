@@ -13,6 +13,10 @@ source:
   gazebo_model: Tools/simulation/gz/models/x500/model.sdf
   gazebo_base_model: Tools/simulation/gz/models/x500_base/model.sdf
 
+# Mass and PX4 hover-thrust data support the non-physical SE(3) handoffs.
+# No validated physical actuator-thrust mapping is curated here, so the
+# geometric_physical direct controller is not supported for this vehicle.
+
 plant:
   frame: FLU
 

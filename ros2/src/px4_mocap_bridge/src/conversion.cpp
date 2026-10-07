@@ -1,3 +1,21 @@
+/*
+ * ROS mocap pose -> PX4 external-vision odometry conversion.
+ *
+ * Data flow:
+ *
+ *   PoseStamped
+ *     ENU world / FLU body
+ *       -> validate finite pose and non-zero quaternion
+ *       -> normalize orientation
+ *       -> ENU position -> NED
+ *       -> ENU/FLU orientation -> NED/FRD
+ *       -> choose publication and measurement timestamps
+ *       -> VehicleOdometry pose
+ *
+ * PoseStamped carries no velocity or uncertainty estimates, so those PX4
+ * fields are explicitly marked unavailable rather than synthesized.
+ */
+
 #include "px4_mocap_bridge/conversion.hpp"
 
 #include <cmath>
@@ -117,6 +135,9 @@ px4_msgs::msg::VehicleOdometry convert_pose(
   const Eigen::Quaterniond orientation_px4 =
     ros_to_px4_orientation(orientation_ros);
 
+  // PX4 distinguishes the message publication time from the measurement
+  // sample time. Fall back to now_us when the mocap source does not provide
+  // a usable capture timestamp.
   uint64_t sample_us = now_us;
 
   if (
@@ -128,6 +149,9 @@ px4_msgs::msg::VehicleOdometry convert_pose(
       ros_time_to_microseconds(pose.header.stamp);
   }
 
+  // PoseStamped supplies pose only. Mark velocity, angular velocity, and
+  // covariance-like variance fields unavailable with NaN rather than zero;
+  // zero would incorrectly assert measured zero motion or zero uncertainty.
   const float nan =
     std::numeric_limits<float>::quiet_NaN();
 

@@ -29,9 +29,17 @@ namespace offboard_controllers::px4_rate
 namespace
 {
 
+// PX4 clamps the gyro-sample interval before running the multicopter rate
+// controller. Preserve the same bounds so integrator and filter dynamics match
+// the pinned implementation even after scheduling stalls or timestamp jitter.
 constexpr double kMinimumDtS = 0.000125;
 constexpr double kMaximumDtS = 0.02;
+
 constexpr double kPi = 3.14159265358979323846;
+
+// PX4 progressively reduces integral action as angular-rate error approaches
+// 400 deg/s. This limits integral accumulation during large transients without
+// introducing a discontinuous enable/disable threshold.
 constexpr double kIntegratorErrorScale =
   400.0 * kPi / 180.0;
 
@@ -105,6 +113,8 @@ Controller::Controller(
             "PX4 yaw-torque cutoff must be finite and non-negative.");
   }
 
+  // PX4 stores rate K separately from P/I/D. The effective controller
+  // gains are K multiplied component-wise by the corresponding P/I/D values.
   gain_p_ =
     math::component_product(
       parameters_.k,
@@ -120,6 +130,9 @@ Controller::Controller(
       parameters_.k,
       parameters_.d);
 
+  // PX4 applies a first-order low-pass filter only to yaw torque. Store its
+  // continuous-time constant here; update() recomputes alpha from the measured
+  // sample interval exactly as AlphaFilter::update(sample, dt) does.
   if (
     parameters_.yaw_torque_cutoff_hz >
     std::numeric_limits<float>::epsilon())
@@ -164,6 +177,8 @@ Output Controller::update(
   const math::Vector3 & angular_acceleration,
   bool landed)
 {
+  // MulticopterRateControl derives dt from VehicleAngularVelocity
+  // timestamp_sample rather than wall-clock execution time.
   const uint64_t elapsed_us =
     timestamp_sample_us - last_run_us_;
 
@@ -178,11 +193,22 @@ Output Controller::update(
   const math::Vector3 rate_error =
     rate_setpoint - rate;
 
+  // PX4 rate-loop law:
+  //
+  //   tau = Kp .* e_rate
+  //       + I
+  //       - Kd .* angular_acceleration
+  //       + Kff .* rate_setpoint
+  //
+  // The derivative term uses the measured angular acceleration supplied by
+  // VehicleAngularVelocity; PX4 does not finite-difference the rate error here.
   const math::Vector3 proportional_feedback =
     math::component_product(
       gain_p_,
       rate_error);
 
+  // The torque for this sample uses the integrator state from the beginning
+  // of the update. PX4 updates the integrator only after computing torque.
   const math::Vector3 integral_feedback =
     integrator_;
 
@@ -212,6 +238,9 @@ Output Controller::update(
           integration_error,
           axis);
 
+      // Control-allocation feedback gates only the error direction that
+      // would drive an already-unachievable torque farther into saturation.
+      // Error that helps unwind the saturation is still integrated.
       if (saturation_positive_[axis]) {
         error =
           std::min(
@@ -226,6 +255,11 @@ Output Controller::update(
             0.0);
       }
 
+      // Smoothly attenuate I gain for large rate errors:
+      //
+      //   i_factor = max(0, 1 - (e / e_scale)^2)
+      //
+      // with e_scale = 400 deg/s, matching PX4 RateControl::updateIntegral().
       double i_factor =
         error /
         kIntegratorErrorScale;
@@ -235,6 +269,9 @@ Output Controller::update(
           0.0,
           1.0 - i_factor * i_factor);
 
+      // First-order integral update followed by the configured PX4
+      // per-axis integrator limit. Invalid numerical results are discarded
+      // rather than contaminating the persistent controller state.
       const double candidate =
         component(integrator_, axis) +
         i_factor *
@@ -255,6 +292,13 @@ Output Controller::update(
   math::Vector3 normalized_torque =
     unfiltered_torque;
 
+  // Reproduce PX4 AlphaFilter on yaw torque:
+  //
+  //   alpha = dt / (tau + dt)
+  //   y_k   = y_{k-1} + alpha (u_k - y_{k-1})
+  //
+  // A zero cutoff leaves tau at zero, giving alpha=1 and therefore a
+  // pass-through yaw command.
   const double denominator =
     yaw_filter_time_constant_s_ +
     dt_s;

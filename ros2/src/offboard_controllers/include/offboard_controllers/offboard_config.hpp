@@ -10,6 +10,8 @@
 namespace offboard_controllers
 {
 
+// Initial Offboard setpoint in PX4 local NED coordinates:
+// position [m], yaw [rad].
 struct InitialSetpoint
 {
   float x;
@@ -19,12 +21,18 @@ struct InitialSetpoint
 };
 
 
-/*
- * Offboard setpoints are intentionally required parameters.
- *
- * No values are duplicated in C++: launch files load config/offboard.yaml and
- * startup fails if a required value is absent or invalid.
- */
+// Initial-setpoint loading contract:
+//
+// Inputs:
+//   required initial_x/y/z [m] and initial_yaw [rad] ROS parameters.
+//
+// Logic:
+//   require every parameter and reject non-finite values. Defaults are not
+//   duplicated in C++; launch configuration remains the source of values.
+//
+// Output:
+//   validated PX4 local-NED InitialSetpoint. Missing/invalid configuration
+//   terminates startup with a descriptive exception.
 inline InitialSetpoint load_initial_setpoint(
   rclcpp::Node & node)
 {

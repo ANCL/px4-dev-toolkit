@@ -1,6 +1,18 @@
 #!/usr/bin/python3 -s
 
-"""Compare two or more recorded SE3 experiment bags."""
+"""Compare two or more recorded SE(3) experiment bags.
+
+Flow:
+    bags from one analysis profile
+      -> analyze each bag independently
+      -> align runs to confirmed PX4 Offboard entry
+      -> build common physical comparison views
+      -> optionally resolve configured maneuver boundaries
+      -> write comparison summary and overlay figures
+
+Only the SE(3) profile is accepted because controller-comparison semantics are
+defined explicitly for that experiment family.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +22,7 @@ import sys
 
 
 def find_repo_root() -> Path:
-    """Locate px4_env from this executable."""
+    """Locate the toolkit root from this executable."""
     start = Path(__file__).resolve()
 
     for path in (
@@ -25,7 +37,7 @@ def find_repo_root() -> Path:
             return path
 
     raise RuntimeError(
-        "Could not locate px4_env repository root "
+        "Could not locate toolkit repository root "
         f"from {start}"
     )
 
@@ -56,7 +68,12 @@ from analysis.profiles.se3.comparison import (  # noqa: E402
 def default_study_output(
     bag_paths: list[Path],
 ) -> Path:
-    """Use <study>/comparison when all bags belong to one sequence study."""
+    """Resolve the default comparison directory for one sequence study.
+
+    All bags must be direct children of the same study's bags/ directory and
+    that study must contain manifest.json; otherwise output location is
+    ambiguous and the caller must provide --output.
+    """
     parents = {
         path.parent.resolve()
         for path in bag_paths

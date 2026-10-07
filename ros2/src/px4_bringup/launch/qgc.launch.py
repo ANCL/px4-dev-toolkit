@@ -7,7 +7,7 @@ from launch.actions import ExecuteProcess, LogInfo
 
 
 def find_repo_root() -> Path:
-    """Locate px4_env from the installed or source launch-file location."""
+    """Locate the toolkit root from the installed or source launch path."""
     start = Path(__file__).resolve()
 
     for path in (start.parent, *start.parents):
@@ -18,7 +18,7 @@ def find_repo_root() -> Path:
         ):
             return path
 
-    raise RuntimeError(f"Could not locate px4_env repository root from {start}")
+    raise RuntimeError(f"Could not locate toolkit repository root from {start}")
 
 
 def read_env_file(path: Path) -> dict[str, str]:

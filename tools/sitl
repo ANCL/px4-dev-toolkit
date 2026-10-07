@@ -291,7 +291,12 @@ start_stack() {
 
     if [[ "${START_XRCE_AGENT}" == "true" ]]; then
         local xrce_command
-        xrce_command="$(launch_command xrce.launch.py "transport:=${XRCE_AGENT_TRANSPORT}" "port:=${XRCE_AGENT_PORT}")"
+        xrce_command="$(
+            launch_command \
+                xrce.launch.py \
+                "transport:=${XRCE_AGENT_TRANSPORT}" \
+                "port:=${XRCE_AGENT_PORT}"
+        )"
 
         tmux new-window \
             -t "${TMUX_SESSION}:" \
@@ -414,8 +419,8 @@ signal_alive_pids() {
 }
 
 # Gazebo can detach/reparent while PX4 is shutting down. Match the world path
-# inside this repository so cleanup targets only this px4_env simulator and
-# does not kill an unrelated Gazebo session on the workstation.
+# below this repository so cleanup targets only its simulator and does not kill
+# an unrelated Gazebo session on the workstation.
 repo_gazebo_root_pids() {
     local world_marker="${ROOT}/px4/PX4-Autopilot/Tools/simulation/gz/worlds/"
     local pid

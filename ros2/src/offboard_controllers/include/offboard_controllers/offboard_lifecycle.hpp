@@ -11,6 +11,16 @@ enum class OffboardTransition
 };
 
 
+// Offboard-transition contract:
+//
+// Inputs:
+//   previous and current interpretations of PX4's authoritative nav_state.
+//
+// Logic:
+//   classify only edges of Offboard ownership.
+//
+// Output:
+//   ENTERED, LOST, or NONE for lifecycle initialization and teardown.
 inline OffboardTransition offboard_transition(
   bool was_active,
   bool is_active)

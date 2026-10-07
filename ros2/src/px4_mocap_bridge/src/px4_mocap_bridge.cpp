@@ -27,6 +27,24 @@ using VehicleOdometry = px4_msgs::msg::VehicleOdometry;
 
 }  // namespace
 
+/*
+ * Mocap bridge runtime:
+ *
+ * Input:
+ *   one configured geometry_msgs/PoseStamped motion-capture stream.
+ *
+ * Action:
+ *   reject invalid poses, convert ENU/FLU -> NED/FRD, and publish PX4
+ *   VehicleOdometry using sensor-data QoS.
+ *
+ * Timing:
+ *   VehicleOdometry.timestamp is ROS publication time. timestamp_sample is the
+ *   source PoseStamped header time when enabled and non-zero, otherwise the
+ *   publication time is used as the measurement-time fallback.
+ *
+ * Output:
+ *   /fmu/in/vehicle_mocap_odometry for PX4 estimator ingestion.
+ */
 class Px4MocapBridge : public rclcpp::Node
 {
 public:
@@ -44,6 +62,9 @@ public:
         "mocap_topic must identify a PoseStamped motion-capture topic.");
     }
 
+    // Motion capture is a live sensor stream: prefer the newest available
+    // measurement over retransmission of stale poses. SensorDataQoS requests
+    // the intended best-effort, volatile behavior for this subscription.
     subscription_ = create_subscription<PoseStamped>(
       mocap_topic_,
       rclcpp::SensorDataQoS(),
@@ -75,6 +96,8 @@ private:
       return;
     }
 
+    // Capture publication time once so timestamp and fallback timestamp_sample
+    // refer to the same callback instant.
     const uint64_t now_us =
       static_cast<uint64_t>(
         get_clock()->now().nanoseconds() / 1000LL);

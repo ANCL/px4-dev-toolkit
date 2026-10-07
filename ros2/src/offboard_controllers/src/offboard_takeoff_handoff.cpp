@@ -34,7 +34,10 @@ namespace px4_topics
  *       -> wait until an independent controller enters Offboard
  *       -> exit while MAVProxy keeps the centered joystick alive
  *
- * This helper never requests Offboard itself.
+ * Ownership:
+ *   MAVProxy owns the continuous MANUAL_CONTROL stream. This helper changes
+ *   virtual-joystick state through the local control socket and sends PX4
+ *   mode/arming commands, but never requests Offboard itself.
  */
 class OffboardTakeoffHandoff : public rclcpp::Node
 {
@@ -44,6 +47,9 @@ public:
     initial_setpoint_(
       offboard_controllers::load_initial_setpoint(*this))
   {
+    // PX4 uXRCE-DDS output topics are live vehicle-state streams. Use
+    // SensorDataQoS so consumers prefer fresh state over retransmission of
+    // stale samples.
     const auto sensor_qos = rclcpp::SensorDataQoS();
 
     vehicle_status_sub_ =
@@ -99,6 +105,8 @@ public:
   }
 
 private:
+  // State-machine deadlines are safety/lifecycle timeouts and must continue
+  // monotonically even if ROS/simulation time is paused or reset.
   using SteadyClock = std::chrono::steady_clock;
 
   enum class Phase
@@ -241,6 +249,8 @@ private:
 
   void leave_joystick_safe()
   {
+    // An armed Position-mode vehicle is left with centered sticks so PX4 holds
+    // its current state. Minimum throttle is restored only when disarmed.
     try {
       if (
         arming_state_ ==
@@ -360,6 +370,12 @@ private:
   }
 
 
+  // State-machine contract:
+  //   Inputs: PX4 status/local position and MAVProxy virtual-joystick access.
+  //   Action: establish manual input, enter Position mode, arm, climb to the
+  //           configured staging altitude, then center the joystick.
+  //   Exit: success when PX4 confirms Offboard ownership by the controller;
+  //         invalid state, disarm, or timeout is a failure.
   void run()
   {
     using VehicleStatus = px4_msgs::msg::VehicleStatus;
@@ -417,6 +433,8 @@ private:
 
 
       case Phase::WARMUP_JOYSTICK:
+        // Establish the continuously streamed MAVLink manual-control state
+        // before issuing mode or arming commands.
         if (phase_elapsed_seconds() < kJoystickWarmupSeconds) {
           return;
         }
@@ -498,6 +516,7 @@ private:
           return;
         }
 
+        // PX4 local NED uses positive z Down, so climbing upward decreases z.
         if (local_z_ <= initial_setpoint_.z) {
           if (!center_joystick()) {
             return;

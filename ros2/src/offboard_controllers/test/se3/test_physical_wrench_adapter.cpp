@@ -42,6 +42,9 @@ void expect_vector_near(
 }
 
 
+// Fixture:
+//   Mirror F450 physical propulsion and pinned PX4 allocator geometry
+//   independently of adapt() for round-trip verification.
 offboard_controllers::physical_wrench_adapter::Parameters
 f450_parameters()
 {
@@ -135,6 +138,10 @@ struct PhysicalWrench
 };
 
 
+// Oracle:
+//   Independent forward physical model. Keeping this calculation outside the
+//   adapter prevents the round-trip test from reusing the implementation it is
+//   intended to verify.
 PhysicalWrench physical_wrench_from_rotor_signals(
   const std::array<double, 4> & control)
 {

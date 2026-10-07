@@ -1,0 +1,48 @@
+name: PR Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-tests-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  toolkit-tests:
+    name: Toolkit tests
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check shell syntax
+        run: |
+          git ls-files -z '*.sh' | xargs -0 -r -n1 bash -n
+
+      - name: Check Python syntax
+        run: |
+          git ls-files -z '*.py' | xargs -0 -r python3 -m py_compile
+
+      - name: Install ROS 2 Jazzy
+        run: ./setup/install_ros2_jazzy.sh
+
+      - name: Install common tools
+        run: ./setup/install_common_tools.sh
+
+      - name: Fetch pinned sources
+        run: ./setup/fetch_sources.sh common
+
+      - name: Install PX4 development dependencies
+        run: ./setup/install_px4_dependencies.sh sitl
+
+      - name: Build ROS 2 workspace
+        run: ./ros2/build.sh
+
+      - name: Run toolkit tests
+        run: ./ros2/test.sh

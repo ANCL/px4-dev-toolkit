@@ -1,0 +1,46 @@
+name: px4-dev-toolkit
+
+x-toolkit-build: &toolkit-build
+  context: ..
+  dockerfile: docker/Dockerfile
+
+services:
+  sitl:
+    image: px4-dev-toolkit:sitl
+    build:
+      <<: *toolkit-build
+      target: sitl
+    network_mode: host
+    init: true
+    stdin_open: true
+    tty: true
+    command: ["sleep", "infinity"]
+    volumes:
+      - sitl-bags:/opt/px4-dev-toolkit/bags
+      - sitl-log:/opt/px4-dev-toolkit/log
+      - ../config/runtime/common.env:/opt/px4-dev-toolkit/config/runtime/common.env:ro
+      - ../config/runtime/sitl.env:/opt/px4-dev-toolkit/config/runtime/sitl.env:ro
+
+  experiment:
+    image: px4-dev-toolkit:experiment
+    build:
+      <<: *toolkit-build
+      target: experiment
+    network_mode: host
+    init: true
+    stdin_open: true
+    tty: true
+    command: ["sleep", "infinity"]
+    devices:
+      - "${PX4_DOCKER_DEVICE:-/dev/ttyUSB0}:/dev/ttyUSB0"
+    volumes:
+      - experiment-bags:/opt/px4-dev-toolkit/bags
+      - experiment-log:/opt/px4-dev-toolkit/log
+      - ../config/runtime/common.env:/opt/px4-dev-toolkit/config/runtime/common.env:ro
+      - ../config/runtime/experiment.env:/opt/px4-dev-toolkit/config/runtime/experiment.env:ro
+
+volumes:
+  sitl-bags:
+  sitl-log:
+  experiment-bags:
+  experiment-log:

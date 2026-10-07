@@ -1,0 +1,34 @@
+# Git metadata is not needed in image build contexts.
+.git/
+
+# Recorded/generated runtime data.
+bags/
+log/
+build/
+install/
+
+# Repository-managed generated environments.
+.venv/
+.pytest_cache/
+**/__pycache__/
+**/*.py[cod]
+
+# ROS 2 build products.
+ros2/build/
+ros2/install/
+ros2/log/
+
+# External repositories are fetched from the pinned manifests during the
+# image build rather than copied from the developer workstation.
+px4/PX4-Autopilot/
+ros2/src/px4_msgs/
+ros2/src/Micro-XRCE-DDS-Agent/
+ros2/src/vicon_receiver/
+tools/MAVProxy/
+
+# Repository-managed downloaded applications.
+tools/qgroundcontrol/*.AppImage
+
+# Editor/OS noise.
+**/*~
+**/.DS_Store

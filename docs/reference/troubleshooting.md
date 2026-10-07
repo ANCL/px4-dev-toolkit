@@ -74,7 +74,7 @@ ls -l /dev/ttyACM* /dev/ttyUSB* 2>/dev/null
 ```bash
 docker run --rm -it --network host \
   --device=/dev/ttyACM0:/dev/ttyUSB0 \
-  ghcr.io/hosnooo/px4-dev-toolkit-experiment:latest bash
+  ghcr.io/ancl/px4-dev-toolkit-experiment:latest bash
 ```
 
 With Compose:

@@ -1,6 +1,5 @@
 ---
 hide:
-  - navigation
   - toc
 ---
 
@@ -13,6 +12,7 @@ hide:
   </p>
   <div class="px4-actions">
     <a href="#choose-an-installation" class="md-button md-button--primary">Get started</a>
+    <a href="#documentation" class="md-button">Documentation</a>
     <a href="https://github.com/ANCL/px4-dev-toolkit" class="md-button">View on GitHub</a>
   </div>
 </div>
@@ -92,6 +92,11 @@ For a new simulation user:
 
 ## Documentation
 
-The documentation covers installation, simulation and hardware environments, controllers, experiment workflows, analysis, architecture, configuration, extension points, and troubleshooting.
+Browse all documentation using the sidebar, or jump directly to a topic:
 
-[Browse the repository](https://github.com/ANCL/px4-dev-toolkit)
+- **Installation:** [Docker](installation/docker.md) · [Native](installation/native.md)
+- **Environments:** [SITL](environments/sitl.md) · [Hardware](environments/hardware.md)
+- **Controllers:** [Overview](controllers/overview.md) · [SE(3)](controllers/se3.md) · [Trajectories](controllers/trajectories.md)
+- **Workflows:** [Recording](workflows/recording.md) · [Sequences](workflows/sequences.md)
+- **Analysis:** [Single-run analysis](analysis/analysis.md) · [Comparison](analysis/comparison.md)
+- **Reference:** [Architecture](reference/architecture.md) · [Configuration](reference/configuration.md) · [Extending](reference/extending.md) · [Troubleshooting](reference/troubleshooting.md)

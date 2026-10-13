@@ -1,6 +1,12 @@
+<!-- Preserve existing section links. -->
+<span id="docker-installation-sitl"></span>
+
 # Docker installation
 
 The maintained image runs PX4 SITL with Gazebo. It includes Ubuntu 24.04, ROS 2 Jazzy, Gazebo Harmonic, compiled PX4/ROS packages, the Micro XRCE-DDS Agent, MAVProxy, controller examples, recording, and analysis. The native [hardware installation](native.md) supplies Vicon and serial companion services separately.
+
+<!-- Preserve existing section links. -->
+<span id="verification"></span>
 
 ## Published SITL image
 
@@ -62,6 +68,9 @@ Only the `sitl` service/build target is maintained. Compose uses **named volumes
 ## Graphical simulation
 
 The complete example uses headless Gazebo and the configured MAVProxy frontend. To run a GUI, the container needs access to your host display and graphics devices; the maintained Compose file does not add those mappings. Configure them for your host before using `./tools/sitl start`, or use [native installation](native.md) for the documented desktop path. `headless` disables the Gazebo GUI; it does not remove the GCS or DDS services.
+
+<!-- Preserve existing section links. -->
+<span id="further-reading"></span>
 
 ## Stopping
 

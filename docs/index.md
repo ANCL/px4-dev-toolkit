@@ -36,6 +36,9 @@ Develop, test, record, and analyze PX4 and ROS 2 controllers in Gazebo and on ph
   </figure>
 </div>
 
+<!-- Preserve existing section links. -->
+<span id="from-simulation-to-hardware"></span>
+
 ## From an idea to a recorded flight
 
 Set up the environment, run a flight, record its signals, then read the results. **Software-in-the-loop (SITL)** runs PX4, the aircraft's flight-control software, against a Gazebo simulation. On a physical vehicle, a native companion computer connects **ROS 2**, the message-based robotics framework, to PX4 and the motion-capture system.
@@ -45,6 +48,11 @@ Docker provides the maintained simulation image. Native Ubuntu supports both sim
 ## Understand what each controller calculates
 
 PX4 can track a position reference, or accept commands farther down its control stack. The toolkit's **SE(3)** controller describes position and rotation together and offers six configurations, from acceleration requests to direct thrust and torque. The [controller overview](controllers/overview.md) explains the choices; the [mathematical chapters](controllers/se3/foundations.md) connect them to the implementation.
+
+<!-- Preserve existing section links. -->
+<span id="choose-an-installation"></span>
+<span id="suggested-first-journey"></span>
+<span id="documentation"></span>
 
 ## Start here
 

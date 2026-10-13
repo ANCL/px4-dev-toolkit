@@ -1,6 +1,17 @@
+<!-- Preserve existing section links. -->
+<span id="configuration-ownership"></span>
+<span id="rule-of-thumb"></span>
+
 # Configuration files
 
 Use this reference to find where a setting belongs. Physical facts, controller tuning, requested motion, and runtime connectivity have separate files so a change has a clear meaning.
+
+<!-- Preserve existing section links. -->
+<span id="ownership-map"></span>
+<span id="configruntimecommonenv"></span>
+<span id="configruntimesitlenv"></span>
+<span id="configruntimehardwareenv"></span>
+<span id="px4-topics"></span>
 
 ## Where to change a setting
 
@@ -19,6 +30,13 @@ Use this reference to find where a setting belongs. Physical facts, controller t
 | External repository revisions | [config/sources](https://github.com/ANCL/px4-dev-toolkit/tree/main/config/sources) |
 | Validated host/tools and managed application versions | [config/versions.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/versions.env) |
 
+<!-- Preserve existing section links. -->
+<span id="runtime-configuration"></span>
+<span id="vehicle-configuration"></span>
+<span id="controller-tuning"></span>
+<span id="trajectories"></span>
+<span id="sequences"></span>
+
 ## Selection and when changes take effect
 
 Environment wrappers source their `.env` files when invoked. Changing a file does not update an already-running tmux process. Stop/restart at an appropriate time to apply service changes; do not stop a flight's required communication as a configuration shortcut.
@@ -27,11 +45,17 @@ The standard SE(3) launch loads the installed controller tuning, then supplies v
 
 Sequences select launches and their arguments; the runner overrides recording output for its study. It does not change gains or calibrations. Keep the configuration used with the recorded data so later trajectory-aware analysis does not read changed maneuver definitions.
 
+<!-- Preserve existing section links. -->
+<span id="external-sources-and-versions"></span>
+
 ## Missing data and source pins
 
 Missing hover calibration or physical propulsion data deliberately limits supported modes. Do not invent values to pass validation. Gains belong in controller tuning rather than vehicle files; Vicon host/device identifiers belong in the site-specific runtime configuration rather than public walkthroughs.
 
 `config/sources/*.repos` specifies what exact revisions to fetch. `config/versions.env` records tested tools and managed download pins; it is not a declaration that arbitrary installed versions were automatically verified. Source fetch behavior is described in [native installation](../installation/native.md#pinned-external-sources).
+
+<!-- Preserve existing section links. -->
+<span id="next"></span>
 
 ## Documentation media
 

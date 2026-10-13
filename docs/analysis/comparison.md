@@ -1,6 +1,15 @@
+<!-- Preserve existing section links. -->
+<span id="se3-comparison"></span>
+
 # Comparing SE(3) controllers
 
 A useful comparison holds the vehicle, trajectory, tuning context, and test conditions consistent, then examines both tracking and actuation. The current `px4_compare` CLI supports **two or more SE(3) bags**; other experiment profiles are not interchangeable with these metrics.
+
+<!-- Preserve existing section links. -->
+<span id="basic-usage"></span>
+<span id="output-directory"></span>
+<span id="handoff-study-example"></span>
+<span id="outputs"></span>
 
 ## Compare a completed study
 
@@ -11,6 +20,9 @@ Use the actual finalized six-mode study from the [complete example](../experimen
 ```
 
 If bags are direct children of one study `bags/` directory with a `manifest.json`, output defaults to `<study>/comparison/`. For separately recorded bags, define an array containing their actual paths and provide `--output`; do not assume directory naming supplies experiment identity. The tool writes `summary.txt` and overlay PNGs. It does not reset or execute controllers.
+
+<!-- Preserve existing section links. -->
+<span id="labels"></span>
 
 ## Offboard alignment
 
@@ -29,6 +41,9 @@ Normalized torque is not N·m. Hover calibration, actuator mapping, frames, PX4 
 **Figure slot — controller comparison.** Approved study data will supply NED position-error magnitude [m] and motor envelope [normalized], aligned to confirmed Offboard entry [s], with maneuver windows labeled. This slot reserves evidence; it reports no measured advantage.
 
 </div>
+
+<!-- Preserve existing section links. -->
+<span id="comparison-implementation"></span>
 
 ## Metric definitions
 
@@ -65,6 +80,9 @@ Motor metrics use the maximum absolute motor envelope, not measured electrical p
 Step response normalizes measured motion by the signed configured amplitude. The target is the first reference **strictly after** the boundary. The window includes one immediately following hold when present. Settling requires all remaining sampled errors within the larger of **0.02 m or 5% of step amplitude**. Residual uses the final 0.5 s; integral absolute error uses trapezoidal integration in m·s. Multi-axis steps are excluded from single-axis step metrics.
 
 Yaw/figure-eight windows use start-inclusive/end-exclusive intervals. Yaw errors wrap to $[-180,180)$ degrees. Threshold crossings are observed sample times, not interpolated synthetic crossing times. Missing crossings or coverage can yield unavailable/NaN values.
+
+<!-- Preserve existing section links. -->
+<span id="next"></span>
 
 ## Before drawing a conclusion
 

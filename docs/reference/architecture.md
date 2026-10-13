@@ -1,6 +1,13 @@
+<!-- Preserve existing section links. -->
+<span id="architecture"></span>
+
 # Software structure
 
 The toolkit keeps environment services, flight/controller nodes, and recorded-data analysis separate. Starting an environment prepares communication and simulation; it does not execute a controller experiment.
+
+<!-- Preserve existing section links. -->
+<span id="sitl-data-flow"></span>
+<span id="hardware-data-flow"></span>
 
 ## How the parts connect
 
@@ -27,6 +34,9 @@ flowchart TB
 
 The current simulator estimator uses configured Gazebo/external-vision aiding plus IMU. The hardware bridge supplies pose; estimator configuration on the actual vehicle remains separate. Read the [environment guides](../environments/sitl.md) for process windows rather than treating these diagrams as launch commands.
 
+<!-- Preserve existing section links. -->
+<span id="reading-the-source-code"></span>
+
 ## Where to find the code
 
 | Read for | Entry point | Follow into |
@@ -40,11 +50,26 @@ The current simulator estimator uses configured Gazebo/external-vision aiding pl
 | Run a study | [tools/run_sequence](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/run_sequence) | `tools/sequence/`, manifest and experiment metadata |
 | Analyze/compare | [analysis](https://github.com/ANCL/px4-dev-toolkit/tree/main/analysis) | Bag loader, signal extraction/statistics, profiles, reporting/plots |
 
+<!-- Preserve existing section links. -->
+<span id="px4_bringup"></span>
+<span id="px4_control_common"></span>
+<span id="px4_position_mode"></span>
+<span id="offboard_controllers"></span>
+<span id="px4_mocap_bridge"></span>
+<span id="controller-pipeline-ownership"></span>
+<span id="topic-catalog"></span>
+
 ## ROS 2 packages
 
 `px4_bringup` provides agent/GCS launchers. `px4_control_common` provides recording and the virtual-joystick client. `px4_position_mode` contains the reference flight and independent-Offboard staging examples. `offboard_controllers` contains position-reference/SE(3) nodes, analytic trajectories, vehicle loading, rate reproduction, and physical adaptation. `px4_mocap_bridge` combines Vicon launch with pose conversion.
 
 Pure controller laws describe the calculation; runtime modules select modes, gather state, and publish PX4 messages. The central topic catalog connects C++ interfaces, recording selection, and Python analysis without independent lists of literal topic names.
+
+<!-- Preserve existing section links. -->
+<span id="repository-architecture"></span>
+<span id="sourceruntimedata-separation"></span>
+<span id="python-analysis-module-boundaries"></span>
+<span id="next"></span>
 
 ## Source, runtime, and data
 

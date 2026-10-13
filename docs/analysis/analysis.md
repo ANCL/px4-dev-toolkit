@@ -1,6 +1,13 @@
+<!-- Preserve existing section links. -->
+<span id="single-run-analysis"></span>
+
 # Analyzing one run
 
 `px4_analyze` loads one finalized rosbag, selects an experiment profile, and writes a textual summary plus available plots. Start with the summary to establish what happened before interpreting a curve.
+
+<!-- Preserve existing section links. -->
+<span id="run"></span>
+<span id="output-location"></span>
 
 ## Run and outputs
 
@@ -20,6 +27,9 @@ Here `bag_path` must refer to the actual finalized bag, not an invented timestam
 
 The summary is written before plotting. A plotting dependency failure can leave a usable summary and a warning. Required-topic or data errors can prevent analysis entirely; optional missing topics suppress the corresponding observations. The reader supports rosbag storage backends through their installed ROS plugins, using `metadata.yaml` to select the storage identifier.
 
+<!-- Preserve existing section links. -->
+<span id="analysis-flow"></span>
+
 ## Profile detection
 
 Registered profiles are `position_takeoff_hover`, `offboard_takeoff_handoff`, `offboard_position`, and `se3`. [detect_profile_name](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/__init__.py) prefers `experiment.json`; otherwise it uses the parent directory name. Study metadata is therefore necessary for bags stored under arbitrary step names.
@@ -34,6 +44,10 @@ The full bag establishes lifecycle events. SE(3) extraction begins at confirmed 
 
 Reference signals are interpolated onto measured-signal times over their common interval. Stable sorting retains the first reference value at duplicate times. Do not compare arrays by index just because their rates look similar.
 
+<!-- Preserve existing section links. -->
+<span id="se3-analysis"></span>
+<span id="interpreting-the-summary"></span>
+
 ## Read the summary first
 
 Check profile, controller identity, bag duration, arming and mode transitions, prestream, handoff timing, and missing signals. Then read tracking and control statistics. Two statistical treatments appear in the code:
@@ -42,6 +56,10 @@ Check profile, controller identity, bag duration, arming and mode transitions, p
 - Common Offboard performance and maneuver metrics use time-weighted RMS from trapezoidal squared-error integration, explained in [comparison](comparison.md#metric-definitions).
 
 Uneven logging rates can make these numbers differ. Read the table's context instead of applying one generic RMS interpretation to every metric.
+
+<!-- Preserve existing section links. -->
+<span id="source-organization"></span>
+<span id="next"></span>
 
 ## Interpret the plots
 

@@ -1,6 +1,12 @@
+<!-- Preserve existing section links. -->
+<span id="sitl-environment"></span>
+
 # Running SITL
 
 **SITL** runs PX4 flight software on the workstation while **Gazebo** simulates the aircraft and its sensors. The launcher starts the environment services; controller launches are separate.
+
+<!-- Preserve existing section links. -->
+<span id="what-the-launcher-owns"></span>
 
 ## How the parts connect
 
@@ -13,6 +19,14 @@ flowchart TB
 ```
 
 MAVLink carries ground-control messages. uXRCE-DDS connects PX4 to ROS 2 through the agent, so ROS nodes can receive state and send setpoints. A **setpoint** is the requested value, such as a position or body rate, that a controller tries to reach.
+
+<!-- Preserve existing section links. -->
+<span id="cli"></span>
+<span id="start-with-gazebo-gui"></span>
+<span id="start-without-gazebo-gui"></span>
+<span id="inspect-status"></span>
+<span id="stop"></span>
+<span id="ros-2-connectivity"></span>
 
 ## Start, inspect, and stop
 
@@ -57,6 +71,12 @@ After the aircraft is landed and disarmed, in a **repository-root shell**:
 ```
 
 The wrapper shuts down the tmux process trees, then searches for Gazebo processes associated with this repository. Use it instead of killing tmux alone.
+
+<!-- Preserve existing section links. -->
+<span id="ground-control-frontend"></span>
+<span id="typical-controller-workflow"></span>
+<span id="configuration-boundary"></span>
+<span id="next"></span>
 
 ## Current default runtime
 

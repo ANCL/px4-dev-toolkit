@@ -1,6 +1,12 @@
+<!-- Preserve existing section links. -->
+<span id="hardware-environment"></span>
+
 # Physical hardware
 
 On a physical vehicle, PX4 firmware is already running on the flight controller. A **companion computer** runs the toolkit's ROS 2 services and communicates with PX4 over serial. Install the native `hardware` profile; the maintained Docker image supports SITL.
+
+<!-- Preserve existing section links. -->
+<span id="vicon-and-mocap-path"></span>
 
 ## Runtime architecture
 
@@ -14,6 +20,9 @@ flowchart TB
 ```
 
 **Vicon** is the motion-capture system supplying the aircraft pose. The bridge converts ROS east-north-up (ENU) world coordinates and forward-left-up (FLU) body orientation to PX4 north-east-down (NED) and forward-right-down (FRD). It normalizes the quaternion and publishes pose through `VehicleOdometry`. The input contains pose only: velocity, angular velocity, and variance fields are marked unavailable with NaN. Sample time uses a valid source header when configured, otherwise publication time. See the [conversion source](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_mocap_bridge/src/conversion.cpp).
+
+<!-- Preserve existing section links. -->
+<span id="cli"></span>
 
 ## What starts
 
@@ -34,6 +43,9 @@ Starting again attaches to the existing session. Use **Ctrl-b, then d** to detac
 
 In normal physical flight, Position mode is ordinarily flown with the pilot's **real RC transmitter or joystick**. The MAVProxy virtual joystick mainly imitates manual inputs in repeatable SITL examples; it does not replace the pilot's flight controls.
 
+<!-- Preserve existing section links. -->
+<span id="start-checklist"></span>
+
 ## Runtime configuration
 
 Use [config/runtime/hardware.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/hardware.env) for the actual serial device/baud, Vicon host, object topic, frame names, world transform, and timestamp behavior. These are site-specific values; the checked-in examples are not universal lab settings. The wrapper currently requires `serial` transport when it starts the agent.
@@ -51,6 +63,9 @@ ros2 topic list
 ```
 
 Inspect the Vicon pose and converted odometry on the configured topics, then verify PX4's estimator response. A running tmux session or agent is a service check; it is not proof of a flight-ready vehicle.
+
+<!-- Preserve existing section links. -->
+<span id="next"></span>
 
 ## Pre-flight requirements
 

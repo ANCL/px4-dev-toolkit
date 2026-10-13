@@ -1,3 +1,6 @@
+<!-- Preserve existing section links. -->
+<span id="experiment-sequences"></span>
+
 # Running a series of experiments
 
 `tools/run_sequence` runs ordered ROS launches from YAML. It preserves each launch's output, gives recorded steps deterministic bag paths, and records the study result in a manifest. Environment startup and preparing the aircraft remain separate.
@@ -58,6 +61,11 @@ bags/se3_handoff_comparison/<timestamp>/
 
 `manifest.json` records running/completed steps, commands, times, exit codes, log paths, and finalized bags. `experiment.json` supplies profile and effective arguments for analysis, including direct-controller selection. It is written only after finalization is detected, including a finalized bag from a failed step; finalization and successful flight are different facts.
 
+<!-- Preserve existing section links. -->
+<span id="process-ownership"></span>
+<span id="settle-time"></span>
+<span id="handoff-comparison-study"></span>
+
 ## Ordering, settling, and interruption
 
 The study runs acceleration, attitude, attitude rate, geometric normalized torque, PX4 rate, and geometric physical moment, each with `gz_f450`, `full_excitation`, diagnostics, and recording. Each SE(3) node returns to Position mode before ending. The runner waits **3 seconds between successful steps**.
@@ -65,6 +73,9 @@ The study runs acceleration, attitude, attitude rate, geometric normalized torqu
 That delay is not a vehicle reset, landing, arming action, or a flight-readiness check. Position can drift between steps, and each controller re-anchors. Confirm the required initial condition and watch the study; do not treat it as a guarantee of independent identical starting states.
 
 Each launch has a process group. Ctrl-C stops the launch tree and preserves per-step logs and the manifest. It can interrupt a live controller stream: recover the aircraft through prepared flight controls and verify mode/arming state before stopping services. A completed controller is not proof the recorder exited cleanly.
+
+<!-- Preserve existing section links. -->
+<span id="next"></span>
 
 ## Compare the completed study
 

@@ -2,6 +2,10 @@
 
 Start from the symptom, inspect the relevant state, then fix the cause. Commands below assume the stated environment and a repository-root shell. Resolve communication/frame problems before changing controller gains.
 
+<!-- Preserve existing section links. -->
+<span id="gazebo-commandconfiguration-is-missing"></span>
+<span id="qgroundcontrol-is-selected-but-unavailable"></span>
+
 ## Installation
 
 | Symptom | Check | Next action |
@@ -13,6 +17,12 @@ Start from the symptom, inspect the relevant state, then fix the cause. Commands
 | Container cannot write bags/logs | Bind-mount ownership and image UID/GID | Prepare writable host directories for the container user; keep the data mounts |
 
 The source fetcher is intentionally non-destructive. Read [native installation](../installation/native.md) and the reported source path before attempting recovery.
+
+<!-- Preserve existing section links. -->
+<span id="toolssitl-rejects-the-command"></span>
+<span id="sitl-rejects-gcs"></span>
+<span id="ros-2-dds-topics-are-missing"></span>
+<span id="a-stopped-tmux-session-leaves-gazebo-running"></span>
 
 ## Simulation and DDS
 
@@ -32,6 +42,11 @@ For simulation staging that waits without climbing, check MAVProxy and the virtu
 
 If a stopped tmux session leaves Gazebo running, use `./tools/sitl stop` **after flight has ended**. Its repository-scoped cleanup handles detached simulator processes; stopping communication is not a flight recovery action.
 
+<!-- Preserve existing section links. -->
+<span id="companion-computer-serial-device-is-missing"></span>
+<span id="toolshardware-rejects-the-xrce-transport"></span>
+<span id="viconmocap-data-is-missing"></span>
+
 ## Hardware and Vicon
 
 | Symptom | Check | Next action |
@@ -43,6 +58,9 @@ If a stopped tmux session leaves Gazebo running, use `./tools/sitl stop` **after
 
 Use [Physical hardware](../environments/hardware.md) for service and flight-readiness checks. Companion process status does not prove estimator health, RC/failsafe behavior, or a valid actuator mapping.
 
+<!-- Preserve existing section links. -->
+<span id="controller-refuses-a-vehiclehandoff-combination"></span>
+
 ## Controller and vehicle
 
 A missing `hover_thrust` or physical configuration is a mode-compatibility issue. Choose a supported mode from [vehicle requirements](adding-a-vehicle.md); calibrate/derive missing facts in separate vehicle work. Six-rotor data cannot satisfy the current four-rotor physical adapter.
@@ -50,6 +68,11 @@ A missing `hover_thrust` or physical configuration is a mode-compatibility issue
 If SE(3) waits for state, inspect position/velocity validity and the selected mode's attitude/rate needs. Its heartbeat can continue while state is invalid; heartbeat presence is not proof control output is running. If Offboard is rejected or lost, inspect PX4 estimator/mode status and acknowledgements. Confirm actual `nav_state`, not only an accepted mode command.
 
 After a failed or interrupted run, restore a known vehicle state before retrying. Consult the controller's [lifecycle description](../controllers/se3.md#when-the-controller-starts-and-stops) instead of assuming every node arms, restarts, or lands identically.
+
+<!-- Preserve existing section links. -->
+<span id="sequence-runner-says-ros2-is-unavailable"></span>
+<span id="comparison-output-cannot-be-inferred"></span>
+<span id="next"></span>
 
 ## Recording and analysis
 

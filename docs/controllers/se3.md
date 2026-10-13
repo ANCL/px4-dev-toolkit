@@ -1,6 +1,13 @@
+<!-- Preserve existing section links. -->
+<span id="geometric-se3-controller"></span>
+
 # SE(3) control
 
 **SE(3)** combines a position in three-dimensional space with a rotation in **SO(3)**, the set of proper three-dimensional rotation matrices. For a multicopter, position feedback determines a desired force, and that force plus heading determines an attitude. The toolkit can stop its calculation at several stages and ask PX4 to calculate the rest.
+
+<!-- Preserve existing section links. -->
+<span id="runtime-flow"></span>
+<span id="control-ownership"></span>
 
 ## Six configurations
 
@@ -24,6 +31,9 @@ The diagram shows the complete calculation. Each configuration publishes earlier
 | [Geometric physical](se3/geometric-physical.md) | `handoff:=thrust_and_torque direct_controller:=geometric_physical` | Physical wrench converted to normalized thrust and torque | Allocation |
 
 The geometric normalized law uses SO(3) tracking errors directly in normalized torque coordinates. The PX4 rate option reproduces a particular pinned rate loop. The physical law computes an inertia-based moment and uses a separate adapter. They are distinct controllers, even though they publish the same PX4 message types.
+
+<!-- Preserve existing section links. -->
+<span id="launch"></span>
 
 ## Run a controller
 
@@ -58,6 +68,13 @@ The wall timer publishes the Offboard heartbeat even while waiting for state. Re
 | `gz_fy690s` | Mass supplied | No curated hover thrust | Six rotors; current adapter unavailable |
 
 The physical path uses its propulsion curve instead of `MPC_THR_HOVER`. Adding data does not make the four-rotor adapter generic. See [Adding a vehicle](../reference/adding-a-vehicle.md) for exact requirements.
+
+<!-- Preserve existing section links. -->
+<span id="frames-units-and-timing"></span>
+<span id="tuning-ownership"></span>
+<span id="diagnostics"></span>
+<span id="recording-and-comparison"></span>
+<span id="next"></span>
 
 ## Read the mathematics
 

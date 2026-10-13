@@ -1,3 +1,7 @@
+<!-- Preserve existing section links. -->
+<span id="extending-the-toolkit"></span>
+<span id="extension-map"></span>
+
 # Adding to the toolkit
 
 New capabilities should fit the existing separation between physical facts, requested motion, controller calculations, ROS/PX4 transport, and recorded-data analysis. Begin with the nearest working example and keep each setting in its [canonical configuration file](configuration.md).
@@ -22,17 +26,29 @@ Use the package's recording list and symbolic [PX4 topic catalog](https://github
 
 Create a YAML under `config/sequences/` selecting existing launches and arguments. Use the [six-mode study](../workflows/sequences.md) for recording paths, manifests, and settle semantics. Do not duplicate controller gains or vehicle physics in the sequence.
 
+<!-- Preserve existing section links. -->
+<span id="extend-comparison-analysis"></span>
+
 ## Add an analysis profile
 
 Profiles live in [analysis/profiles](https://github.com/ANCL/px4-dev-toolkit/tree/main/analysis/profiles). Define `PROFILE_NAME`, required/optional topics, `analyze`, summary/plot behavior, and registration in `analysis/profiles/__init__.py`. Reuse bag loading and shared signal/statistics helpers. Include meaningful analysis regression tests under `analysis/tests/`.
 
 Comparison support requires an explicit definition of comparable quantities and time origin. `px4_compare` currently accepts SE(3) only; registering a new single-run profile does not automatically create valid comparison semantics.
 
+<!-- Preserve existing section links. -->
+<span id="add-a-user-facing-tool"></span>
+<span id="add-a-ros-2-package"></span>
+<span id="add-or-update-an-external-source"></span>
+
 ## Add a tool, package, or external source
 
 Put user-facing commands in `tools/` and internal helpers with their component. Resolve repository configuration without duplicating it, validate arguments, and stop any process trees the command creates. For a new ROS package, provide normal package/CMake metadata and choose its dependencies; update the maintained-package test selection only when the package needs inclusion.
 
 Pin external repositories in the appropriate `config/sources/*.repos` scope. Ordinary controller development does not require changing pinned upstream PX4.
+
+<!-- Preserve existing section links. -->
+<span id="before-committing-an-extension"></span>
+<span id="related"></span>
 
 ## Verification before contributing
 

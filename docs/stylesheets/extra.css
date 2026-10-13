@@ -47,3 +47,8 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* Markdown wraps hero links in a paragraph; give its links individual gaps. */
+.px4-actions > p { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; margin: 0; }
+:root { --md-typeset-a-color: #37677f; }
+[data-md-color-scheme="slate"] { --md-typeset-a-color: #8ec4de; }

@@ -68,6 +68,11 @@ $$
 
 The 1:2 phase relationship produces a planar Lissajous figure eight. Chain-rule derivatives through snap use the same scaled phase. The path crosses its origin; heading remains the segment origin yaw.
 
+<!-- Preserve existing section links. -->
+<span id="extending"></span>
+<span id="analysis-relationship"></span>
+<span id="next"></span>
+
 ## Checked-in trajectories
 
 A **type** (`line`) describes the sampler. A **segment name** (`line_x_2m`) supplies parameters. A **trajectory name** (`line_tracking`) orders segment names. The loader also accepts a segment name directly as a one-segment trajectory.

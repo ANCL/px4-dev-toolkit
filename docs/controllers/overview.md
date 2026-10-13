@@ -1,6 +1,12 @@
+<!-- Preserve existing section links. -->
+<span id="controller-overview"></span>
+
 # Controllers
 
 The toolkit includes a PX4 reference flight, a simulation staging helper, an external position-reference node, and a configurable SE(3) controller. Each changes a different part of the experiment.
+
+<!-- Preserve existing section links. -->
+<span id="available-workflows"></span>
 
 ## What each method sends
 
@@ -15,11 +21,21 @@ The toolkit includes a PX4 reference flight, a simulation staging helper, an ext
 
 **Control allocation** maps a requested vehicle thrust/torque to individual actuator commands using the configured aircraft geometry and limits. It remains in PX4 for every documented controller mode.
 
+<!-- Preserve existing section links. -->
+<span id="native-position-mode-reference-experiment"></span>
+<span id="position-mode-staging-helper"></span>
+<span id="offboard-position-controller"></span>
+
 ## Begin with the reference
 
 [Position mode and switching to Offboard](position-mode.md) explains the reference flight and the separate staging helper. The helper prepares the simulated aircraft for an independent controller; it does not itself enter Offboard.
 
 [Offboard position control](offboard-position.md) sends the shared trajectory position and feedforward to PX4. This is the simplest reference for an external ROS controller. It can request arming and confirms mode changes through PX4 status.
+
+<!-- Preserve existing section links. -->
+<span id="se3"></span>
+<span id="recording-and-studies"></span>
+<span id="next"></span>
 
 ## Move the calculation into the toolkit
 

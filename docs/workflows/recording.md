@@ -1,3 +1,6 @@
+<!-- Preserve existing section links. -->
+<span id="recording-experiments"></span>
+
 # Recording
 
 Recording captures a flight's messages, not just its final controller result. Add `record:=true` to the supported launch to start a recorder before the node and stop it after node exit.
@@ -25,6 +28,10 @@ ros2 launch px4_position_mode position_takeoff_hover.launch.py record:=true
 
 This produces `bags/position_takeoff_hover/<timestamp>/`. For the separate airborne staging demonstration, the equivalent launch is `offboard_takeoff_handoff.launch.py` and the bag family is `offboard_takeoff_handoff`. Do not run those demonstrations concurrently.
 
+<!-- Preserve existing section links. -->
+<span id="record-offboard-position"></span>
+<span id="record-se3"></span>
+
 ## Record Offboard position or SE(3)
 
 After preparing the aircraft for the chosen controller, use **one** launch in a **separate repository-root shell**. Offboard position:
@@ -46,11 +53,19 @@ ros2 launch offboard_controllers se3.launch.py \
 
 They create `bags/offboard_position/<timestamp>/` and `bags/se3/<timestamp>/` respectively. SE(3) additionally supports `recording_output` for an explicit **new** directory; the study runner uses that argument for deterministic paths. Existing output paths are rejected rather than overwritten.
 
+<!-- Preserve existing section links. -->
+<span id="topic-ownership"></span>
+<span id="se3-recording-scope"></span>
+
 ## Topic selection
 
 PX4 topic names are symbolic entries in [config/px4_topics.def](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/px4_topics.def). Package [recording lists](https://github.com/ANCL/px4-dev-toolkit/tree/main/ros2/src/offboard_controllers/config/recording) select those symbols. SE(3) recording also permits absolute toolkit diagnostic topic names.
 
 The SE(3) list captures state/status, estimator/failsafe context, heartbeat, handoff setpoints, downstream PX4 setpoints, allocation/motors, and the generated trajectory. Diagnostics need `publish_diagnostics:=true` to produce samples; listing a topic does not cause a publisher to run.
+
+<!-- Preserve existing section links. -->
+<span id="finalization-contract"></span>
+<span id="analyze-a-bag"></span>
 
 ## Finalization and inspection
 
@@ -73,6 +88,9 @@ test -n "$bag_path" && ros2 bag info "$bag_path"
 ```
 
 Confirm topic names/counts, duration, readable storage, and expected early/late messages. Metadata presence is necessary for the runner, but does not prove the experiment succeeded or every required signal exists.
+
+<!-- Preserve existing section links. -->
+<span id="next"></span>
 
 ## Interrupted recording
 

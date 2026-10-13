@@ -20,6 +20,8 @@ get_filename_component(
   ABSOLUTE
 )
 
+# Keep ENU/FLU -> NED/FRD conversion independently testable; the ROS
+# executable owns subscriptions, timestamp sourcing, and publication.
 add_library(mocap_conversion STATIC
   src/conversion.cpp
 )

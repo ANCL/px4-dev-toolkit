@@ -93,6 +93,10 @@ comparison/
 
 The plot set focuses on common physical quantities that remain meaningful across different handoff boundaries, with segment context when requested.
 
+## Comparison implementation
+
+SE(3) comparison retains its `analysis.profiles.se3.comparison` public imports. Its implementation is divided into model/trajectory resolution, maneuver metrics, report formatting and plotting. Comparison windows and output fields retain their established definitions.
+
 ## Next
 
 - [SE(3)](../controllers/se3.md)

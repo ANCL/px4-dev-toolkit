@@ -1,4 +1,9 @@
 repositories:
+  px4/PX4-Autopilot:
+    type: git
+    url: https://github.com/ANCL/PX4-Autopilot.git
+    version: f5083ca2c5b919350880e8667e636ef70715db17
+
   tools/MAVProxy:
     type: git
     url: https://github.com/ArduPilot/MAVProxy.git

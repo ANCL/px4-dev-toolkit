@@ -9,7 +9,7 @@ This page describes the toolkit's ownership boundaries and data flow. Operationa
 ```text
 analysis/    pure Python bag analysis, profiles, plots, comparisons
 config/      project-wide runtime/vehicle/topic/sequence/source/version config
-docker/      multi-stage SITL and hardware images + Compose
+docker/      SITL-only multi-stage image + Compose
 px4/         PX4 build helper; fetched PX4 source lives below this directory
 ros2/        ROS 2 workspace and maintained toolkit packages
 setup/       native install and pinned-source reconstruction
@@ -17,6 +17,25 @@ tools/       user-facing runtime, study, and analysis entry points
 ```
 
 Fetched third-party repositories are reconstructed under `px4/`, `ros2/src/`, and `tools/` from the pinned manifests in `config/sources/*.repos`. They are kept separate from toolkit-owned code.
+
+## Reading the source code
+
+Start at a user-facing command or ROS launch file, then follow the component
+that owns the behavior. Runtime environments and experiments are independent:
+starting SITL or hardware services does not arm the vehicle or execute a study.
+
+| Task | Read from | Follow into |
+|---|---|---|
+| Start an environment | `tools/sitl` or `tools/hardware` | `config/runtime/`, `tools/runtime/`, `ros2/src/px4_bringup/launch/` |
+| Install and reconstruct dependencies | `setup/install.sh` | `setup/fetch_sources.sh`, `config/sources/*.repos`, `ros2/build.sh` |
+| Run Position-mode or Offboard control | ROS launch files in `ros2/src/` | Package `src/*/node.cpp`, then state, lifecycle, control, and publication modules |
+| Understand SE(3) control | `ros2/src/offboard_controllers/src/se3/node.cpp` | `src/se3/runtime/`, then stateless `src/se3/control/` laws and the trajectory library |
+| Run a recorded study | `tools/run_sequence` | `tools/sequence/`, controller launch files, `px4_control_common.recording` |
+| Analyze or compare a bag | `tools/px4_analyze` or `tools/px4_compare` | `analysis/core.py`, `analysis/pipeline/`, `analysis/profiles/` |
+
+A file-level description should explain ownership, data flow, units/frames,
+process lifecycle, or a non-obvious invariant. Comments that simply restate a
+function name or line of code add no useful information.
 
 ## ROS 2 packages
 
@@ -28,13 +47,13 @@ Owns reusable process launchers for services such as the uXRCE-DDS Agent and QGr
 
 Owns shared control-side utilities, including the client used to control the repository MAVProxy virtual joystick.
 
-### `px4_position_takeoff_hover`
+### `px4_position_mode`
 
-Owns the native PX4 Position-mode reference flight experiment and its recording launch.
+Owns native Position-mode flight and Offboard staging tools, with their recording launches.
 
 ### `offboard_controllers`
 
-Owns the Offboard staging helper, independent position controller, SE(3) controller, trajectory library, reproduced PX4 rate-control logic, physical-wrench adaptation, vehicle-config loading, launch files, and controller recording configuration.
+Owns the independent Offboard position controller, SE(3) controller, trajectory library, reproduced PX4 rate-control logic, physical-wrench adaptation, vehicle-config loading, launch files, and controller recording configuration.
 
 ### `px4_mocap_bridge`
 
@@ -71,7 +90,7 @@ flowchart LR
     B --> A[analysis]
 ```
 
-The hardware runtime wrapper (`tools/experiment`) owns Vicon reception/bridge and XRCE agent process lifecycle; physical PX4 firmware runs on the flight controller.
+The hardware runtime wrapper (`tools/hardware`) owns Vicon reception/bridge and XRCE agent process lifecycle; physical PX4 firmware runs on the flight controller.
 
 ## Controller pipeline ownership
 
@@ -107,6 +126,10 @@ C++ controller code, recording configuration, and Python analysis resolve the sa
 - **rosbag** captures immutable run data,
 - **experiment metadata/manifests** preserve run context,
 - **analysis** consumes the recorded data without changing the experiment.
+
+## Python analysis module boundaries
+
+`analysis/core.py` owns rosbag loading and receive-time alignment. `analysis/pipeline/` owns common PX4 signal extraction, statistics and presentation; `analysis/profiles/` owns experiment-specific semantics. The SE(3) profile and its comparison package use small modules without changing their external Python import paths. Experiment launch files retain package-specific node settings, while `px4_control_common.recording` owns rosbag lifecycle and recording-flag parsing.
 
 ## Next
 

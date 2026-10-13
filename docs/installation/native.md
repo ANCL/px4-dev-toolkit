@@ -28,20 +28,20 @@ The installer exposes four profiles:
 ```bash
 ./setup/install.sh common
 ./setup/install.sh sitl
-./setup/install.sh experiment
+./setup/install.sh hardware
 ./setup/install.sh all
 ```
 
 | Profile | Use it for | Adds |
 |---|---|---|
-| `common` | shared ROS/toolkit development | ROS 2 Jazzy, common tools, common pinned sources, ROS workspace build |
-| `sitl` | PX4 + Gazebo simulation | common + SITL PX4 dependencies + MAVProxy + SITL sources |
-| `experiment` | companion-computer physical stack | common + experiment PX4 dependencies + Vicon source |
-| `all` | workstation that needs both environments | SITL + hardware sources and dependencies + MAVProxy + QGroundControl |
+| `common` | shared ROS/toolkit development | ROS 2 Jazzy base, core build tools, common pinned sources, ROS workspace build |
+| `sitl` | PX4 + Gazebo simulation | ROS desktop, PX4 SITL and Gazebo dependencies, MAVProxy |
+| `hardware` | companion-computer physical stack | ROS-base, companion build tools, pinned Vicon source, DDS, no PX4 firmware checkout |
+| `all` | workstation that needs both environments | Both native source sets and runtimes, MAVProxy, QGroundControl |
 
 `GCS=qgc` is a valid SITL runtime choice, but the `sitl` installer profile installs MAVProxy, not QGroundControl. Use `all` or run `./setup/install_qgroundcontrol.sh` if you want QGroundControl managed by the toolkit.
 
-The setup scripts may use `sudo` to install host packages.
+The hardware profile does not fetch PX4-Autopilot, initialize PX4 submodules, install simulation dependencies, or install ARM firmware toolchains. The setup scripts may use `sudo` to install host packages.
 
 ## Source pin behavior
 
@@ -50,7 +50,7 @@ External repositories are declared in:
 ```text
 config/sources/common.repos
 config/sources/sitl.repos
-config/sources/experiment.repos
+config/sources/hardware.repos
 ```
 
 `setup/fetch_sources.sh` does not reset already-present external repositories. If a source scope is partially populated, it refuses to modify it automatically rather than creating a mixed checkout.
@@ -83,7 +83,7 @@ Before invoking ROS 2 commands manually:
 source ros2/runtime_env.sh
 ```
 
-The user-facing `tools/sitl` and `tools/experiment` wrappers source the repository runtime environment inside the tmux processes they create.
+The user-facing `tools/sitl` and `tools/hardware` wrappers source the repository runtime environment inside the tmux processes they create.
 
 ## Verification
 
@@ -99,10 +99,10 @@ Then start it:
 ./tools/sitl start headless
 ```
 
-For the `experiment` installation profile, review `config/runtime/experiment.env`, verify the serial device, then use:
+For the `hardware` installation profile, review `config/runtime/hardware.env`, verify the serial device, then use:
 
 ```bash
-./tools/experiment status
+./tools/hardware status
 ```
 
 For physical hardware, continue with the [Hardware environment](../environments/hardware.md) checklist before flight.

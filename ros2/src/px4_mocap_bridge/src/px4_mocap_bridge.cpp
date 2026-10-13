@@ -1,3 +1,5 @@
+// ROS bridge forwarding motion-capture pose into PX4 visual odometry.
+
 #include <cstdint>
 #include <functional>
 #include <memory>

@@ -1,3 +1,6 @@
+// Numerical and frame-convention oracles for the Vicon-to-PX4 bridge.
+// Tests cover ENU/FLU -> NED/FRD orientation, invalid poses, missing
+// velocity/variance, and publication versus sample timestamps.
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -92,8 +95,8 @@ void test_invalid_pose()
 }
 
 // Oracle:
- //   ENU position [1, 2, 3] becomes NED [2, 1, -3]. ROS identity
- //   ENU/FLU orientation becomes the fixed NED/FRD frame-conversion rotation.
+//   ENU position [1, 2, 3] becomes NED [2, 1, -3]. ROS identity
+//   ENU/FLU orientation becomes the fixed NED/FRD frame-conversion rotation.
 void test_frame_conversion()
 {
   const auto odometry =
@@ -187,8 +190,8 @@ void test_yaw_frame_conversion()
 
 
 // Oracle:
- //   Exercise a non-yaw rotation so the test verifies body-frame FLU -> FRD
- //   conversion rather than only the ENU -> NED world-axis remapping.
+//   Exercise a non-yaw rotation so the test verifies body-frame FLU -> FRD
+//   conversion rather than only the ENU -> NED world-axis remapping.
 void test_roll_frame_conversion()
 {
   auto pose = identity_pose();
@@ -218,8 +221,8 @@ void test_roll_frame_conversion()
 
 
 // Invariant:
- //   Publication time always populates timestamp. timestamp_sample uses a
- //   non-zero source header only when header-time use is enabled.
+//   Publication time always populates timestamp. timestamp_sample uses a
+//   non-zero source header only when header-time use is enabled.
 void test_timestamp_selection()
 {
   auto pose = identity_pose();

@@ -1,20 +1,5 @@
-/*
- * ROS mocap pose -> PX4 external-vision odometry conversion.
- *
- * Data flow:
- *
- *   PoseStamped
- *     ENU world / FLU body
- *       -> validate finite pose and non-zero quaternion
- *       -> normalize orientation
- *       -> ENU position -> NED
- *       -> ENU/FLU orientation -> NED/FRD
- *       -> choose publication and measurement timestamps
- *       -> VehicleOdometry pose
- *
- * PoseStamped carries no velocity or uncertainty estimates, so those PX4
- * fields are explicitly marked unavailable rather than synthesized.
- */
+// Convert ENU/FLU motion-capture PoseStamped into PX4 NED/FRD odometry.
+// Missing linear/angular velocity and variance measurements use NaN.
 
 #include "px4_mocap_bridge/conversion.hpp"
 

@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>px4_position_mode</name>
+  <version>0.1.0</version>
+  <description>ROS 2 utilities for native PX4 Position-mode flight and Offboard staging.</description>
+
+  <maintainer email="mohssen.elshaar@gmail.com">Mohssene</maintainer>
+  <license>BSD-3-Clause</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>px4_msgs</depend>
+  <depend>px4_control_common</depend>
+
+  <!-- Runtime dependencies used only by the Python launch orchestration. -->
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>rosbag2</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

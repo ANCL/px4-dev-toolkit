@@ -1,0 +1,298 @@
+#!/usr/bin/env bash
+# Own the native companion-computer services: Vicon reception, PX4 mocap
+# conversion, and optionally the serial XRCE agent. Flight firmware and
+# controller experiments are started independently; this wrapper never arms.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+source "${ROOT}/config/runtime/common.env"
+source "${ROOT}/tools/runtime/processes.sh"
+source "${ROOT}/tools/runtime/session.sh"
+source "${ROOT}/config/runtime/hardware.env"
+
+RUNTIME_ENV="${ROOT}/ros2/runtime_env.sh"
+TMUX_CONFIG="${ROOT}/config/tmux.conf"
+
+ACTION="${1:-}"
+
+usage() {
+    echo "Usage:"
+    echo "  ./tools/hardware start"
+    echo "  ./tools/hardware status"
+    echo "  ./tools/hardware stop"
+}
+
+require_config_value() {
+    local name="$1"
+
+    if [[ -z "${!name-}" ]]; then
+        echo "ERROR: missing ${name} in config/runtime/hardware.env." >&2
+        exit 1
+    fi
+}
+
+require_boolean() {
+    local name="$1"
+    local value="${!name-}"
+
+    case "${value}" in
+        true|false) ;;
+        *)
+            echo "ERROR: ${name} must be either 'true' or 'false'." >&2
+            exit 1
+            ;;
+    esac
+}
+
+if (( $# != 1 )); then
+    usage
+    exit 2
+fi
+
+case "${ACTION}" in
+    start|status|stop) ;;
+    *)
+        usage
+        exit 2
+        ;;
+esac
+
+require_config_value TMUX_SESSION
+
+if ! command -v tmux >/dev/null 2>&1; then
+    echo "ERROR: tmux is not installed." >&2
+    exit 1
+fi
+
+session_exists() {
+    tmux has-session -t "${TMUX_SESSION}" 2>/dev/null
+}
+
+# Launch-command contract:
+#   Inputs: package, launch file, and ROS launch arguments.
+#   Action: source the repository runtime inside the tmux pane, then exec the
+#           launch process so tmux owns the actual ROS process tree.
+#   Output: one shell-escaped command suitable for tmux.
+ros_launch_command() {
+    local package="$1"
+    local launch_file="$2"
+    shift 2
+
+    local command
+    local argument
+    local escaped
+
+    printf -v command \
+        'source %q && exec ros2 launch %q %q' \
+        "${RUNTIME_ENV}" \
+        "${package}" \
+        "${launch_file}"
+
+    for argument in "$@"; do
+        printf -v escaped ' %q' "${argument}"
+        command+="${escaped}"
+    done
+
+    printf 'bash -lc %q' "${command}"
+}
+
+validate_start_config() {
+    require_boolean START_XRCE_AGENT
+    require_boolean VICON_MAP_RPY_IN_DEGREES
+    require_boolean MOCAP_USE_HEADER_STAMP
+
+    require_config_value VICON_HOSTNAME
+    require_config_value VICON_BUFFER_SIZE
+    require_config_value VICON_TOPIC_NAMESPACE
+    require_config_value VICON_WORLD_FRAME
+    require_config_value VICON_FRAME
+    require_config_value VICON_MAP_XYZ
+    require_config_value VICON_MAP_RPY
+    require_config_value MOCAP_TOPIC
+
+    if [[ "${START_XRCE_AGENT}" == "true" ]]; then
+        require_config_value XRCE_AGENT_TRANSPORT
+        require_config_value XRCE_AGENT_DEVICE
+        require_config_value XRCE_AGENT_BAUD
+
+        if [[ "${XRCE_AGENT_TRANSPORT}" != "serial" ]]; then
+            echo "ERROR: hardware XRCE transport must be 'serial'." >&2
+            exit 1
+        fi
+
+        if [[ ! "${XRCE_AGENT_BAUD}" =~ ^[1-9][0-9]*$ ]]; then
+            echo "ERROR: XRCE_AGENT_BAUD must be a positive integer." >&2
+            exit 1
+        fi
+    fi
+
+    if [[ ! "${VICON_BUFFER_SIZE}" =~ ^[1-9][0-9]*$ ]]; then
+        echo "ERROR: VICON_BUFFER_SIZE must be a positive integer." >&2
+        exit 1
+    fi
+
+    if [[ ! -f "${RUNTIME_ENV}" ]]; then
+        echo "ERROR: runtime environment script is missing:" >&2
+        echo "  ${RUNTIME_ENV}" >&2
+        exit 1
+    fi
+
+    if [[ ! -f "${TMUX_CONFIG}" ]]; then
+        echo "ERROR: missing tmux config:" >&2
+        echo "  ${TMUX_CONFIG}" >&2
+        exit 1
+    fi
+}
+
+start_stack() {
+    if session_exists; then
+        exec tmux attach-session -t "${TMUX_SESSION}"
+    fi
+
+    validate_start_config
+
+    local mocap_command
+    mocap_command="$(
+        ros_launch_command \
+            px4_mocap_bridge \
+            mocap.launch.py \
+            "hostname:=${VICON_HOSTNAME}" \
+            "buffer_size:=${VICON_BUFFER_SIZE}" \
+            "topic_namespace:=${VICON_TOPIC_NAMESPACE}" \
+            "world_frame:=${VICON_WORLD_FRAME}" \
+            "vicon_frame:=${VICON_FRAME}" \
+            "map_xyz:=${VICON_MAP_XYZ}" \
+            "map_rpy:=${VICON_MAP_RPY}" \
+            "map_rpy_in_degrees:=${VICON_MAP_RPY_IN_DEGREES}" \
+            "mocap_topic:=${MOCAP_TOPIC}" \
+            "use_header_stamp:=${MOCAP_USE_HEADER_STAMP}"
+    )"
+
+    tmux new-session \
+        -d \
+        -s "${TMUX_SESSION}" \
+        -n mocap \
+        "${mocap_command}"
+
+    if [[ "${START_XRCE_AGENT}" == "true" ]]; then
+        local xrce_command
+        xrce_command="$(
+            ros_launch_command \
+                px4_bringup \
+                xrce.launch.py \
+                "transport:=${XRCE_AGENT_TRANSPORT}" \
+                "device:=${XRCE_AGENT_DEVICE}" \
+                "baud:=${XRCE_AGENT_BAUD}"
+        )"
+
+        tmux new-window \
+            -t "${TMUX_SESSION}:" \
+            -n xrce-dds \
+            "${xrce_command}"
+    fi
+
+    tmux source-file "${TMUX_CONFIG}"
+    tmux select-window -t "${TMUX_SESSION}:mocap"
+
+    echo "tmux session: ${TMUX_SESSION}"
+    echo
+
+    tmux list-windows \
+        -t "${TMUX_SESSION}" \
+        -F '  #I: #W'
+
+    exec tmux attach-session -t "${TMUX_SESSION}"
+}
+
+
+xrce_processes() {
+    pgrep -a -x MicroXRCEAgent 2>/dev/null || true
+}
+
+vicon_processes() {
+    pgrep -af '[v]icon_client' 2>/dev/null || true
+}
+
+mocap_bridge_processes() {
+    pgrep -af '[p]x4_mocap_bridge' 2>/dev/null || true
+}
+
+show_component_status() {
+    local label="$1"
+    local configured="$2"
+    local process_function="$3"
+    local processes
+
+    processes="$("${process_function}")"
+
+    if [[ -n "${processes}" ]]; then
+        printf '%-18s running' "${label}:"
+
+        if [[ "${configured}" != "always" ]]; then
+            printf ' (configured %s)' "${configured}"
+        fi
+
+        echo
+
+        while IFS= read -r line; do
+            echo "  ${line}"
+        done <<< "${processes}"
+    else
+        printf '%-18s stopped' "${label}:"
+
+        if [[ "${configured}" != "always" ]]; then
+            printf ' (configured %s)' "${configured}"
+        fi
+
+        echo
+    fi
+}
+
+status_stack() {
+    echo "tmux session: ${TMUX_SESSION}"
+
+    if session_exists; then
+        echo "state: running"
+
+        tmux list-windows \
+            -t "${TMUX_SESSION}" \
+            -F '  #I: #W'
+    else
+        echo "state: stopped"
+    fi
+
+    echo
+
+    show_component_status \
+        "XRCE Agent" \
+        "${START_XRCE_AGENT}" \
+        xrce_processes
+
+    show_component_status \
+        "Vicon receiver" \
+        "always" \
+        vicon_processes
+
+    show_component_status \
+        "Mocap bridge" \
+        "always" \
+        mocap_bridge_processes
+}
+
+
+stop_stack() {
+    stop_owned_session "${TMUX_SESSION}"
+}
+
+case "${ACTION}" in
+    start)
+        start_stack
+        ;;
+    stop)
+        stop_stack
+        ;;
+    status)
+        status_stack
+        ;;
+esac

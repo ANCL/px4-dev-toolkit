@@ -69,18 +69,22 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument(
                 "transport",
                 default_value="udp4",
+                description="Micro XRCE-DDS transport: udp4, udp6, or serial.",
             ),
             DeclareLaunchArgument(
                 "port",
                 default_value="8888",
+                description="UDP port used by the Micro XRCE-DDS Agent.",
             ),
             DeclareLaunchArgument(
                 "device",
                 default_value="",
+                description="Serial device path when transport:=serial.",
             ),
             DeclareLaunchArgument(
                 "baud",
                 default_value="921600",
+                description="Serial baud rate when transport:=serial.",
             ),
             OpaqueFunction(
                 function=launch_agent,

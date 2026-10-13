@@ -50,8 +50,22 @@ TOOLKIT_PACKAGES=(
     px4_bringup
     px4_control_common
     px4_mocap_bridge
-    px4_position_takeoff_hover
+    px4_position_mode
 )
+
+# The SITL container deliberately excludes hardware-only ROS packages.
+# Select maintained packages actually present in the current workspace.
+mapfile -t available_packages < <(colcon list --names-only)
+selected_packages=()
+for package in "${TOOLKIT_PACKAGES[@]}"; do
+    if printf '%s\n' "${available_packages[@]}" | grep -Fxq "${package}"; then
+        selected_packages+=("${package}")
+    fi
+done
+if (( ${#selected_packages[@]} == 0 )); then
+    echo "ERROR: no toolkit ROS packages found." >&2
+    exit 1
+fi
 
 RESULT_BASE="build/toolkit_test_results"
 
@@ -70,11 +84,15 @@ python3 -m unittest discover \
     -s analysis/tests \
     -p 'test_*.py'
 analysis_status=$?
+python3 -m unittest discover \
+    -s tools/tests \
+    -p 'test_*.py'
+tools_status=$?
 
 cd "${PX4_ENV_ROOT}/ros2"
 
 colcon test \
-    --packages-select "${TOOLKIT_PACKAGES[@]}" \
+    --packages-select "${selected_packages[@]}" \
     --test-result-base "${RESULT_BASE}" \
     --return-code-on-test-failure
 test_status=$?
@@ -88,6 +106,10 @@ set -e
 
 if (( analysis_status != 0 )); then
     exit "${analysis_status}"
+fi
+
+if (( tools_status != 0 )); then
+    exit "${tools_status}"
 fi
 
 if (( test_status != 0 )); then

@@ -6,7 +6,10 @@ This chapter explains the conventions and calculations shared by the six SE(3) c
 
 The local world frame is **NED**: North, East, Down. The aircraft body frame is **FRD**: Forward, Right, Down. Both are right-handed. Position $x$ and velocity $v$ are in NED; angular velocity $\Omega$ is in the current FRD body frame. $R=[b_1\ b_2\ b_3]$ maps body vectors into NED, so $b_3=R e_3$ is the current body-down direction in world coordinates. Here $e_3=(0,0,1)^\top$.
 
-![NED and FRD axes with gravity downward and rotor thrust opposite body down](../../assets/frames.svg)
+<picture>
+  <source media="(max-width: 600px)" srcset="../../../assets/frames-mobile.svg">
+  <img src="../../../assets/frames.svg" alt="NED and FRD axes with gravity downward and rotor thrust opposite body down">
+</picture>
 
 *Frame schematic: gravity follows NED down; rotor force follows negative body Z. This is a coordinate drawing, not a measured aircraft pose.*
 

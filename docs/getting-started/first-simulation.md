@@ -28,7 +28,7 @@ Check that the expected components run and PX4 topics carry samples. Stop the ra
 
 ```bash
 ros2 topic echo /fmu/out/vehicle_local_position --qos-reliability best_effort --once
-ros2 topic echo /fmu/out/vehicle_status --qos-reliability best_effort --once
+ros2 topic echo /fmu/out/vehicle_status_v1 --qos-reliability best_effort --once
 ```
 
 Local position should have valid horizontal/vertical estimates. PX4 status should belong to the intended simulated vehicle. If state or messages are missing, resolve [simulation/DDS checks](../reference/troubleshooting.md#simulation-and-dds) before launching a flight. A topic name without samples is insufficient.

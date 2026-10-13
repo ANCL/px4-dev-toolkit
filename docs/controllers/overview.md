@@ -41,4 +41,4 @@ The toolkit includes a PX4 reference flight, a simulation staging helper, an ext
 
 The [SE(3) controller](se3.md) calculates position/velocity feedback and can continue through desired attitude, body rate, or direct torque. **SE(3)** is the mathematical space of three-dimensional position and rotation. Its six documented configurations use four `handoff` values, with three rotational laws for `thrust_and_torque`.
 
-Choose a mode according to what you want to compare and the [available vehicle data](../reference/adding-a-vehicle.md). All controllers share [named trajectories](trajectories.md); environment startup, arming/staging, controller selection, and [recording](../workflows/recording.md) are distinct steps.
+Choose a mode according to what you want to compare and the [available vehicle data](../reference/adding-a-vehicle.md). Offboard position and SE(3) share [named trajectories](trajectories.md); environment startup, arming/staging, controller selection, and [recording](../workflows/recording.md) are distinct steps.

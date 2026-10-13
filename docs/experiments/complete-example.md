@@ -65,7 +65,7 @@ Check that this is the run just recorded, especially if older bags exist. `analy
 
 ## 5. Run the six-mode study as a new experiment
 
-End the separate demonstration, land/disarm through the prepared simulation controls, and restore the required initial condition. Prepare the aircraft with the staging helper again; only begin the study once it is holding in Position mode. The study needs the full F450 physical data because its final mode uses the four-rotor adapter.
+End the separate demonstration, [land/disarm using the MAVProxy SITL procedure](../environments/sitl.md#land-and-reset-the-simulated-vehicle), and restore the required initial condition. Prepare the aircraft with the staging helper again; only begin the study once it is holding in Position mode. The study needs the full F450 physical data because its final mode uses the four-rotor adapter.
 
 In a **separate repository-root shell**:
 
@@ -96,7 +96,7 @@ The command filters finalized bag directories rather than expanding unrelated fi
 
 ## 7. End the flight and stop services
 
-A completed study leaves Position mode, not a landed/disarmed aircraft. Land/disarm the simulated aircraft with the prepared controls, confirm that state, then in a **repository-root shell**:
+A completed study leaves Position mode, not a landed/disarmed aircraft. [Land/disarm the simulated aircraft with MAVProxy and verify PX4 state](../environments/sitl.md#land-and-reset-the-simulated-vehicle), then in a **repository-root shell**:
 
 ```bash
 ./tools/sitl stop

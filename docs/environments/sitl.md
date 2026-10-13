@@ -78,6 +78,43 @@ The wrapper shuts down the tmux process trees, then searches for Gazebo processe
 <span id="configuration-boundary"></span>
 <span id="next"></span>
 
+
+## Land and reset the simulated vehicle
+
+Use this procedure **only in the documented MAVProxy SITL environment**, after the controller has completed and PX4 has confirmed its return to Position mode. It supplies the operator controls needed between separate Offboard demonstrations and before environment shutdown.
+
+In a **repository-root shell in the running simulation environment** (inside the container when using Docker), attach to the session:
+
+```bash
+tmux attach-session -t px4-sitl
+```
+
+Press **Ctrl-b, then w** and select `mavproxy`. At the **MAVProxy console**, enter this command, not a Bash command:
+
+```{ .text .copy }
+mode LAND
+```
+
+MAVProxy resolves PX4's `LAND` mode and requests it over MAVLink. Verify the mode change in console/PX4 telemetry; watch the descent and wait for ground contact. If the request is rejected or the vehicle does not descend as expected, inspect the state/logs before proceeding. This command is not an instantaneous landing or disarm.
+
+In a **second repository-root shell**, verify PX4's landing state:
+
+```bash
+source ros2/runtime_env.sh
+ros2 topic echo /fmu/out/vehicle_land_detected --qos-reliability best_effort --once
+ros2 topic echo /fmu/out/vehicle_status_v1 --qos-reliability best_effort --once
+```
+
+Require `landed: true`. Check arming state as well: `ARMING_STATE_DISARMED` is **1** in the pinned message. PX4 may disarm automatically; if it remains armed **after landed is confirmed**, return to the **MAVProxy console** and enter:
+
+```{ .text .copy }
+disarm
+```
+
+Check `/fmu/out/vehicle_status_v1` again and require disarmed state before stopping SITL or beginning another staging demonstration. Do not disarm an airborne vehicle. Once landed/disarmed, the staging helper can prepare a new flight; restore/restart the simulator if a failed experiment left a unsuitable starting state.
+
+These operator commands are verified in pinned MAVProxy [mode handling](https://github.com/ArduPilot/MAVProxy/blob/932f6945cfc7fbc6579e166667d43e327fe44f2d/MAVProxy/modules/mavproxy_mode.py) and [disarm handling](https://github.com/ArduPilot/MAVProxy/blob/932f6945cfc7fbc6579e166667d43e327fe44f2d/MAVProxy/modules/mavproxy_arm.py). They were not executed against an armed simulation for this documentation change.
+
 ## Current default runtime
 
 [config/runtime/sitl.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/sitl.env) selects the PX4 target, `gz_f450` model, world, estimator overrides, UDP DDS endpoint, optional agent, GCS, and session. The checked-in estimator settings enable external-vision/Gazebo odometry aiding and disable the other listed aiding sources. Changing these settings is a vehicle/estimator decision, not controller tuning.

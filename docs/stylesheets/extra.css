@@ -41,7 +41,7 @@
 .px4-figure-slot strong { color: var(--md-default-fg-color); }
 @media (max-width: 600px) {
   .px4-media-pair { grid-template-columns: 1fr; }
-  .md-content__inner { padding-inline: .1rem; }
+  .md-content__inner { padding-inline: .8rem; }
   .px4-hero { padding-top: .3rem; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -52,3 +52,10 @@
 .px4-actions > p { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; margin: 0; }
 :root { --md-typeset-a-color: #37677f; }
 [data-md-color-scheme="slate"] { --md-typeset-a-color: #8ec4de; }
+
+/* Keep Material code/table gutters inside the reading column on narrow screens. */
+.md-typeset .highlight, .md-typeset pre, .md-typeset .md-typeset__scrollwrap { margin-inline: 0; }
+.md-typeset .md-typeset__table { padding-inline: 0; }
+
+/* Include inline-code padding in each wrapped line, including long source SHAs. */
+.md-typeset :not(pre) > code { -webkit-box-decoration-break: clone; box-decoration-break: clone; padding-inline: .14em; }

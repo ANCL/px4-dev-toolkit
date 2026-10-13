@@ -1,37 +1,31 @@
-# Experiment sequences
+# Running a series of experiments
 
-[Documentation](../index.md) / Workflows / Sequences
-
-`tools/run_sequence` executes an ordered YAML study, preserves per-step logs, owns deterministic bag locations, and writes a manifest describing the complete run.
+`tools/run_sequence` runs ordered ROS launches from YAML. It preserves each launch's output, gives recorded steps deterministic bag paths, and records the study result in a manifest. Environment startup and preparing the aircraft remain separate.
 
 ## Run a sequence
 
-Source the ROS runtime first:
+Prepare a matching airborne F450 SITL vehicle in Position mode, valid state/DDS, adequate recording space, and no competing controller. The SE(3) launches do not arm or reset the aircraft. Check that the whole study path is appropriate for the simulation before beginning.
+
+In a **separate repository-root shell**:
 
 ```bash
 source ros2/runtime_env.sh
-```
-
-Then:
-
-```bash
 ./tools/run_sequence config/sequences/se3/handoff_comparison.yaml
 ```
 
-The runner accepts one positional argument: the YAML sequence configuration.
+The runner accepts one positional YAML path. It validates the sequence and prints the actual study directory before launching steps. It stops on a failed step or a successful recorded step whose expected bag lacks `metadata.yaml`.
 
 ## Sequence schema
 
-A sequence defines:
+The [checked-in study](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/sequences/se3/handoff_comparison.yaml) defines six steps. This **fragment** shows its shared fields and first step; it omits the other five:
 
-```yaml
-name: study_name
+```{ .yaml .no-copy }
+name: se3_handoff_comparison
 profile: se3
 recording_output_argument: recording_output
 settle_seconds: 3.0
-
 steps:
-  - name: one_step
+  - name: acceleration
     package: offboard_controllers
     launch: se3.launch.py
     arguments:
@@ -42,70 +36,36 @@ steps:
       record: true
 ```
 
-Names are restricted to letters, numbers, `.`, `_`, and `-`. Launch argument values must be strings, numbers, or booleans. The runner validates the complete sequence before creating the study directory or launching a process.
+Names permit letters, numbers, `.`, `_`, and `-`. Argument values must be strings, numbers, or booleans. The runner overrides the named recording argument for recorded steps; it does not change vehicle/gain/trajectory definitions. [tools/sequence/config.py](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/config.py) validates the complete sequence before creating the study directory.
 
 ## Study layout
 
-A run creates:
+Example directory structure, with timestamp chosen at runtime:
 
-```text
-bags/<sequence-name>/<timestamp>/
+```{ .text .no-copy }
+bags/se3_handoff_comparison/<timestamp>/
 ├── manifest.json
 ├── logs/
-│   ├── 01-<step>.log
+│   ├── 01-acceleration.log
 │   └── ...
 └── bags/
-    ├── 01-<step>/
+    ├── 01-acceleration/
+    │   ├── metadata.yaml
+    │   ├── experiment.json
+    │   └── <storage files>
     └── ...
 ```
 
-For recorded steps, the runner overrides the launch file's `recording_output` argument so each bag has a deterministic path inside the study.
+`manifest.json` records running/completed steps, commands, times, exit codes, log paths, and finalized bags. `experiment.json` supplies profile and effective arguments for analysis, including direct-controller selection. It is written only after finalization is detected, including a finalized bag from a failed step; finalization and successful flight are different facts.
 
-After a bag is finalized, `experiment.json` is written inside it with the profile, sequence, step, and effective launch arguments.
+## Ordering, settling, and interruption
 
-## Process ownership
+The study runs acceleration, attitude, attitude rate, geometric normalized torque, PX4 rate, and geometric physical moment, each with `gz_f450`, `full_excitation`, diagnostics, and recording. Each SE(3) node returns to Position mode before ending. The runner waits **3 seconds between successful steps**.
 
-Every `ros2 launch` step runs in its own process group. On interruption, the runner stops the complete launch tree rather than only the parent process.
+That delay is not a vehicle reset, landing, arming action, or a flight-readiness check. Position can drift between steps, and each controller re-anchors. Confirm the required initial condition and watch the study; do not treat it as a guarantee of independent identical starting states.
 
-Combined stdout/stderr is streamed to the terminal and to the step log.
-
-## Settle time
-
-`settle_seconds` is applied between successful steps. It is intended for the environment/vehicle to settle before the next experiment, not as part of a controller's trajectory timing.
-
-## Handoff comparison study
-
-The checked-in SE(3) study:
-
-```text
-config/sequences/se3/handoff_comparison.yaml
-```
-
-runs the same `full_excitation` trajectory through:
-
-```text
-acceleration
-attitude
-attitude_rate
-thrust_and_torque + geometric_normalized
-thrust_and_torque + px4_rate
-thrust_and_torque + geometric_physical
-```
-
-using `gz_f450`, diagnostics, and recording for every step.
+Each launch has a process group. Ctrl-C stops the launch tree and preserves per-step logs and the manifest. It can interrupt a live controller stream: recover the aircraft through prepared flight controls and verify mode/arming state before stopping services. A completed controller is not proof the recorder exited cleanly.
 
 ## Compare the completed study
 
-The bags are directly compatible with `px4_compare`. If all bags come from the same study `bags/` directory, comparison output defaults to:
-
-```text
-<study>/comparison/
-```
-
-See [Comparison](../analysis/comparison.md).
-
-## Next
-
-- [Recording](recording.md)
-- [Comparison](../analysis/comparison.md)
-- [Extending sequences](../reference/extending.md#add-a-sequence)
+Use the **actual directory printed by the runner**, check all expected steps and metadata, and follow [Comparing SE(3) controllers](../analysis/comparison.md). Output defaults to the study's `comparison/` directory when its finalized bags share the expected parent and manifest. The [complete example](../experiments/complete-example.md) shows directory discovery without a fabricated timestamp.

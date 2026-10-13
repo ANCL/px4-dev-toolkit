@@ -1,164 +1,42 @@
-# Extending the toolkit
+# Adding to the toolkit
 
-[Documentation](../index.md) / Reference / Extending
-
-Use this page when you want to add a new capability without breaking the repository's existing ownership boundaries. It points to the canonical location and the nearest existing example; detailed behavior stays in the subsystem-specific pages.
-
-## Extension map
-
-| Add | Start here | Existing example |
-|---|---|---|
-| controller or Offboard behavior | `ros2/src/offboard_controllers/` | `offboard_position`, `se3` |
-| trajectory | `ros2/src/offboard_controllers/config/trajectory/trajectories.yaml` and trajectory library | `line`, `circle`, `figure_eight` |
-| vehicle data | `config/vehicles/<vehicle>.yaml` | `gz_f450.yaml` |
-| recording topics | package `config/recording/` | `ros2/src/offboard_controllers/config/recording/se3.txt` |
-| experiment sequence | `config/sequences/` | `config/sequences/se3/handoff_comparison.yaml` |
-| analysis profile | `analysis/profiles/` | `analysis/profiles/se3/` |
-| comparison/analysis feature | `analysis/` | `analysis/profiles/se3/comparison/` |
-| user-facing command | `tools/` | `sitl`, `hardware`, `run_sequence`, `px4_analyze` |
-| ROS 2 package | `ros2/src/` | toolkit-maintained packages listed in Architecture |
-| external source | `config/sources/*.repos` | common/SITL/hardware manifests |
-
-Before adding a new file, check [Configuration](configuration.md) so the setting or data does not duplicate an existing canonical source.
+New capabilities should fit the existing separation between physical facts, requested motion, controller calculations, ROS/PX4 transport, and recorded-data analysis. Begin with the nearest working example and keep each setting in its [canonical configuration file](configuration.md).
 
 ## Add a controller
 
-Keep controller mathematics separate from ROS/PX4 transport where practical. Reuse the central PX4 topic catalog instead of adding literal `/fmu/in/*` or `/fmu/out/*` names throughout the code.
-
-A typical controller addition is:
-
-1. add the controller library/node under `ros2/src/offboard_controllers/`;
-2. add its CMake target and dependencies;
-3. provide a launch file with explicit runtime arguments;
-4. put controller tuning in package controller configuration, not vehicle files;
-5. add unit/runtime tests under the package `test/` tree;
-6. add recording and analysis support only for signals the new workflow needs.
-
-Use `offboard_position` as the simpler lifecycle/reference example and `se3` as the full controller/diagnostics example. See [Controller overview](../controllers/overview.md).
-
-## Add a trajectory
-
-Shared trajectory definitions live in:
-
-```text
-ros2/src/offboard_controllers/config/trajectory/trajectories.yaml
-```
-
-Prefer composing reusable named segments. If a new motion requires a new segment type, extend the trajectory library and its tests as well as the YAML configuration. Keep NED units and boundary semantics consistent with [Trajectories](../controllers/trajectories.md).
-
-After changing trajectory behavior, run the toolkit tests:
-
-```bash
-./ros2/test.sh
-```
+Follow [Developing a controller](developing-a-controller.md) for package/node integration, pure calculations, mode transitions, topics, recording, and verification. Offboard position is a small reference; SE(3) shows several command levels and diagnostics. A new controller need not use the same gains, timing, or F450 fixture.
 
 ## Add a vehicle
 
-Create:
+[Adding a vehicle](adding-a-vehicle.md) explains schema, physical measurements, frame conversion, and mode requirements. Record only verified facts. A valid YAML is not a flight-validation result, and additional rotors can require an adapter change rather than more configuration.
 
-```text
-config/vehicles/<vehicle>.yaml
-```
+## Add a trajectory
 
-Store vehicle facts there: mass, inertia, center of mass, allocator/rotor geometry, hover thrust, and physical propulsion mapping when available. Do not copy controller gains into the vehicle file.
-
-Only provide properties you can actually source for that vehicle. Controller modes that require missing properties should remain unavailable rather than using invented defaults. See [SE(3) vehicle support](../controllers/se3.md#vehicle-support).
+Prefer composing existing named segments in [trajectories.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/config/trajectory/trajectories.yaml). A new segment type also needs sampler/parser support and tests for derivatives, units, endpoints, and boundary behavior. Keep the [documented NED and time conventions](../controllers/trajectories.md).
 
 ## Add recording topics
 
-Recording selections belong with the package/workflow that owns the recording. PX4 topics should reference symbolic names from:
-
-```text
-config/px4_topics.def
-```
-
-Toolkit-owned ROS topics may be listed directly when appropriate. Keep the recording set focused on what the corresponding analysis or experiment needs; do not record the entire ROS graph by default.
-
-See [Recording](../workflows/recording.md).
+Use the package's recording list and symbolic [PX4 topic catalog](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/px4_topics.def). Toolkit diagnostic topics may be direct absolute names where the recording helper permits them. Record the signals the experiment needs, and explain which are required versus optional in analysis.
 
 ## Add a sequence
 
-Create a YAML definition under `config/sequences/`. A sequence should select existing launch files and launch arguments; it should not duplicate controller, vehicle, or trajectory configuration.
-
-Use:
-
-```text
-config/sequences/se3/handoff_comparison.yaml
-```
-
-as the reference for ordered steps, recording output ownership, and settle time. Run it with:
-
-```bash
-source ros2/runtime_env.sh
-./tools/run_sequence <sequence.yaml>
-```
-
-See [Sequences](../workflows/sequences.md) for the schema and study layout.
+Create a YAML under `config/sequences/` selecting existing launches and arguments. Use the [six-mode study](../workflows/sequences.md) for recording paths, manifests, and settle semantics. Do not duplicate controller gains or vehicle physics in the sequence.
 
 ## Add an analysis profile
 
-Experiment-specific analysis lives in `analysis/profiles/`; bag loading and common analysis helpers stay in the shared analysis modules.
+Profiles live in [analysis/profiles](https://github.com/ANCL/px4-dev-toolkit/tree/main/analysis/profiles). Define `PROFILE_NAME`, required/optional topics, `analyze`, summary/plot behavior, and registration in `analysis/profiles/__init__.py`. Reuse bag loading and shared signal/statistics helpers. Include meaningful analysis regression tests under `analysis/tests/`.
 
-A profile should:
+Comparison support requires an explicit definition of comparable quantities and time origin. `px4_compare` currently accepts SE(3) only; registering a new single-run profile does not automatically create valid comparison semantics.
 
-1. define a stable `PROFILE_NAME`;
-2. declare required and optional topics;
-3. implement the experiment-specific analysis and summary;
-4. add plots only where they add useful interpretation;
-5. register the profile in `analysis/profiles/__init__.py`;
-6. add regression tests under `analysis/tests/`.
+## Add a tool, package, or external source
 
-`tools/px4_analyze` will then resolve the registered profile from `experiment.json` when present, or from the bag directory layout for standalone runs.
+Put user-facing commands in `tools/` and internal helpers with their component. Resolve repository configuration without duplicating it, validate arguments, and stop any process trees the command creates. For a new ROS package, provide normal package/CMake metadata and choose its dependencies; update the maintained-package test selection only when the package needs inclusion.
 
-Use the SE(3) profile as the most complete example and the Position/Offboard profiles as smaller examples. See [Single-run analysis](../analysis/analysis.md).
+Pin external repositories in the appropriate `config/sources/*.repos` scope. Ordinary controller development does not require changing pinned upstream PX4.
 
-## Extend comparison analysis
+## Verification before contributing
 
-Shared comparison helpers live in `analysis/comparison.py`; profile-specific comparison semantics belong with the profile. The current `px4_compare` CLI intentionally supports SE(3) only.
-
-If another experiment family needs comparison support, define what quantities and time origin are meaningful for that profile before broadening the CLI. Do not assume all profiles can be compared using the SE(3) metrics. See [SE(3) comparison](../analysis/comparison.md).
-
-## Add a user-facing tool
-
-Put complete user workflows in `tools/`. Internal helpers should stay with the subsystem that owns them instead of becoming top-level commands.
-
-A top-level tool should:
-
-- locate/use repository configuration rather than duplicating it;
-- provide a clear usage/error contract;
-- own any process tree it starts and shut it down predictably;
-- avoid depending on the caller's current directory when it can resolve the repository root itself.
-
-Use `tools/sitl` and `tools/hardware` for runtime/process ownership, `tools/run_sequence` for orchestration, and `tools/px4_analyze` for a small CLI around library code.
-
-## Add a ROS 2 package
-
-Toolkit-owned packages live under `ros2/src/`. Add normal ROS package metadata/build files and keep dependencies scoped to the package that needs them.
-
-`ros2/build.sh` builds the workspace. If the new package is maintained by this toolkit, add it to the `TOOLKIT_PACKAGES` list in `ros2/test.sh` so the standard test command covers it:
-
-```bash
-./ros2/build.sh
-./ros2/test.sh
-```
-
-## Add or update an external source
-
-External repositories are pinned through:
-
-```text
-config/sources/common.repos
-config/sources/sitl.repos
-config/sources/hardware.repos
-```
-
-Choose the manifest based on which environment needs the dependency. `setup/fetch_sources.sh` reconstructs these source sets and deliberately avoids resetting existing checkouts.
-
-Do not vendor a fetched third-party repository into toolkit-owned source unless there is a separate reason to change that architecture.
-
-## Before committing an extension
-
-At minimum:
+In a **native development checkout at the repository root**:
 
 ```bash
 ./ros2/build.sh
@@ -166,10 +44,4 @@ At minimum:
 git diff --check
 ```
 
-Also run the affected user workflow when the change alters runtime behavior. Keep documentation updates beside the subsystem they change rather than creating a second description of the same interface.
-
-## Related
-
-- [Architecture](architecture.md)
-- [Configuration](configuration.md)
-- [Troubleshooting](troubleshooting.md)
+Run affected harmless/source-level checks and, when behavior changes, validate the relevant simulation in a properly prepared environment. Write tests for the new behavior rather than changing unrelated tests to make it fit an old fixture. Document the exercised environment, expected result, and remaining real-flight validation. These are checks to guide an extension, not a requirement to copy the current controller's design.

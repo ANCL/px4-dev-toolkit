@@ -1,107 +1,65 @@
-# Hardware environment
+# Physical hardware
 
-[Documentation](../index.md) / Environments / Hardware
-
-This page covers the companion-computer software stack for a physical PX4 platform.
-
-The native hardware runtime uses `tools/hardware` and `config/runtime/hardware.env`. Only SITL has a Docker image.
+On a physical vehicle, PX4 firmware is already running on the flight controller. A **companion computer** runs the toolkit's ROS 2 services and communicates with PX4 over serial. Install the native `hardware` profile; the maintained Docker image supports SITL.
 
 ## Runtime architecture
 
 ```mermaid
-flowchart LR
-    V[Vicon DataStream] --> VR[vicon_receiver]
-    VR --> MB[px4_mocap_bridge]
-    MB -->|VehicleOdometry| R[ROS 2 / PX4 DDS topics]
-    R <--> X[Micro XRCE-DDS Agent]
-    X <--> |serial| P[PX4 hardware]
-    C[Toolkit controllers] <--> R
+flowchart TB
+    V[Vicon: tracked aircraft pose] --> VR[vicon_receiver]
+    VR --> B[px4_mocap_bridge: ENU/FLU to NED/FRD]
+    B -->|VehicleOdometry| X[ROS 2 and Micro XRCE-DDS Agent]
+    X <-->|serial| P[PX4 flight controller]
+    C[Independent controller] <--> X
 ```
 
-`tools/hardware` starts the Vicon/mocap pipeline and, when enabled, the serial XRCE agent in one tmux session.
+**Vicon** is the motion-capture system supplying the aircraft pose. The bridge converts ROS east-north-up (ENU) world coordinates and forward-left-up (FLU) body orientation to PX4 north-east-down (NED) and forward-right-down (FRD). It normalizes the quaternion and publishes pose through `VehicleOdometry`. The input contains pose only: velocity, angular velocity, and variance fields are marked unavailable with NaN. Sample time uses a valid source header when configured, otherwise publication time. See the [conversion source](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_mocap_bridge/src/conversion.cpp).
 
-The PX4 flight controller itself is external hardware; this wrapper does not launch PX4 firmware.
+## What starts
 
-## CLI
+From the **companion-computer repository root**:
 
 ```bash
 ./tools/hardware start
-./tools/hardware status
-./tools/hardware stop
 ```
 
-The default tmux session is `px4-hardware`.
+The default session is `px4-hardware`:
+
+| tmux window | Service |
+|---|---|
+| `mocap` | Vicon reception plus `px4_mocap_bridge`, through `mocap.launch.py` |
+| `xrce-dds` | Serial Micro XRCE-DDS Agent when `START_XRCE_AGENT=true` (current default) |
+
+Starting again attaches to the existing session. Use **Ctrl-b, then d** to detach. The [launcher](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/hardware) does not start firmware, arm, fly, launch Position-mode scripts or an Offboard controller, or begin recording.
+
+In normal physical flight, Position mode is ordinarily flown with the pilot's **real RC transmitter or joystick**. The MAVProxy virtual joystick mainly imitates manual inputs in repeatable SITL examples; it does not replace the pilot's flight controls.
 
 ## Runtime configuration
 
-The canonical file is:
+Use [config/runtime/hardware.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/hardware.env) for the actual serial device/baud, Vicon host, object topic, frame names, world transform, and timestamp behavior. These are site-specific values; the checked-in examples are not universal lab settings. The wrapper currently requires `serial` transport when it starts the agent.
 
-```text
-config/runtime/hardware.env
-```
+Before starting services, check the device exists and is accessible, the serial settings match PX4's XRCE client, the Vicon server is reachable, and the selected rigid body and coordinate transform describe the aircraft you intend to use.
 
-It currently defines:
+## What status means
 
-- XRCE transport (`serial` is required by `tools/hardware`)
-- serial device and baud rate
-- whether the XRCE agent is started by the wrapper
-- Vicon server hostname and buffer size
-- Vicon namespace and frame names
-- map/Vicon rigid transform
-- tracked `PoseStamped` topic
-- timestamp behavior
-- tmux session name
-
-The checked-in device path is `/dev/ttyUSB0` at `921600` baud. Set this path to the real companion-computer serial device for the native installation.
-
-## Vicon and mocap path
-
-`tools/hardware` launches `px4_mocap_bridge/mocap.launch.py`. That launch file:
-
-1. includes the pinned `vicon_receiver` client,
-2. applies the configured Vicon/map transform arguments,
-3. starts `px4_mocap_bridge`, and
-4. converts the selected `PoseStamped` stream into PX4 `VehicleOdometry` input.
-
-The current tracked topic is configured by `MOCAP_TOPIC`; do not hard-code the checked-in example name into other parts of the project.
-
-## Start checklist
-
-Before `start`:
-
-1. Verify the PX4 serial device exists and is accessible.
-2. Verify `XRCE_AGENT_DEVICE` and `XRCE_AGENT_BAUD`.
-3. Verify `VICON_HOSTNAME` is reachable from the companion computer.
-4. Verify the tracked-object topic in `MOCAP_TOPIC` matches the Vicon object you intend to fly.
-5. Verify the configured world/map transform for the current lab setup.
-6. Source `ros2/runtime_env.sh` if you are running additional ROS commands manually.
-
-Then:
+In a **second companion shell at the repository root**:
 
 ```bash
-./tools/hardware start
-```
-
-From another shell:
-
-```bash
+source ros2/runtime_env.sh
 ./tools/hardware status
+ros2 topic list
 ```
 
-## What `status` means
-
-The launcher reports the tmux session and the relevant hardware-runtime processes. A running software stack is not the same as a flight-ready vehicle; hardware setup still needs to be checked on the actual platform.
+Inspect the Vicon pose and converted odometry on the configured topics, then verify PX4's estimator response. A running tmux session or agent is a service check; it is not proof of a flight-ready vehicle.
 
 ## Pre-flight requirements
 
-Before flight, verify the actual airframe, sensors, actuator mapping, estimator configuration, mocap alignment, RC/failsafe behavior, vehicle parameters, and selected controller mode.
+On the actual platform, check estimator/external-vision configuration and frame alignment, sensor health, airframe selection, actuator ordering, vehicle data, controller compatibility, RC and failsafe behavior, and independent emergency actions. Do not correct a wrong motion-capture transform through controller gains.
 
-`tools/hardware` prepares the companion-computer services; PX4 hardware configuration and flight readiness remain separate vehicle tasks.
+Stop the companion services **only after flight has ended and their removal is appropriate**:
 
-## Next
+```bash
+./tools/hardware stop
+```
 
-- [Controller overview](../controllers/overview.md)
-- [SE(3) vehicle requirements](../controllers/se3.md#vehicle-support)
-- [Recording](../workflows/recording.md)
-- [Configuration reference](../reference/configuration.md)
-- [Troubleshooting](../reference/troubleshooting.md)
+This command stops companion services; it is not a landing or disarm command. Continue with [controller choices](../controllers/overview.md) and [vehicle requirements](../reference/adding-a-vehicle.md).

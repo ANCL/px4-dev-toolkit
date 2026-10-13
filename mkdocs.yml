@@ -31,6 +31,9 @@ theme:
     - content.code.copy
   icon:
     repo: fontawesome/brands/github
+validation:
+  links:
+    anchors: warn
 plugins:
   - search
 markdown_extensions:

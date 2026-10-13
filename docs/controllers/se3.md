@@ -4,6 +4,8 @@
 
 The SE(3) runtime is one controller family with a selectable handoff boundary. The translational controller is shared; the amount of rotational control retained by the toolkit depends on `handoff` and, for direct torque, `direct_controller`.
 
+<span id="when-the-controller-starts-and-stops"></span>
+
 ## Runtime flow
 
 ```text

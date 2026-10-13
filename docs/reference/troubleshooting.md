@@ -4,6 +4,8 @@
 
 This page is intentionally limited to recurring actionable failures. Start from the symptom, check the stated condition, then apply the fix.
 
+<span id="installation"></span>
+
 ## `tools/sitl` rejects the command
 
 **Symptom:** usage is printed immediately.
@@ -39,6 +41,8 @@ This page is intentionally limited to recurring actionable failures. Start from 
 ```
 
 The launcher deliberately locates the system Gazebo command configuration rather than assuming an ambient `GZ_CONFIG_PATH` is correct.
+
+<span id="simulation-and-dds"></span>
 
 ## ROS 2 / DDS topics are missing
 

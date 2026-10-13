@@ -76,4 +76,4 @@ The complete example uses headless Gazebo and the configured MAVProxy frontend. 
 
 After the simulated aircraft is landed and disarmed, run `./tools/sitl stop` in the second container shell. Detach tmux with **Ctrl-b, then d** if necessary. Exit both container shells to remove the container; the mounted data remains.
 
-These commands are source-verified against the [Dockerfile](https://github.com/ANCL/px4-dev-toolkit/blob/main/docker/Dockerfile), [Compose file](https://github.com/ANCL/px4-dev-toolkit/blob/main/docker/compose.yaml), and [entrypoint](https://github.com/ANCL/px4-dev-toolkit/blob/main/docker/entrypoint.sh). Image pulls/builds and simulated flights were not executed as part of this documentation update.
+Implementation: [Dockerfile](https://github.com/ANCL/px4-dev-toolkit/blob/main/docker/Dockerfile), [Compose file](https://github.com/ANCL/px4-dev-toolkit/blob/main/docker/compose.yaml), and [entrypoint](https://github.com/ANCL/px4-dev-toolkit/blob/main/docker/entrypoint.sh).

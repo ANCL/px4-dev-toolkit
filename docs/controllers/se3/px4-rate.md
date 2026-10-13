@@ -3,12 +3,22 @@
 The toolkit's outer geometric attitude controller holds a body-rate command and collective thrust. A reproduced **pinned PX4 angular-rate loop** then calculates normalized torque on each gyro sample. PX4 receives the wrench and performs control allocation.
 
 ```mermaid
+---
+config:
+  flowchart:
+    useMaxWidth: false
+    wrappingWidth: 140
+    padding: 10
+    rankSpacing: 22
+    nodeSpacing: 24
+---
 flowchart TB
-    T[Toolkit outer timer: desired attitude and body-rate command] --> H[Held rate and collective setpoint]
-    G[VehicleAngularVelocity: sample time, rate, derivative] --> C[Toolkit: reproduced PX4 P/I/D and yaw filter]
+    T["Outer loop<br/>100 Hz by default"] --> H["Held body rate<br/>+ thrust"]
+    G["Gyro sample<br/>Rate + derivative"] --> C["PX4 P/I/D<br/>+ yaw filter"]
     H --> C
-    C --> S[VehicleThrustSetpoint and VehicleTorqueSetpoint]
-    S --> P[PX4: allocation; residual torque feeds anti-windup]
+    C --> S["Normalized<br/>thrust + torque"]
+    S --> P["PX4 allocation<br/>Torque residual"]
+    P -.-> C
 ```
 
 ## Two control clocks
@@ -24,8 +34,10 @@ and the common hover-scaled collective $u_T$. It updates at `control_rate_hz` (1
 The **inner loop** runs from `VehicleAngularVelocity.timestamp_sample`, not the outer timer. It consumes `xyz` [FRD rad/s] and `xyz_derivative` [FRD rad/s²]. For successive microsecond samples:
 
 $$
-\Delta t=\operatorname{clip}_{[0.000125,\,0.02]}
-\left(10^{-6}(t_{\mathrm{sample},k}-t_{\mathrm{sample},k-1})\right).
+\begin{aligned}
+\Delta t&=\operatorname{clip}_{[0.000125,\,0.02]} \\
+&\quad\left(10^{-6}(t_{\mathrm{sample},k}-t_{\mathrm{sample},k-1})\right).
+\end{aligned}
 $$
 
 Inactive callbacks still advance the last sample timestamp. The loop publishes only when Offboard is active, a finite held target is available, and the required state is ready. Both outgoing messages retain the incoming `timestamp_sample` alongside their publication timestamp. See [se3/node.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/node.cpp).
@@ -35,14 +47,20 @@ Inactive callbacks still advance the last sample timestamp. The loop publishes o
 For axis $i$, let $e_i=\Omega_{\mathrm{sp},i}-\Omega_i$ (desired minus measured, unlike the geometric $e_\Omega$ sign). Effective gains are
 
 $$
-P_i=K_i p_i,\qquad I_i=K_i i_i,\qquad D_i=K_i d_i.
+\begin{aligned}
+P_i&=K_i p_i \\
+I_i&=K_i i_i \\
+D_i&=K_i d_i.
+\end{aligned}
 $$
 
 The parameter vectors are `px4_rate_p`, `_i`, `_d`, and `_k`. Feedforward `px4_rate_ff` is **not multiplied by $K_i$**. With integrator state $\eta_{i,k}$ at the beginning of this sample:
 
 $$
-\tau_{i,k}^{\mathrm{raw}}=P_i e_i+\eta_{i,k}
--D_i\dot\Omega_{\mathrm{meas},i}+F_i\Omega_{\mathrm{sp},i}.
+\begin{aligned}
+\tau_{i,k}^{\mathrm{raw}}&=P_i e_i+\eta_{i,k} \\
+&\quad-D_i\dot\Omega_{\mathrm{meas},i}+F_i\Omega_{\mathrm{sp},i}.
+\end{aligned}
 $$
 
 Torque is normalized. $P$ and $F$ map rad/s to normalized torque, $D$ maps rad/s², and $I$ maps the time integral of rate error. D feedback uses the supplied **measured angular acceleration**, not a finite difference of rate error or the analytic desired acceleration used by geometric laws.
@@ -56,8 +74,10 @@ The output above uses the **old** integrator. After calculating it, the code upd
 Using the gated error $\bar e_i$:
 
 $$
-\gamma_i=\max\left(0,1-(\bar e_i/e_s)^2\right),
-\qquad e_s=400\pi/180\ \mathrm{rad/s},
+\begin{aligned}
+\gamma_i&=\max\left(0,1-(\bar e_i/e_s)^2\right) \\
+e_s&=400\pi/180\ \mathrm{rad/s}
+\end{aligned}
 $$
 
 $$
@@ -72,7 +92,10 @@ $L_i$ is `px4_rate_integrator_limit`. Non-finite candidates are discarded. Large
 Roll/pitch pass through the raw torque. Yaw uses a first-order filter with cutoff $f_c$:
 
 $$
-T_f=1/(2\pi f_c),\qquad \beta=\Delta t/(T_f+\Delta t),
+\begin{aligned}
+T_f&=1/(2\pi f_c) \\
+\beta&=\Delta t/(T_f+\Delta t)
+\end{aligned}
 $$
 
 $$

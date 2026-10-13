@@ -56,6 +56,6 @@ After landing and disarm have been confirmed, stop the simulation from a **repos
 
 The wrapper stops its tmux services and cleans up detached Gazebo processes associated with this checkout. The status should show the session stopped.
 
-The commands and expected phases are checked against source. This documentation change did not execute an armed simulation. On a new host, confirm the actual results above before moving to a more demanding experiment.
+Confirm the expected phases and final PX4 state on your installation before moving to the Offboard examples.
 
 Continue with [Position mode and switching to Offboard](../controllers/position-mode.md), then [record a flight](../workflows/recording.md) when the basic example works.

@@ -11,11 +11,20 @@
 ## How the parts connect
 
 ```mermaid
+---
+config:
+  flowchart:
+    useMaxWidth: false
+    wrappingWidth: 180
+    padding: 10
+    rankSpacing: 22
+    nodeSpacing: 24
+---
 flowchart TB
-    G[Gazebo aircraft and sensors] <--> P[PX4 SITL]
-    P <--> M[MAVLink: MAVProxy or QGroundControl]
-    P <--> X[Micro XRCE-DDS Agent: UDP]
-    X <--> R[ROS 2 controllers and recorder]
+    G["Gazebo"] <--> P["PX4 SITL"]
+    P <--> M["MAVLink<br/>Ground control"]
+    P <--> X["DDS agent<br/>UDP"]
+    X <--> R["ROS 2<br/>Controller + recorder"]
 ```
 
 MAVLink carries ground-control messages. uXRCE-DDS connects PX4 to ROS 2 through the agent, so ROS nodes can receive state and send setpoints. A **setpoint** is the requested value, such as a position or body rate, that a controller tries to reach.
@@ -111,9 +120,9 @@ Require `landed: true`. Check arming state as well: `ARMING_STATE_DISARMED` is *
 disarm
 ```
 
-Check `/fmu/out/vehicle_status_v1` again and require disarmed state before stopping SITL or beginning another staging demonstration. Do not disarm an airborne vehicle. Once landed/disarmed, the staging helper can prepare a new flight; restore/restart the simulator if a failed experiment left a unsuitable starting state.
+Check `/fmu/out/vehicle_status_v1` again and require disarmed state before stopping SITL or beginning another staging demonstration. Do not disarm an airborne vehicle. Once landed/disarmed, the staging helper can prepare a new flight; restore/restart the simulator if a failed experiment left an unsuitable starting state.
 
-These operator commands are verified in pinned MAVProxy [mode handling](https://github.com/ArduPilot/MAVProxy/blob/932f6945cfc7fbc6579e166667d43e327fe44f2d/MAVProxy/modules/mavproxy_mode.py) and [disarm handling](https://github.com/ArduPilot/MAVProxy/blob/932f6945cfc7fbc6579e166667d43e327fe44f2d/MAVProxy/modules/mavproxy_arm.py). They were not executed against an armed simulation for this documentation change.
+These operator commands are verified in pinned MAVProxy [mode handling](https://github.com/ArduPilot/MAVProxy/blob/932f6945cfc7fbc6579e166667d43e327fe44f2d/MAVProxy/modules/mavproxy_mode.py) and [disarm handling](https://github.com/ArduPilot/MAVProxy/blob/932f6945cfc7fbc6579e166667d43e327fe44f2d/MAVProxy/modules/mavproxy_arm.py). Check the actual mode, landing, and arming state after each request.
 
 ## Current default runtime
 

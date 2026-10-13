@@ -3,11 +3,20 @@
 This node sends a trajectory reference to PX4. PX4 calculates position feedback and all lower control stages. The external node generates the requested motion and handles the mode/arming sequence; it does not replace PX4's translational feedback with the SE(3) law.
 
 ```mermaid
+---
+config:
+  flowchart:
+    useMaxWidth: false
+    wrappingWidth: 180
+    padding: 10
+    rankSpacing: 22
+    nodeSpacing: 24
+---
 flowchart TB
-    T[Named NED trajectory] --> N[Toolkit: position and analytic feedforward]
-    N --> S[TrajectorySetpoint and OffboardControlMode]
-    S --> P[PX4: position, attitude, rate feedback]
-    P --> A[PX4: allocation and motors]
+    T["Named NED trajectory"] --> N["Toolkit · reference + feedforward"]
+    N --> S["Trajectory setpoint + heartbeat"]
+    S --> P["PX4 · position, attitude, rate"]
+    P --> A["PX4 · allocation + motors"]
 ```
 
 ## Reference and messages

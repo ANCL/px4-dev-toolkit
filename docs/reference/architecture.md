@@ -12,24 +12,42 @@ The toolkit keeps environment services, flight/controller nodes, and recorded-da
 ## How the parts connect
 
 ```mermaid
+---
+config:
+  flowchart:
+    useMaxWidth: false
+    wrappingWidth: 140
+    padding: 10
+    rankSpacing: 22
+    nodeSpacing: 24
+---
 flowchart TB
-    G[Gazebo aircraft and sensors] <--> P[PX4 SITL]
-    P <--> X[Micro XRCE-DDS Agent: UDP]
-    X <--> R[ROS 2 controller and recorder]
-    P <--> M[MAVProxy or QGroundControl: MAVLink]
-    R --> B[Finalized rosbag and experiment metadata]
-    B --> A[Analysis and comparison]
+    G["Gazebo"] <--> P["PX4 SITL"]
+    P <--> X["DDS · UDP"]
+    X <--> R["ROS 2 + recorder"]
+    P <--> M["MAVLink<br/>GCS"]
+    R --> B["Bag + metadata"]
+    B --> A["Analysis + comparison"]
 ```
 
 For physical flight, firmware runs on the aircraft instead of the workstation:
 
 ```mermaid
+---
+config:
+  flowchart:
+    useMaxWidth: false
+    wrappingWidth: 140
+    padding: 10
+    rankSpacing: 22
+    nodeSpacing: 24
+---
 flowchart TB
-    V[Vicon receiver] --> C[Pose conversion: px4_mocap_bridge]
-    C --> R[ROS 2 state/controller/recorder]
-    R <--> X[Micro XRCE-DDS Agent: serial]
-    X <--> P[Physical PX4 flight controller]
-    R --> B[Recorded data for later analysis]
+    V["Vicon receiver"] --> C["Mocap pose conversion"]
+    C --> R["ROS 2 + recorder"]
+    R <--> X["DDS agent · serial"]
+    X <--> P["PX4 flight controller"]
+    R --> B["Recorded data"]
 ```
 
 The current simulator estimator uses configured Gazebo/external-vision aiding plus IMU. The hardware bridge supplies pose; estimator configuration on the actual vehicle remains separate. Read the [environment guides](../environments/sitl.md) for process windows rather than treating these diagrams as launch commands.

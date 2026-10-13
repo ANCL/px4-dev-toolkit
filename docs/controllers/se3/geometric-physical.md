@@ -3,11 +3,20 @@
 This mode calculates a **physical body moment in N·m** using a Lee-style rigid-body law. A separate toolkit adapter converts physical collective thrust and moment into normalized PX4 commands. PX4 then performs allocation; the original controller law does not define that conversion.
 
 ```mermaid
+---
+config:
+  flowchart:
+    useMaxWidth: false
+    wrappingWidth: 180
+    padding: 10
+    rankSpacing: 22
+    nodeSpacing: 24
+---
 flowchart TB
-    I[Measured state, inertia, and desired attitude dynamics] --> C[Toolkit: Lee-style moment and collective projection]
-    C --> W[Toolkit: feasible rotor thrust and actuator inverse]
-    W --> S[Normalized VehicleThrustSetpoint and VehicleTorqueSetpoint]
-    S --> P[PX4: allocation and motors]
+    I["State + inertia + trajectory"] --> C["Toolkit · physical moment law"]
+    C --> W["Adapter · feasible rotor thrust"]
+    W --> S["Normalized thrust + torque"]
+    S --> P["PX4 · allocation + motors"]
 ```
 
 ## Physical rotational law
@@ -21,8 +30,10 @@ $$
 The FRD moment is
 
 $$
-M=-K_R e_R-K_\Omega e_\Omega
-+\Omega\times(J\Omega)+J\alpha_{\mathrm{ff}}.
+\begin{aligned}
+M&=-K_R e_R-K_\Omega e_\Omega \\
+&\quad+\Omega\times(J\Omega)+J\alpha_{\mathrm{ff}}.
+\end{aligned}
 $$
 
 $J$ is the symmetric positive-definite body inertia in kg·m². $K_R$ maps attitude error to N·m and $K_\Omega$ maps rad/s to N·m (N·m·s when radians are dimensionless). They are `geometric_physical_k_r` and `geometric_physical_k_omega` in controller tuning.
@@ -42,8 +53,10 @@ It is projected onto the current body axis. The adapter rejects negative/non-fin
 For rotor $i$ with FRD arm $r_i=(x_i,y_i,z_i)$ relative to the center of mass, upward force is $(0,0,-T_i)$. Thus its arm moment is $(-y_iT_i,x_iT_i,0)$. Signed reaction ratio $\kappa_i$ adds yaw moment. Define
 
 $$
-B_{\mathrm{phys},i}=(-y_i,\ x_i,\ \kappa_i,\ 1)^\top,
-\qquad T=B_{\mathrm{phys}}^{-1}(M_x,M_y,M_z,f)^\top.
+\begin{aligned}
+B_{\mathrm{phys},i}&=(-y_i,\ x_i,\ \kappa_i,\ 1)^\top \\
+T&=B_{\mathrm{phys}}^{-1}(M_x,M_y,M_z,f)^\top.
+\end{aligned}
 $$
 
 The loader converts FLU physical data to FRD and subtracts the center of mass. It maps `ccw` to positive and `cw` to negative reaction ratio according to its schema convention. This convention and rotor indexing must agree with the plant and PX4 mapping.
@@ -51,8 +64,10 @@ The loader converts FLU physical data to FRD and subtracts the center of mass. I
 Each physical rotor uses the configured monotonic polynomial
 
 $$
-T_i(u_i)=c_0+c_1u_i+c_2u_i^2\quad[\mathrm N],
-\qquad u_i\in[u_{\min},u_{\max}]\subseteq[0,1].
+\begin{aligned}
+T_i(u_i)&=c_0+c_1u_i+c_2u_i^2\quad[\mathrm N], \\
+u_i&\in[u_{\min},u_{\max}]\subseteq[0,1].
+\end{aligned}
 $$
 
 For the curated F450 fixture, the source-backed polynomial is $0.27+3.06u+8.67u^2$ N, derived from its pinned rotor-speed relation. It is fixture data, not a generic motor model.
@@ -64,8 +79,10 @@ First clip collective to $4T_{\min}\le f_a\le4T_{\max}$. Compute a collective-on
 Choose the largest feasible $\lambda\in[0,1]$ such that
 
 $$
-T_i^a=T_i^0+\lambda(T_i^*-T_i^0)\in[T_{\min},T_{\max}]
-\quad\text{for every rotor}.
+\begin{aligned}
+T_i^a&=T_i^0+\lambda(T_i^*-T_i^0) \\
+&\in[T_{\min},T_{\max}]\quad\text{for every rotor}.
+\end{aligned}
 $$
 
 Positive rotor deltas bound $\lambda$ by $(T_{\max}-T_i^0)/(T_i^*-T_i^0)$; negative deltas bound it by $(T_i^0-T_{\min})/(T_i^0-T_i^*)$. An infeasible collective-only allocation throws rather than hiding invalid geometry. Uniform scaling preserves roll/pitch/yaw moment ratios: the applied modeled moment is $\lambda M$. This is a toolkit feasibility choice, not part of Lee's unconstrained law.

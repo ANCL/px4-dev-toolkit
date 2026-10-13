@@ -14,12 +14,15 @@ If SE(3) loses Offboard and later re-enters, it re-anchors and restarts. Offboar
 
 ## Segment semantics
 
-Each segment starts at the preceding segment's terminal position/yaw. At an exact cumulative boundary, the **ending segment owns the sample**; the next starts immediately afterward. The sampler clamps negative time to zero and holds terminal position/yaw after the entire sequence ends. Controller lifecycle can then request a mode return.
+Each segment starts at the preceding segment's terminal position/yaw. At an exact cumulative boundary, the sampler uses the **ending segment**; the next starts immediately afterward. The sampler clamps negative time to zero and holds terminal position/yaw after the entire sequence ends. Controller lifecycle can then request a mode return.
 
 For smooth segments, local time $t\in[0,T]$ uses $u=t/T$ and the ninth-order scale
 
 $$
-s(u)=126u^5-420u^6+540u^7-315u^8+70u^9.
+\begin{aligned}
+s(u)&=126u^5-420u^6+540u^7 \\
+&\quad-315u^8+70u^9.
+\end{aligned}
 $$
 
 Its first four derivatives vanish at both endpoints. The code differentiates it and the path analytically through **snap** (fourth position derivative). This is not constant-speed motion or interpolation of a recorded path. The implementations are [sampling.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/trajectory/sampling.cpp) and [trajectory.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/trajectory/trajectory.cpp).
@@ -35,7 +38,11 @@ $x_d=x_0+\Delta x$ immediately after the segment boundary. The code returns zero
 ### Line
 
 $$
-x_d=x_0+s\Delta x,\qquad v_d=\dot s\Delta x,\qquad a_d=\ddot s\Delta x.
+\begin{aligned}
+x_d&=x_0+s\Delta x \\
+v_d&=\dot s\Delta x \\
+a_d&=\ddot s\Delta x.
+\end{aligned}
 $$
 
 Jerk/snap follow the same derivatives of $s$. The path is a straight line with smooth start/stop speed.
@@ -53,7 +60,10 @@ For a circle, $H=0$; for a helix, `height` is $H$. The circle center lies one ra
 ### Yaw
 
 $$
-x_d=x_0,\qquad \psi_d=\psi_0+s\Delta\psi.
+\begin{aligned}
+x_d&=x_0 \\
+\psi_d&=\psi_0+s\Delta\psi.
+\end{aligned}
 $$
 
 Yaw rate/acceleration are $\dot s\Delta\psi$ and $\ddot s\Delta\psi$. Position stays fixed; yaw changes smoothly.
@@ -77,7 +87,7 @@ The 1:2 phase relationship produces a planar Lissajous figure eight. Chain-rule 
 
 A **type** (`line`) describes the sampler. A **segment name** (`line_x_2m`) supplies parameters. A **trajectory name** (`line_tracking`) orders segment names. The loader also accepts a segment name directly as a one-segment trajectory.
 
-This complete small YAML uses the real schema and checked-in `line_tracking` values; it can serve as a small standalone trajectory configuration, without replacing the full catalog:
+This complete example uses the checked-in `line_tracking` values and can be saved as a standalone trajectory configuration:
 
 ```yaml
 default_yaw: 0.0

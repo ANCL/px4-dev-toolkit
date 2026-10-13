@@ -4,7 +4,7 @@
 
 # Adding to the toolkit
 
-New capabilities should fit the existing separation between physical facts, requested motion, controller calculations, ROS/PX4 transport, and recorded-data analysis. Begin with the nearest working example and keep each setting in its [canonical configuration file](configuration.md).
+Keep vehicle data, trajectories, controller calculations, ROS/PX4 communication, and analysis in their existing components. Begin with the nearest working example and keep each setting in its [canonical configuration file](configuration.md).
 
 ## Add a controller
 
@@ -60,4 +60,4 @@ In a **native development checkout at the repository root**:
 git diff --check
 ```
 
-Run affected harmless/source-level checks and, when behavior changes, validate the relevant simulation in a properly prepared environment. Write tests for the new behavior rather than changing unrelated tests to make it fit an old fixture. Document the exercised environment, expected result, and remaining real-flight validation. These are checks to guide an extension, not a requirement to copy the current controller's design.
+Run affected harmless/source-level checks and, when behavior changes, validate the relevant simulation in a properly prepared environment. Write tests for the new behavior rather than changing unrelated tests to make it fit an old fixture. Document the exercised environment, expected result, and remaining real-flight validation.

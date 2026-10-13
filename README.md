@@ -1,8 +1,8 @@
 # PX4 Development Toolkit
 
-Develop, test, record, and analyze PX4 and ROS 2 controllers in Gazebo and on physical vehicles.
+A ROS 2 environment for studying PX4 flight control in Gazebo and on physical aircraft.
 
-The toolkit combines PX4 simulation, native companion-computer integration, Position-mode examples, Offboard position and SE(3) controllers, rosbag recording, and flight-data analysis. External sources are pinned separately from the toolkit code.
+The repository includes simulation and companion-computer services, Position-mode examples, Offboard position and six SE(3) controller configurations, rosbag recording, and flight-data analysis. The documentation explains the controller mathematics and their implementation. External dependencies use pinned source revisions.
 
 **[Full documentation](https://ancl.github.io/px4-dev-toolkit/)** · **[Getting started](https://ancl.github.io/px4-dev-toolkit/installation/)**
 
@@ -42,7 +42,7 @@ ros2 topic list
 
 Starting the environment does not arm or fly the aircraft. Continue with [First simulation](https://ancl.github.io/px4-dev-toolkit/getting-started/first-simulation/) for a Position-mode demonstration and stopping instructions. When the simulated aircraft is landed and disarmed, run `./tools/sitl stop` inside the container, then exit both container shells.
 
-The commands are checked against the tracked interfaces; a new host still needs its own image, graphics, and communication checks. See the [Docker guide](docs/installation/docker.md) for persistence and graphical use.
+See the [Docker guide](docs/installation/docker.md) for data persistence and graphical use. Check communication and PX4 state on your installation before launching a flight example.
 
 ## Simulation and physical hardware
 

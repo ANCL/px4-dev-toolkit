@@ -3,11 +3,19 @@
 This toolkit law uses geometric attitude/rate errors and analytic angular acceleration feedforward to calculate **normalized PX4 torque directly**. PX4 receives thrust and torque and performs allocation. This law does not calculate a physical inertia-based moment.
 
 ```mermaid
+---
+config:
+  flowchart:
+    useMaxWidth: false
+    wrappingWidth: 180
+    padding: 10
+    rankSpacing: 22
+    nodeSpacing: 24
+---
 flowchart TB
-    I[Measured rotation/rate and trajectory through snap] --> T[Toolkit: desired attitude dynamics]
-    T --> C[Toolkit: normalized geometric torque]
-    C --> S[VehicleThrustSetpoint and VehicleTorqueSetpoint]
-    S --> P[PX4: allocation and motors]
+    I["State + derivatives through snap"] --> C["Toolkit · geometric torque law"]
+    C --> S["Normalized thrust + torque"]
+    S --> P["PX4 · allocation + motors"]
 ```
 
 ## Geometric errors
@@ -15,8 +23,10 @@ flowchart TB
 With $Q=R^\top R_d$, map desired-body rate to the current FRD body frame:
 
 $$
-e_R=\tfrac12(R_d^\top R-R^\top R_d)^\vee,\qquad
-e_\Omega=\Omega-Q\Omega_d.
+\begin{aligned}
+e_R&=\tfrac12(R_d^\top R-R^\top R_d)^\vee \\
+e_\Omega&=\Omega-Q\Omega_d.
+\end{aligned}
 $$
 
 Current-frame acceleration feedforward is
@@ -46,8 +56,10 @@ This is the repository's normalized geometric controller, not Lee 2010 Eq. (13) 
 Collective uses mass and hover scale:
 
 $$
-f=-A^\top R e_3,\qquad
-u_T=\operatorname{clip}_{[0,1]}(h f/(mg)).
+\begin{aligned}
+f&=-A^\top R e_3 \\
+u_T&=\operatorname{clip}_{[0,1]}(h f/(mg)).
+\end{aligned}
 $$
 
 `VehicleThrustSetpoint.xyz=(0,0,-u_T)` and `VehicleTorqueSetpoint.xyz=\tau_n` are in current FRD axes. They share publication time; this outer-loop publisher leaves `timestamp_sample` at its default. Only `OffboardControlMode.thrust_and_torque` is true.

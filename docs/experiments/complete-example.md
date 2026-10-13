@@ -2,7 +2,7 @@
 
 This guide connects environment startup, a reference flight, an external controller, recording, analysis, and a six-mode study. Use a **native Ubuntu SITL installation**, default F450 configuration, and MAVProxy. Docker users can run the repository-root steps inside the container shells from the [Docker guide](../installation/docker.md).
 
-The examples are source-verified. No armed simulation or measured result was produced for this documentation update. Run each demonstration only after checking the actual vehicle state; they are not an unattended script to paste in sequence.
+Check the vehicle state between demonstrations. Each step starts from a specified mode and arming state; completing a command does not establish that the next flight is ready.
 
 ## 1. Start and verify services
 
@@ -103,4 +103,4 @@ A completed study leaves Position mode, not a landed/disarmed aircraft. [Land/di
 ./tools/sitl status
 ```
 
-Keep the bags, manifests, and the configurations used for the run. No performance ranking follows merely from completing this procedure; it requires valid recorded data and interpretation.
+Keep the bags, manifests, and the configurations used for the run. Base comparisons on the recorded state, data coverage, and actuator limits described in the analysis chapters.

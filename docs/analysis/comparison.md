@@ -36,11 +36,10 @@ The common view compares measured position/velocity tracking, yaw error, body-ra
 
 Normalized torque is not N·m. Hover calibration, actuator mapping, frames, PX4 configuration, and saturation affect the relationship between requests and motion. Lower tracking error accompanied by much greater actuator activity can be a relevant tradeoff; without measured data there is no controller ranking.
 
-<div class="px4-figure-slot" markdown="1">
-
-**Figure slot — controller comparison.** Approved study data will supply NED position-error magnitude [m] and motor envelope [normalized], aligned to confirmed Offboard entry [s], with maneuver windows labeled. This slot reserves evidence; it reports no measured advantage.
-
-</div>
+<figure class="px4-figure-slot">
+  <img src="../../assets/measured-plot-placeholder.svg" width="760" height="190" alt="Empty axes reserved for controller comparison; measured data has not been supplied">
+  <figcaption><strong>Controller comparison · figure placeholder.</strong> NED position-error magnitude [m] and motor envelope [normalized], aligned to confirmed Offboard entry [s], with maneuver windows labeled. An approved study is needed before this figure can compare controller responses.</figcaption>
+</figure>
 
 <!-- Preserve existing section links. -->
 <span id="comparison-implementation"></span>
@@ -61,7 +60,7 @@ Roughness uses time-weighted RMS of finite-difference signal slopes:
 
 $$
 q_{\mathrm{rough}}=\sqrt{
-\frac{\sum_k((q_{k+1}-q_k)/\Delta t_k)^2\Delta t_k}
+\frac{\sum_k\left(\frac{q_{k+1}-q_k}{\Delta t_k}\right)^2\Delta t_k}
 {\sum_k\Delta t_k}}.
 $$
 

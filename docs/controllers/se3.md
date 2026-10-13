@@ -12,11 +12,20 @@
 ## Six configurations
 
 ```mermaid
+---
+config:
+  flowchart:
+    useMaxWidth: false
+    wrappingWidth: 180
+    padding: 10
+    rankSpacing: 22
+    nodeSpacing: 24
+---
 flowchart TB
-    T[Toolkit: trajectory and measured state] --> F[Toolkit: translational feedback]
-    F --> R[Toolkit: desired attitude and derivatives]
-    R --> C[Toolkit: body rate or rotational law]
-    C --> P[PX4: remaining feedback stages and allocation]
+    T["Trajectory + measured state"] --> F["Translational feedback"]
+    F --> R["Desired attitude + derivatives"]
+    R --> C["Body rate or rotational law"]
+    C --> P["PX4 · remaining stages + allocation"]
 ```
 
 The diagram shows the complete calculation. Each configuration publishes earlier or later in it:

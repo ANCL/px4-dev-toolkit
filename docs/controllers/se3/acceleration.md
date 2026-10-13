@@ -3,11 +3,19 @@
 The toolkit calculates position/velocity feedback and sends a **NED acceleration request** to PX4. PX4 converts it to attitude/thrust and runs its lower feedback loops and control allocation. This mode requires the least vehicle data: mass.
 
 ```mermaid
+---
+config:
+  flowchart:
+    useMaxWidth: false
+    wrappingWidth: 180
+    padding: 10
+    rankSpacing: 22
+    nodeSpacing: 24
+---
 flowchart TB
-    I[Measured NED position/velocity and trajectory] --> T[Toolkit: translation law]
-    T --> S[TrajectorySetpoint: acceleration and yaw]
-    S --> P[PX4: attitude/thrust and rate control]
-    P --> A[PX4: allocation and motors]
+    I["NED state + trajectory"] --> T["Toolkit · translation law"]
+    T --> S["Acceleration + yaw"]
+    S --> P["PX4 · attitude, rate, allocation"]
 ```
 
 ## Translation law

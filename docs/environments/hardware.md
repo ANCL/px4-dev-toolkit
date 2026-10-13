@@ -11,12 +11,21 @@ On a physical vehicle, PX4 firmware is already running on the flight controller.
 ## Runtime architecture
 
 ```mermaid
+---
+config:
+  flowchart:
+    useMaxWidth: false
+    wrappingWidth: 180
+    padding: 10
+    rankSpacing: 22
+    nodeSpacing: 24
+---
 flowchart TB
-    V[Vicon: tracked aircraft pose] --> VR[vicon_receiver]
-    VR --> B[px4_mocap_bridge: ENU/FLU to NED/FRD]
-    B -->|VehicleOdometry| X[ROS 2 and Micro XRCE-DDS Agent]
-    X <-->|serial| P[PX4 flight controller]
-    C[Independent controller] <--> X
+    V["Vicon pose"] --> VR["vicon_receiver"]
+    VR --> B["Mocap bridge<br/>ENU/FLU → NED/FRD"]
+    B -->|VehicleOdometry| X["ROS 2 + DDS agent"]
+    X <-->|serial| P["PX4 flight controller"]
+    C["Controller"] <--> X
 ```
 
 **Vicon** is the motion-capture system supplying the aircraft pose. The bridge converts ROS east-north-up (ENU) world coordinates and forward-left-up (FLU) body orientation to PX4 north-east-down (NED) and forward-right-down (FRD). It normalizes the quaternion and publishes pose through `VehicleOdometry`. The input contains pose only: velocity, angular velocity, and variance fields are marked unavailable with NaN. Sample time uses a valid source header when configured, otherwise publication time. See the [conversion source](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_mocap_bridge/src/conversion.cpp).
@@ -41,7 +50,7 @@ The default session is `px4-hardware`:
 
 Starting again attaches to the existing session. Use **Ctrl-b, then d** to detach. The [launcher](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/hardware) does not start firmware, arm, fly, launch Position-mode scripts or an Offboard controller, or begin recording.
 
-In normal physical flight, Position mode is ordinarily flown with the pilot's **real RC transmitter or joystick**. The MAVProxy virtual joystick mainly imitates manual inputs in repeatable SITL examples; it does not replace the pilot's flight controls.
+In physical flight, the pilot controls Position mode with a **real RC transmitter or joystick**. The MAVProxy virtual joystick supplies simulated manual input for the SITL examples.
 
 <!-- Preserve existing section links. -->
 <span id="start-checklist"></span>

@@ -31,13 +31,21 @@ These are two different demonstrations. The reference flight lands and disarms; 
 **Offboard** means PX4 accepts an external controller's chosen command type. A ROS heartbeat (`OffboardControlMode`) tells PX4 which level is active. The controller requests the mode change and checks `VehicleStatus.nav_state` for confirmation; an accepted command acknowledgement alone does not start trajectory time.
 
 ```mermaid
+---
+config:
+  flowchart:
+    useMaxWidth: false
+    wrappingWidth: 180
+    padding: 10
+    rankSpacing: 22
+    nodeSpacing: 24
+---
 flowchart TB
-    P[Position mode: pilot or simulation staging] --> S[Independent controller prepares its stream]
-    S --> Q[Request Offboard]
-    Q --> C[PX4 nav_state confirms Offboard]
-    C --> T[Anchor position and start trajectory clock]
-    T --> R[Trajectory completes: request Position mode]
-    R --> F[PX4 confirms return]
+    P["Position mode"] --> S["Controller prepares stream"]
+    S --> Q["Request Offboard"]
+    Q --> C["PX4 confirms → start trajectory"]
+    C --> T["Trajectory ends → request Position"]
+    T --> F["PX4 confirms return"]
 ```
 
 [Offboard position](offboard-position.md) streams a heartbeat and actual trajectory setpoints before requesting takeover. [SE(3)](se3.md#when-the-controller-starts-and-stops) warms up heartbeat and its diagnostic trajectory reference; its selected control output begins after confirmed entry. Their failure and return behavior also differs, so check the controller's own page.

@@ -10,7 +10,7 @@ Keep pure laws independent of ROS subscriptions where practical. The existing [s
 
 ## 2. Add package/node integration
 
-Add a library/node under `ros2/src/offboard_controllers/` when it fits the package, or create a separate ROS package when its dependencies justify it. Register executable/library targets, headers, dependencies, and install rules in the affected package metadata/CMake. Follow the current [CMakeLists.txt](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/CMakeLists.txt), not a guessed target name.
+Add a library/node under `ros2/src/offboard_controllers/` when it fits the package, or create a separate ROS package when its dependencies justify it. Register executable/library targets, headers, dependencies, and install rules in the affected package metadata/CMake. Use [CMakeLists.txt](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/CMakeLists.txt) as the reference for target and installation rules.
 
 Put gains and timing in a package configuration file, physical facts in `config/vehicles/`, and motion definitions in shared trajectories. A new controller is not required to run at 100 Hz or copy F450 assumptions; justify its sampling and state needs.
 

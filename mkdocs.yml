@@ -1,5 +1,5 @@
 site_name: PX4 Development Toolkit
-site_description: Develop, test, record, and analyze PX4 and ROS 2 controllers in Gazebo and on physical vehicles.
+site_description: PX4 and ROS 2 flight-control examples, SE(3) mathematics, simulation, recording, and analysis.
 site_url: https://ancl.github.io/px4-dev-toolkit/
 repo_url: https://github.com/ANCL/px4-dev-toolkit
 repo_name: ANCL/px4-dev-toolkit
@@ -11,15 +11,15 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: blue grey
-      accent: blue
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: blue grey
-      accent: light blue
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode

@@ -3,11 +3,19 @@
 The toolkit calculates geometric attitude feedback and a **commanded body rate**. It publishes `VehicleRatesSetpoint`; PX4 retains the angular-rate feedback loop and allocation. The command is not a physical moment.
 
 ```mermaid
+---
+config:
+  flowchart:
+    useMaxWidth: false
+    wrappingWidth: 180
+    padding: 10
+    rankSpacing: 22
+    nodeSpacing: 24
+---
 flowchart TB
-    I[Measured rotation and trajectory derivatives] --> T[Toolkit: desired attitude and analytic rate]
-    T --> C[Toolkit: attitude-to-body-rate law]
-    C --> S[VehicleRatesSetpoint: FRD rate and thrust]
-    S --> P[PX4: rate feedback and allocation]
+    I["State + trajectory derivatives"] --> T["Toolkit · attitude feedback"]
+    T --> S["FRD body rate + thrust"]
+    S --> P["PX4 · rate feedback, allocation"]
 ```
 
 ## Desired rate and feedback command
@@ -21,9 +29,10 @@ $$
 This is the angular velocity of the desired attitude in the **desired** FRD frame. Map it to current-body axes and add feedback:
 
 $$
-e_R=\tfrac12(R_d^\top R-R^\top R_d)^\vee,
-\qquad
-\Omega_{\mathrm{sp}}=R^\top R_d\Omega_d-K_{\mathrm{att}}e_R.
+\begin{aligned}
+e_R&=\tfrac12(R_d^\top R-R^\top R_d)^\vee \\
+\Omega_{\mathrm{sp}}&=R^\top R_d\Omega_d-K_{\mathrm{att}}e_R.
+\end{aligned}
 $$
 
 $K_{\mathrm{att}}$ is the diagonal vector `attitude_gain`, in s⁻¹; the output is current FRD rad/s. The desired rate alone is feedforward. The commanded rate adds a correction that PX4's rate loop then tracks. No inertia or $\Omega\times J\Omega$ term enters this law.

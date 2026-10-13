@@ -1,1 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-labelledby="title desc"><title id="title">Gazebo SITL media placeholder</title><desc id="desc">Abstract line drawing, not a photograph or recorded flight. Flight video has not been supplied.</desc><g fill="none" stroke="#74899a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M140 245 320 145 500 245 320 330Z M140 245V165L320 65 500 165V245 M320 145V65 M320 330V245" opacity=".3"/><path d="M278 155 362 205 M362 155 278 205"/><ellipse cx="270" cy="150" rx="32" ry="12"/><ellipse cx="370" cy="150" rx="32" ry="12"/><ellipse cx="270" cy="210" rx="32" ry="12"/><ellipse cx="370" cy="210" rx="32" ry="12"/><rect x="302" y="164" width="36" height="32" rx="6"/></g><text x="320" y="303" fill="#74899a" font-family="system-ui,sans-serif" font-size="14" letter-spacing="2" text-anchor="middle">MEDIA PLACEHOLDER</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-labelledby="title desc">
+<title id="title">Gazebo SITL video placeholder</title><desc id="desc">Schematic quadrotor inside a simulation volume. Flight video has not been supplied.</desc>
+<style>
+:root { --line:#41676d; --faint:#a4bfba; --accent:#006b62; --text:#213237; }
+@media (prefers-color-scheme:dark) { :root { --line:#accac5; --faint:#527572; --accent:#81d5bc; --text:#e1e9e7; } }
+.structure { fill:none; stroke:var(--faint); stroke-width:2; }
+.aircraft { fill:none; stroke:var(--line); stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
+</style>
+<g class="structure"><path d="M105 242 320 125 535 242 320 335Z M105 242V125L320 25 535 125V242 M320 125V25 M320 335V257"/><path d="M175 273 390 159 M248 305 462 199 M178 203 393 307 M247 165 464 278" opacity=".55"/></g>
+<g class="aircraft"><path d="M280 145 360 205 M360 145 280 205"/>
+<ellipse cx="267" cy="137" rx="39" ry="14"/><ellipse cx="373" cy="137" rx="39" ry="14"/>
+<ellipse cx="267" cy="213" rx="39" ry="14"/><ellipse cx="373" cy="213" rx="39" ry="14"/>
+<path d="M299 159H341V191H299Z M302 200V222 M338 200V222"/></g>
+</svg>

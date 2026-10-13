@@ -3,11 +3,19 @@
 The toolkit calculates the desired rotation and collective thrust, then sends `VehicleAttitudeSetpoint`. PX4 calculates attitude feedback, rate feedback, and motor allocation. Unlike acceleration mode, this mode needs a curated vehicle hover-thrust scale.
 
 ```mermaid
+---
+config:
+  flowchart:
+    useMaxWidth: false
+    wrappingWidth: 180
+    padding: 10
+    rankSpacing: 22
+    nodeSpacing: 24
+---
 flowchart TB
-    I[Measured state, trajectory, and yaw] --> T[Toolkit: force, desired rotation, collective]
-    T --> S[VehicleAttitudeSetpoint: quaternion and thrust]
-    S --> P[PX4: attitude and rate feedback]
-    P --> A[PX4: allocation and motors]
+    I["State + trajectory"] --> T["Toolkit · force → rotation"]
+    T --> S["Quaternion + collective thrust"]
+    S --> P["PX4 · attitude, rate, allocation"]
 ```
 
 ## Force to rotation
@@ -15,14 +23,20 @@ flowchart TB
 Use the common translation errors and acceleration law:
 
 $$
-A=m(a_{\mathrm{cmd}}-g e_3),\qquad b_{3d}=-A/\|A\|.
+\begin{aligned}
+A&=m(a_{\mathrm{cmd}}-g e_3) \\
+b_{3d}&=-A/\|A\|.
+\end{aligned}
 $$
 
 Desired heading $b_{1c}=(\cos\psi_d,\sin\psi_d,0)^\top$ fixes the remaining attitude:
 
 $$
-b_{2d}=\frac{b_{3d}\times b_{1c}}{\|b_{3d}\times b_{1c}\|},\quad
-b_{1d}=b_{2d}\times b_{3d},\quad R_d=[b_{1d}\ b_{2d}\ b_{3d}].
+\begin{aligned}
+b_{2d}&=\frac{b_{3d}\times b_{1c}}{\|b_{3d}\times b_{1c}\|} \\
+b_{1d}&=b_{2d}\times b_{3d} \\
+R_d&=[b_{1d}\ b_{2d}\ b_{3d}].
+\end{aligned}
 $$
 
 $R_d$ maps desired FRD axes into NED. The [foundations](foundations.md#desired-attitude-from-force-and-heading) explain degeneracy and the frame conventions. The runtime converts $R_d$ to a normalized scalar-first quaternion $q_d=(w,x,y,z)$, using trace/major-diagonal branches to avoid an unstable single formula near 180° rotations.
@@ -32,8 +46,10 @@ $R_d$ maps desired FRD axes into NED. The [foundations](foundations.md#desired-a
 Collective uses the **current** body axis, not the norm of desired force:
 
 $$
-f=-A^\top R e_3,\qquad
-u_T=\operatorname{clip}_{[0,1]}\left(h f/(mg)\right).
+\begin{aligned}
+f&=-A^\top R e_3 \\
+u_T&=\operatorname{clip}_{[0,1]}\left(h f/(mg)\right).
+\end{aligned}
 $$
 
 `VehicleAttitudeSetpoint.q_d` contains the FRD-to-NED quaternion. `thrust_body=(0,0,-u_T)` is dimensionless; negative FRD Z means upward thrust. `yaw_sp_move_rate` contains desired trajectory yaw rate in rad/s. Only `OffboardControlMode.attitude` is enabled.

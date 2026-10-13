@@ -4,7 +4,7 @@ Vehicle YAML describes physical and PX4-specific facts about one aircraft/model.
 
 ## 1. Identify the facts and source
 
-Use the [existing files](https://github.com/ANCL/px4-dev-toolkit/tree/main/config/vehicles) as schema references. `gz_f450` has a curated physical propulsion model; `gz_fy690s` deliberately omits unvalidated hover thrust. Neither is a requirement to imitate another airframe's mass or geometry.
+Use the [existing files](https://github.com/ANCL/px4-dev-toolkit/tree/main/config/vehicles) as schema references. `gz_f450` has a curated physical propulsion model; `gz_fy690s` deliberately omits unvalidated hover thrust. Use the mass and geometry of the aircraft being added.
 
 Record the source revision, airframe/model, total mass, coordinate frames, units, and calibration conditions. Physical inertia should describe the complete vehicle about its center of mass, with the same body convention used by the law. Treat simulator source data and measurements of a real vehicle as different evidence.
 
@@ -19,7 +19,7 @@ Record the source revision, airframe/model, total mass, coordinate frames, units
 
 The physical path does not require hover thrust; the normalized-thrust paths do not consume inertia to create a physical moment. A new mass file cannot enable modes that need missing calibration.
 
-The following **schema fragment** uses the actual FY690S mass. It illustrates an honest acceleration-only data subset; it is not calibration data for a new real aircraft:
+The following **schema fragment** uses the actual FY690S mass. It illustrates an acceleration-only data subset; it is not calibration data for a new real aircraft:
 
 ```{ .yaml .no-copy }
 vehicle:

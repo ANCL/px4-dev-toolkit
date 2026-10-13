@@ -17,7 +17,7 @@ In a **repository-root shell with `ros2/runtime_env.sh` sourced**, use the disco
 ./tools/px4_analyze "$bag_path"
 ```
 
-Here `bag_path` must refer to the actual finalized bag, not an invented timestamp. Example result structure:
+Set `bag_path` to a finalized bag directory. Example result structure:
 
 ```{ .text .no-copy }
 <bag>/analysis/
@@ -65,11 +65,10 @@ Uneven logging rates can make these numbers differ. Read the table's context ins
 
 **Position and velocity:** compare the desired reference to measured NED state. Position error is measured minus desired, in metres; velocity error is in m/s. Look for steady offsets, lag, overshoot, cross-axis coupling, and sudden estimator changes. Upward motion appears as decreasing Z.
 
-<div class="px4-figure-slot" markdown="1">
-
-**Figure slot — position tracking.** An example from an approved, verified flight will show desired and measured NED position [m], error [m], and time relative to confirmed Offboard entry [s]. It will illustrate lag and segment transitions. No recorded curve or performance value is implied here.
-
-</div>
+<figure class="px4-figure-slot">
+  <img src="../../assets/measured-plot-placeholder.svg" width="760" height="190" alt="Empty axes reserved for position tracking; measured data has not been supplied">
+  <figcaption><strong>Position tracking · figure placeholder.</strong> Desired and measured NED position [m], position error [m], and time from confirmed Offboard entry [s]. An approved flight recording is needed before this figure can show tracking or segment transitions.</figcaption>
+</figure>
 
 **Acceleration:** separate desired kinematic acceleration, commanded acceleration, PX4/estimated signals, and gravity compensation. They are different quantities. Model-based force derivatives and reconstructed physical quantities are not additional sensors.
 

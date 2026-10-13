@@ -12,6 +12,6 @@ The toolkit connects PX4 flight software to ROS 2 controllers, records the messa
 
 You need Git for a native checkout or local image build, enough disk space for source/build files, network access for dependencies, and a terminal. Docker needs a working Docker engine. A graphical simulation needs a supported display/graphics setup; headless operation runs the simulator without its GUI.
 
-The repository's source pins and recorded tool versions describe its validated environment. They do not promise that every graphics driver, host, or future image will behave identically. Installation and flight commands here are checked against the tracked source; verify communication and state on your own installation before starting a flight example.
+The [source manifests and tool versions](../reference/configuration.md#missing-data-and-source-pins) identify the supported dependencies. After installation, verify communication and PX4 state before starting a flight example; graphics and networking depend on the host.
 
 Once installed, continue with [First simulation](../getting-started/first-simulation.md).

@@ -8,11 +8,20 @@ Recording captures a flight's messages, not just its final controller result. Ad
 ## Lifecycle
 
 ```mermaid
+---
+config:
+  flowchart:
+    useMaxWidth: false
+    wrappingWidth: 180
+    padding: 10
+    rankSpacing: 22
+    nodeSpacing: 24
+---
 flowchart TB
-    R[Start rosbag recorder] --> D[Wait 1 second for discovery]
-    D --> C[Start controller or reference flight]
-    C --> E[Node exits: request recorder shutdown]
-    E --> F[Wait for recorder exit; inspect metadata.yaml]
+    R["Start rosbag recorder"] --> D["Wait 1 s for topic discovery"]
+    D --> C["Start flight/controller node"]
+    C --> E["Node exits → stop recorder"]
+    E --> F["Recorder exits → inspect metadata"]
 ```
 
 [px4_control_common.recording](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_control_common/px4_control_common/recording.py) delays node startup by one second **after recorder process start**. This is a discovery allowance, not a guarantee that every topic has been discovered. Early recorder exit or nonzero node exit fails the launch. Recorder shutdown follows node exit; node completion alone does not prove the bag was finalized.
@@ -80,7 +89,7 @@ bags/se3/<timestamp>/
 
 The sequence runner checks for `metadata.yaml` before advertising a bag as finalized. It writes `experiment.json` inside finalized study bags with the profile, step, and effective launch arguments. Standalone launches do not write this experiment identity file; retain the launch arguments yourself. Direct-controller identity may otherwise be `unknown` in analysis.
 
-In a **repository-root shell with ROS sourced**, discover the most recent finalized standalone SE(3) bag and inspect it:
+In a **repository-root shell with ROS sourced**, find the most recent finalized standalone SE(3) bag and inspect it:
 
 ```bash
 bag_path="$(find bags/se3 -mindepth 2 -maxdepth 2 -name metadata.yaml -printf '%h\n' | sort | tail -n 1)"

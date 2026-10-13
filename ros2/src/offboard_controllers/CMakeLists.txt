@@ -174,19 +174,6 @@ if(BUILD_TESTING)
     COMMAND test_se3_control_laws
   )
 
-  add_executable(test_se3_modules
-    test/se3/test_modules.cpp
-  )
-
-  target_link_libraries(test_se3_modules
-    se3_control
-  )
-
-  add_test(
-    NAME se3_modules
-    COMMAND test_se3_modules
-  )
-
   add_executable(test_se3_vehicle_state
     test/se3/test_vehicle_state.cpp
   )

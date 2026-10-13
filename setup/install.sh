@@ -1,47 +1,38 @@
 #!/usr/bin/env bash
-# Install one native toolkit scope: common ROS utilities, SITL/Gazebo,
-# hardware companion services, or both. Source pins live in config/sources/;
-# this script delegates each installation stage and then builds the ROS workspace.
+# Install either a SITL workstation or a physical-vehicle companion computer.
+# These are separate environments; both resolve their own pinned sources.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 profile="${1:-}"
 
+if (( $# != 1 )); then
+    echo "Usage: ./setup/install.sh sitl|hardware" >&2
+    exit 2
+fi
+
 case "${profile}" in
-    common|sitl|hardware|all)
+    sitl)
+        # SITL needs PX4/Gazebo, the graphical ROS distribution, and MAVProxy.
+        "${ROOT}/setup/install_ros2_jazzy.sh" desktop
+        "${ROOT}/setup/install_tools.sh" sitl
+        "${ROOT}/setup/fetch_sources.sh" sitl
+        "${ROOT}/setup/install_px4_dependencies.sh" sitl
+        "${ROOT}/setup/install_mavproxy.sh"
+        ;;
+    hardware)
+        # The companion uses ROS-base, Vicon, and a serial DDS agent.
+        # It does not install PX4 firmware sources or Gazebo dependencies.
+        "${ROOT}/setup/install_ros2_jazzy.sh" base
+        "${ROOT}/setup/install_tools.sh" hardware
+        "${ROOT}/setup/fetch_sources.sh" hardware
         ;;
     *)
-        echo "Usage: ./setup/install.sh common|sitl|hardware|all" >&2
+        echo "Usage: ./setup/install.sh sitl|hardware" >&2
         exit 2
         ;;
 esac
 
-# A companion computer does not require PX4 firmware sources, simulators,
-# cross-compilers, or graphical ROS desktop applications.
-if [[ "${profile}" == "hardware" || "${profile}" == "common" ]]; then
-    ros_profile=base
-    tools_profile="${profile}"
-else
-    ros_profile=desktop
-    tools_profile=sitl
-fi
-
-"${ROOT}/setup/install_ros2_jazzy.sh" "${ros_profile}"
-"${ROOT}/setup/install_common_tools.sh" "${tools_profile}"
-"${ROOT}/setup/fetch_sources.sh" "${profile}"
-
-case "${profile}" in
-    sitl|all)
-        "${ROOT}/setup/install_px4_dependencies.sh" sitl
-        "${ROOT}/setup/install_mavproxy.sh"
-        ;;
-esac
-
-if [[ "${profile}" == "all" ]]; then
-    "${ROOT}/setup/install_qgroundcontrol.sh"
-fi
-
-"${ROOT}/ros2/build.sh"
+"${ROOT}/ros2/build.sh" "${profile}"
 mkdir -p "${ROOT}/bags" "${ROOT}/log"
-
 echo "PX4 ${profile} toolkit environment ready."

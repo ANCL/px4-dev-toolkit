@@ -3,100 +3,53 @@ hide:
   - toc
 ---
 
-<div class="px4-hero">
-  <h1>PX4 Development Toolkit</h1>
-  <p class="px4-tagline">Reproducible PX4 and ROS 2 development from simulation to physical flight.</p>
-  <p class="px4-description">
-    Build, run, record, and analyze PX4 experiments using the same toolkit
-    across Gazebo SITL and physical hardware.
-  </p>
-  <div class="px4-actions">
-    <a href="#choose-an-installation" class="md-button md-button--primary">Get started</a>
-    <a href="#documentation" class="md-button">Documentation</a>
-    <a href="https://github.com/ANCL/px4-dev-toolkit" class="md-button">View on GitHub</a>
-  </div>
+<div class="px4-home">
+  <section class="px4-home-intro" aria-labelledby="px4-development-toolkit">
+    <h1 id="px4-development-toolkit">PX4 Development Toolkit</h1>
+    <p class="px4-home-lede">A development environment for PX4 and ROS 2, supporting controller experiments in Gazebo simulation and on physical aircraft.</p>
+    <p class="px4-home-summary">Run controllers, record flight data, and analyze their behavior. The documentation explains the implementation and mathematics of the supported control methods.</p>
+    <div class="px4-home-actions">
+      <a href="installation/" class="md-button md-button--primary">Get started</a>
+      <a href="controllers/overview/" class="px4-home-secondary">Explore controllers <span aria-hidden="true">→</span></a>
+    </div>
+  </section>
+
+  <section class="px4-home-media" aria-label="Simulation and physical-flight illustrations">
+    <div class="px4-home-media-grid">
+      <figure class="px4-home-media-item">
+        <div class="px4-home-media-frame px4-home-media-frame--sim">
+          <img src="assets/hero-gazebo-placeholder.svg" width="640" height="360" alt="Schematic Gazebo simulation with a quadrotor inside a modeled three-dimensional environment">
+        </div>
+        <figcaption><strong>Gazebo SITL</strong><span>Simulation illustration · video to be added</span></figcaption>
+      </figure>
+      <figure class="px4-home-media-item">
+        <div class="px4-home-media-frame px4-home-media-frame--lab">
+          <img src="assets/hero-f450-placeholder.svg" width="640" height="360" alt="Schematic quadrotor inside a motion-capture flight laboratory with ceiling cameras">
+        </div>
+        <figcaption><strong>Physical flight</strong><span>Laboratory illustration · video to be added</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- Preserve links to sections from the earlier documentation homepage. -->
+  <span id="choose-an-installation"></span>
+  <span id="suggested-first-journey"></span>
+  <span id="start-here"></span>
+  <span id="from-simulation-to-hardware"></span>
+  <span id="simulation-and-hardware"></span>
+  <span id="from-an-idea-to-a-recorded-flight"></span>
+  <span id="understand-what-each-controller-calculates"></span>
+  <span id="controller-interfaces"></span>
+
+  <section class="px4-home-docs" aria-labelledby="documentation">
+    <h2 id="documentation">Documentation</h2>
+    <nav class="px4-home-directory" aria-label="Documentation sections">
+      <a href="installation/" class="px4-home-doc-link"><span class="px4-home-doc-title">Getting started <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Installation and first simulation</span></a>
+      <a href="environments/sitl/" class="px4-home-doc-link"><span class="px4-home-doc-title">Running the toolkit <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Simulation and physical hardware</span></a>
+      <a href="controllers/overview/" class="px4-home-doc-link"><span class="px4-home-doc-title">Controllers <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Position, Offboard, and six SE(3) configurations</span></a>
+      <a href="experiments/complete-example/" class="px4-home-doc-link"><span class="px4-home-doc-title">Experiments and analysis <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Recording and interpreting flight data</span></a>
+      <a href="reference/extending/" class="px4-home-doc-link"><span class="px4-home-doc-title">Extending the toolkit <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Vehicles, controllers, and trajectories</span></a>
+      <a href="reference/architecture/" class="px4-home-doc-link"><span class="px4-home-doc-title">Technical reference <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Software structure and configuration</span></a>
+    </nav>
+  </section>
 </div>
-
-<div class="px4-hero-images">
-  <img src="assets/hero-gazebo-placeholder.svg" alt="PX4 F450 running in Gazebo simulation" class="px4-hero-image">
-  <img src="assets/hero-f450-placeholder.svg" alt="F450 quadrotor in flight" class="px4-hero-image">
-</div>
-
-<div class="px4-card-grid">
-  <a class="px4-card" href="#choose-an-installation">
-    <h3>Installation</h3>
-    <p>Start with the published SITL Docker image or install the toolkit natively on Ubuntu 24.04.</p>
-    <span>Choose an installation →</span>
-  </a>
-
-  <a class="px4-card" href="environments/sitl/">
-    <h3>Simulation</h3>
-    <p>Run PX4 SITL with Gazebo, uXRCE-DDS, MAVProxy, and QGroundControl.</p>
-    <span>Run SITL →</span>
-  </a>
-
-  <a class="px4-card" href="environments/hardware/">
-    <h3>Hardware</h3>
-    <p>Run the same ROS 2 workflows with a physical PX4 vehicle, serial XRCE-DDS, and Vicon motion capture.</p>
-    <span>Run on hardware →</span>
-  </a>
-
-  <a class="px4-card" href="controllers/overview/">
-    <h3>Control</h3>
-    <p>Develop and evaluate Offboard controllers, geometric SE(3) control, and reusable trajectories.</p>
-    <span>Explore controllers →</span>
-  </a>
-
-  <a class="px4-card" href="analysis/analysis/">
-    <h3>Analysis</h3>
-    <p>Record repeatable experiments and analyze trajectories, controller behavior, and the PX4 control pipeline.</p>
-    <span>Analyze results →</span>
-  </a>
-</div>
-
-## Choose an installation
-
-Use either installation path depending on how you want to work.
-
-**[Docker](installation/docker.md)** provides the lowest-setup path using the published SITL image.
-
-**[Native](installation/native.md)** installs ROS 2, PX4 dependencies, pinned sources, and the toolkit workspace directly on Ubuntu 24.04.
-
-Native installation supports SITL and physical companions; Docker supports SITL only.
-
-## From simulation to hardware
-
-The toolkit keeps the workflow consistent across the two runtime environments.
-
-```mermaid
-flowchart LR
-    D[Install toolkit] --> E{Environment}
-    E -->|Simulation| S[PX4 SITL + Gazebo]
-    E -->|Physical platform| H[PX4 hardware + Vicon]
-    S --> C[ROS 2 controllers]
-    H --> C
-    C --> R[Recording]
-    R --> A[Analysis and comparison]
-```
-
-## Suggested first journey
-
-For a new simulation user:
-
-1. [Install with Docker](installation/docker.md) or [install natively](installation/native.md).
-2. [Run the SITL environment](environments/sitl.md).
-3. Review the [controller overview](controllers/overview.md).
-4. [Run the SE(3) controller](controllers/se3.md).
-5. [Record a run](workflows/recording.md) or [run a sequence](workflows/sequences.md).
-6. [Analyze](analysis/analysis.md) and [compare](analysis/comparison.md) the results.
-
-## Documentation
-
-Browse all documentation using the sidebar, or jump directly to a topic:
-
-- **Installation:** [Docker](installation/docker.md) · [Native](installation/native.md)
-- **Environments:** [SITL](environments/sitl.md) · [Hardware](environments/hardware.md)
-- **Controllers:** [Overview](controllers/overview.md) · [SE(3)](controllers/se3.md) · [Trajectories](controllers/trajectories.md)
-- **Workflows:** [Recording](workflows/recording.md) · [Sequences](workflows/sequences.md)
-- **Analysis:** [Single-run analysis](analysis/analysis.md) · [Comparison](analysis/comparison.md)
-- **Reference:** [Architecture](reference/architecture.md) · [Configuration](reference/configuration.md) · [Extending](reference/extending.md) · [Troubleshooting](reference/troubleshooting.md)

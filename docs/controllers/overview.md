@@ -1,84 +1,44 @@
-# Controller overview
+<!-- Preserve existing section links. -->
+<span id="controller-overview"></span>
 
-[Documentation](../index.md) / Controllers / Overview
+# Controllers
 
-The repository contains several controller/flight examples with deliberately different ownership boundaries. Choose the one that matches what you want to test instead of treating every launch file as the same kind of controller.
+The toolkit includes a PX4 reference flight, a simulation staging helper, an external position-reference node, and a configurable SE(3) controller. Each changes a different part of the experiment.
 
-## Available workflows
+<!-- Preserve existing section links. -->
+<span id="available-workflows"></span>
 
-| Workflow | Launch file | Toolkit ownership | PX4 ownership |
-|---|---|---|---|
-| Native Position-mode takeoff/hover/land | `px4_position_mode/position_takeoff_hover.launch.py` | experiment orchestration and mode/command sequence | complete native flight-control stack |
-| Position-mode staging for an Offboard test | `px4_position_mode/offboard_takeoff_handoff.launch.py` | virtual-joystick staging, arm/climb, waits for independent Offboard takeover | Position-mode flight until Offboard takeover |
-| Offboard position trajectory | `offboard_controllers/offboard_position.launch.py` | Offboard lifecycle + trajectory position reference | position controller and all lower loops |
-| Geometric SE(3) | `offboard_controllers/se3.launch.py` | depends on selected handoff | everything below the selected handoff boundary |
+## What each method sends
 
-## Native Position-mode reference experiment
+| Method | Command sent to PX4 | What PX4 does next |
+|---|---|---|
+| Position-mode reference/staging | Mode/arm sequence and simulated manual input | Position stabilization and all lower stages |
+| Offboard position | Position reference with trajectory feedforward | Position feedback, attitude/rate feedback, allocation |
+| SE(3) acceleration | NED acceleration request | Acceleration-to-attitude/thrust conversion, rate feedback, allocation |
+| SE(3) attitude | Desired rotation and collective thrust | Attitude/rate feedback, allocation |
+| SE(3) attitude rate | FRD body-rate command and collective thrust | Rate feedback, allocation |
+| SE(3) direct thrust/torque (three laws) | Normalized body thrust/torque | Control allocation and motors |
 
-Run the PX4-native takeoff/hover/landing experiment with:
+**Control allocation** maps a requested vehicle thrust/torque to individual actuator commands using the configured aircraft geometry and limits. It remains in PX4 for every documented controller mode.
 
-```bash
-source ros2/runtime_env.sh
-ros2 launch px4_position_mode position_takeoff_hover.launch.py
-```
+<!-- Preserve existing section links. -->
+<span id="native-position-mode-reference-experiment"></span>
+<span id="position-mode-staging-helper"></span>
+<span id="offboard-position-controller"></span>
 
-Add `record:=true` to record it. This is useful as a native PX4 behavior/reference run rather than an external controller.
+## Begin with the reference
 
-## Position-mode staging helper
+[Position mode and switching to Offboard](position-mode.md) explains the reference flight and the separate staging helper. The helper prepares the simulated aircraft for an independent controller; it does not itself enter Offboard.
 
-The staging helper is intentionally separate from the controller that takes Offboard ownership. Its flow is:
+[Offboard position control](offboard-position.md) sends the shared trajectory position and feedforward to PX4. This is the simplest reference for an external ROS controller. It can request arming and confirms mode changes through PX4 status.
 
-```text
-PX4 ready + local position
-→ minimum-throttle virtual joystick
-→ Position mode
-→ arm
-→ climb to configured staging altitude
-→ centered joystick hold
-→ wait for independent controller to enter Offboard
-→ exit
-```
+<!-- Preserve existing section links. -->
+<span id="se3"></span>
+<span id="recording-and-studies"></span>
+<span id="next"></span>
 
-It relies on MAVProxy's repository virtual-joystick module for the continuous manual-control stream. The helper itself does not request Offboard mode.
+## Move the calculation into the toolkit
 
-```bash
-source ros2/runtime_env.sh
-ros2 launch px4_position_mode offboard_takeoff_handoff.launch.py
-```
+The [SE(3) controller](se3.md) calculates position/velocity feedback and can continue through desired attitude, body rate, or direct torque. **SE(3)** is the mathematical space of three-dimensional position and rotation. Its six documented configurations use four `handoff` values, with three rotational laws for `thrust_and_torque`.
 
-## Offboard position controller
-
-This controller publishes only trajectory references and Offboard/mode commands; PX4 owns the position controller and every lower control loop.
-
-```bash
-source ros2/runtime_env.sh
-ros2 launch offboard_controllers offboard_position.launch.py \
-  trajectory:=hover
-```
-
-It can use any named trajectory from the shared [trajectory configuration](trajectories.md).
-
-## SE(3)
-
-SE(3) is the configurable controller family used to move the handoff boundary through the PX4 multicopter stack:
-
-```text
-acceleration
-attitude
-attitude_rate
-thrust_and_torque + px4_rate
-thrust_and_torque + geometric_normalized
-thrust_and_torque + geometric_physical
-```
-
-Read [SE(3)](se3.md) before using the direct torque modes; vehicle requirements differ by handoff.
-
-## Recording and studies
-
-Use [Recording](../workflows/recording.md) for one run and [Sequences](../workflows/sequences.md) for ordered studies.
-
-## Next
-
-- [SE(3)](se3.md)
-- [Trajectories](trajectories.md)
-- [Recording](../workflows/recording.md)
+Choose a mode according to what you want to compare and the [available vehicle data](../reference/adding-a-vehicle.md). Offboard position and SE(3) share [named trajectories](trajectories.md); environment startup, arming/staging, controller selection, and [recording](../workflows/recording.md) are distinct steps.

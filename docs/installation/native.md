@@ -1,114 +1,73 @@
-# Native installation
+<!-- Preserve existing section links. -->
+<span id="supported-host"></span>
 
-[Documentation](../index.md) / Installation / Native
+# Native SITL installation
 
-Use the native path when you want the toolkit installed directly on the workstation for development, simulation, or physical-platform work.
+Use this page to install PX4 **software-in-the-loop** directly on **Ubuntu 24.04 (Noble)**. It installs **ROS 2 Jazzy Desktop**, **Gazebo Harmonic (Sim 8)**, PX4 SITL, MAVProxy, and the toolkit's ROS 2 controllers and analysis tools. Gazebo 8.15.0 was recorded during validation; see [tested tool versions](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/versions.env).
 
-## Supported host
+This is the simulation environment, not the physical companion-computer installation. For Vicon reception and serial DDS, use [Companion-computer installation](companion.md). For a prebuilt SITL environment, use [Docker](docker.md).
 
-These installation instructions target:
+<!-- Preserve existing section links. -->
+<span id="clone"></span>
+<span id="choose-an-installation-profile"></span>
 
-- Ubuntu 24.04 (Noble)
-- ROS 2 Jazzy
-- Gazebo Harmonic / Gazebo Sim 8 series; the documented version is recorded in `config/versions.env`
+## Clone and install
 
-Other hosts are not currently covered by these installation instructions.
-
-## Clone
+From a **host terminal**:
 
 ```bash
 git clone https://github.com/ANCL/px4-dev-toolkit.git
 cd px4-dev-toolkit
-```
-
-## Choose an installation profile
-
-The installer exposes four profiles:
-
-```bash
-./setup/install.sh common
 ./setup/install.sh sitl
-./setup/install.sh hardware
-./setup/install.sh all
+./px4/build_sitl.sh
 ```
 
-| Profile | Use it for | Adds |
-|---|---|---|
-| `common` | shared ROS/toolkit development | ROS 2 Jazzy base, core build tools, common pinned sources, ROS workspace build |
-| `sitl` | PX4 + Gazebo simulation | ROS desktop, PX4 SITL and Gazebo dependencies, MAVProxy |
-| `hardware` | companion-computer physical stack | ROS-base, companion build tools, pinned Vicon source, DDS, no PX4 firmware checkout |
-| `all` | workstation that needs both environments | Both native source sets and runtimes, MAVProxy, QGroundControl |
+The installer installs host dependencies through `sudo`, fetches the **SITL** pinned repositories (including PX4, `px4_msgs`, Micro XRCE-DDS Agent, and MAVProxy), installs MAVProxy, and builds the SITL ROS 2 workspace. The separate `build_sitl.sh` compiles the configured PX4 SITL target; it does **not** start Gazebo or fly the vehicle. The process can take substantial time and disk space on a fresh machine.
 
-`GCS=qgc` is a valid SITL runtime choice, but the `sitl` installer profile installs MAVProxy, not QGroundControl. Use `all` or run `./setup/install_qgroundcontrol.sh` if you want QGroundControl managed by the toolkit.
+<!-- Preserve existing section links. -->
+<span id="source-pin-behavior"></span>
 
-The hardware profile does not fetch PX4-Autopilot, initialize PX4 submodules, install simulation dependencies, or install ARM firmware toolchains. The setup scripts may use `sudo` to install host packages.
+## Pinned external sources
 
-## Source pin behavior
+The complete simulation source manifest is [config/sources/sitl.repos](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/sources/sitl.repos). Its PX4 pin is `f5083ca2c5b919350880e8667e636ef70715db17`.
 
-External repositories are declared in:
+`setup/fetch_sources.sh sitl` preserves existing full source sets rather than resetting them. If only part of a pinned source set exists, fetching stops rather than mixing revisions. Resolve partial checkouts deliberately; see [Installation troubleshooting](../reference/troubleshooting.md#installation).
 
-```text
-config/sources/common.repos
-config/sources/sitl.repos
-config/sources/hardware.repos
-```
+<!-- Preserve existing section links. -->
+<span id="build"></span>
+<span id="test"></span>
+<span id="runtime-shell"></span>
 
-`setup/fetch_sources.sh` does not reset already-present external repositories. If a source scope is partially populated, it refuses to modify it automatically rather than creating a mixed checkout.
+## Rebuild and prepare a runtime shell
 
-## Build
-
-The top-level installer builds the ROS 2 workspace automatically. To rebuild later:
+The installer already builds ROS 2. After changing a maintained ROS package, from the **repository root** run:
 
 ```bash
-./ros2/build.sh
+./ros2/build.sh sitl
+./ros2/test.sh sitl
 ```
 
-The build helper deliberately uses a small clean environment so previously sourced ROS/PX4 paths do not leak into `colcon build`.
-
-## Test
-
-Run toolkit-maintained Python and ROS package tests with:
-
-```bash
-./ros2/test.sh
-```
-
-The test helper covers the toolkit-maintained ROS packages and analysis regression tests; fetched third-party repositories retain their upstream test suites.
-
-## Runtime shell
-
-Before invoking ROS 2 commands manually:
+Source the runtime environment in **each new terminal** used for manual ROS 2 commands:
 
 ```bash
 source ros2/runtime_env.sh
+ros2 pkg list
 ```
 
-The user-facing `tools/sitl` and `tools/hardware` wrappers source the repository runtime environment inside the tmux processes they create.
+The runtime helper must be sourced, not executed. The ROS build and test commands do not launch the simulator or arm an aircraft.
 
-## Verification
+<!-- Preserve existing section links. -->
+<span id="verification"></span>
+<span id="next"></span>
 
-For a SITL installation:
+## Verify and continue
+
+SITL uses **MAVProxy** by default (`GCS=mavproxy` in `config/runtime/sitl.env`). QGroundControl is optional: install the managed AppImage with `./setup/install_qgroundcontrol.sh` and choose `GCS=qgc` if that frontend is needed. The provided virtual-joystick staging demonstrations require the MAVProxy configuration, so retain the default for the first flight.
+
+From the repository root:
 
 ```bash
 ./tools/sitl status
 ```
 
-Then start it:
-
-```bash
-./tools/sitl start headless
-```
-
-For the `hardware` installation profile, review `config/runtime/hardware.env`, verify the serial device, then use:
-
-```bash
-./tools/hardware status
-```
-
-For physical hardware, continue with the [Hardware environment](../environments/hardware.md) checklist before flight.
-
-## Next
-
-- [SITL environment](../environments/sitl.md)
-- [Hardware environment](../environments/hardware.md)
-- [Configuration](../reference/configuration.md)
+Before the first launch a stopped session is expected. Continue with [First simulation](../getting-started/first-simulation.md) to start Gazebo and PX4, verify DDS communication, and run the Position-mode reference flight.

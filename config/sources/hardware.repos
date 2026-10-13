@@ -1,4 +1,14 @@
 repositories:
+  ros2/src/px4_msgs:
+    type: git
+    url: https://github.com/ANCL/px4_msgs.git
+    version: 392e831c1f659429ca83902e66820d7094591410
+
+  ros2/src/Micro-XRCE-DDS-Agent:
+    type: git
+    url: https://github.com/eProsima/Micro-XRCE-DDS-Agent.git
+    version: 73622810d984349b80bbac0ef55fc0b694d62222
+
   ros2/src/vicon_receiver:
     type: git
     url: https://github.com/ANCL/ros2-vicon-receiver.git

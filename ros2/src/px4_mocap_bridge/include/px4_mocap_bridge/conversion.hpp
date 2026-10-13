@@ -1,3 +1,5 @@
+// External-pose to PX4-odometry frame and message conversion interface.
+
 #pragma once
 
 #include <cstdint>

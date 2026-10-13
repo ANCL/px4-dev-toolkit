@@ -1,3 +1,5 @@
+// Analytic trajectory references and the segment/sequence sampling contract.
+
 #pragma once
 
 #include <array>
@@ -9,15 +11,7 @@ namespace offboard_controllers::trajectory
 
 using Vector3 = std::array<double, 3>;
 
-// Trajectory-reference data:
-//
-// Coordinates:
-//   position and translational derivatives use PX4 local NED coordinates;
-//   yaw uses radians.
-//
-// Contents:
-//   analytic translation through snap and yaw through angular acceleration,
-//   providing the derivatives required by the geometric controller.
+// Local NED reference through snap; yaw derivatives use rad/s and rad/s^2.
 struct Reference
 {
   Vector3 position{};
@@ -35,17 +29,8 @@ Reference stationary_reference(
   const Vector3 & position,
   double yaw);
 
-// Segment contract:
-//
-// Inputs:
-//   a segment-local time and an origin reference supplied by the sequence.
-//
-// Logic:
-//   smooth primitives use the common C4 time scaling so derivatives through
-//   snap vanish at their boundaries. Step is deliberately instantaneous.
-//
-// Output:
-//   one complete NED reference relative to the supplied segment origin.
+// Segments sample motion relative to an origin reference. Smooth segments
+// have zero derivatives through snap at both boundaries; Step is discontinuous.
 class Segment
 {
 public:
@@ -121,22 +106,8 @@ private:
 };
 
 
-// Sequence contract:
-//
-// Inputs:
-//   elapsed sequence time and the experiment's initial reference.
-//
-// Logic:
-//   each completed segment's terminal reference becomes the next segment's
-//   origin, preserving relative trajectory definitions.
-//
-// Output:
-//   the active segment reference; after completion, final position/yaw are
-//   held indefinitely.
-//
-// Boundary:
-//   at an exact segment boundary, the segment that is ending owns that sample;
-//   the following segment begins immediately afterward.
+// Completed segments anchor the next segment's origin. At an exact boundary,
+// the ending segment supplies the sample; after completion the final pose holds.
 class Sequence
 {
 public:
@@ -157,24 +128,13 @@ struct ConfiguredTrajectory
 {
   Sequence sequence;
 
-  // Configured initial/default heading [rad] used when anchoring the sequence
-  // to the vehicle's current local position.
+  // Initial heading [rad] used to anchor the trajectory.
   double yaw;
 };
 
 
-// Trajectory-loading contract:
-//
-// Inputs:
-//   YAML configuration path and a trajectory or reusable-segment name.
-//
-// Logic:
-//   validate the configuration, expand named reusable segments, and construct
-//   one ordered Sequence using the configured default yaw.
-//
-// Output:
-//   validated trajectory sequence plus its anchoring yaw. Invalid or unknown
-//   configuration raises std::invalid_argument.
+// Load a named trajectory or reusable segment from YAML. Invalid definitions
+// and unknown names raise std::invalid_argument.
 ConfiguredTrajectory load_trajectory(
   const std::string & path,
   const std::string & name);

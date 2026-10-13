@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 source "${ROOT}/config/runtime/common.env"
+source "${ROOT}/tools/runtime/processes.sh"
+source "${ROOT}/tools/runtime/session.sh"
 source "${ROOT}/config/runtime/sitl.env"
 
 RUNTIME_ENV="${ROOT}/ros2/runtime_env.sh"
@@ -166,7 +168,7 @@ gazebo_config_dir() {
 
     if [[ -z "${sim_config}" || ! -f "${sim_config}" ]]; then
         echo "ERROR: Gazebo Harmonic command configuration was not found." >&2
-        echo "Run: ./setup/install_px4_dependencies.sh" >&2
+        echo "Run: ./setup/install.sh sitl" >&2
         return 1
     fi
 
@@ -174,7 +176,7 @@ gazebo_config_dir() {
 
     if ! GZ_CONFIG_PATH="${config_dir}" gz sim --versions >/dev/null 2>&1; then
         echo "ERROR: Gazebo Harmonic is not usable from ${config_dir}." >&2
-        echo "Run: ./setup/install_px4_dependencies.sh" >&2
+        echo "Run: ./setup/install.sh sitl" >&2
         return 1
     fi
 
@@ -337,86 +339,7 @@ start_stack() {
     exec tmux attach-session -t "${TMUX_SESSION}"
 }
 
-# The helpers below manage process trees explicitly because Gazebo/PX4 may
-# spawn children that outlive their original tmux pane shell.
-pid_is_alive() {
-    local pid="$1"
-    local state
-
-    [[ -r "/proc/${pid}/stat" ]] || return 1
-
-    state="$(
-        awk '{print $3}' "/proc/${pid}/stat" 2>/dev/null || true
-    )"
-
-    [[ -n "${state}" && "${state}" != "Z" ]]
-}
-
-collect_process_tree() {
-    local root_pid="$1"
-    local -a queue=("${root_pid}")
-    local index=0
-    local pid
-    local child
-
-    while (( index < ${#queue[@]} )); do
-        pid="${queue[$index]}"
-        index=$((index + 1))
-
-        echo "${pid}"
-
-        while IFS= read -r child; do
-            if [[ -n "${child}" ]]; then
-                queue+=("${child}")
-            fi
-        done < <(
-            pgrep -P "${pid}" 2>/dev/null || true
-        )
-    done
-}
-
-any_pid_alive() {
-    local pid
-
-    for pid in "$@"; do
-        if pid_is_alive "${pid}"; then
-            return 0
-        fi
-    done
-
-    return 1
-}
-
-wait_for_pids() {
-    local timeout_seconds="$1"
-    shift
-
-    local elapsed=0
-
-    while (( elapsed < timeout_seconds )); do
-        if ! any_pid_alive "$@"; then
-            return 0
-        fi
-
-        sleep 1
-        elapsed=$((elapsed + 1))
-    done
-
-    ! any_pid_alive "$@"
-}
-
-signal_alive_pids() {
-    local signal="$1"
-    shift
-
-    local pid
-
-    for pid in "$@"; do
-        if pid_is_alive "${pid}"; then
-            kill -s "${signal}" "${pid}" 2>/dev/null || true
-        fi
-    done
-}
+# Shared process-tree helpers are sourced from tools/runtime/processes.sh.
 
 # Gazebo can detach/reparent while PX4 is shutting down. Match the world path
 # below this repository so cleanup targets only its simulator and does not kill
@@ -486,83 +409,6 @@ stop_repo_gazebo() {
     echo "Gazebo simulator stopped."
 }
 
-# Stop tmux-managed processes first so each component receives Ctrl-C, then
-# clean any repo-owned Gazebo process that escaped the tmux process tree.
-stop_stack() {
-    if session_exists; then
-        local -a pane_pids=()
-        local -a stack_pids=()
-        local -a pane_targets=()
-
-        local pane_pid
-        local target
-
-        mapfile -t pane_pids < <(
-            tmux list-panes \
-                -s \
-                -t "${TMUX_SESSION}" \
-                -F '#{pane_pid}'
-        )
-
-        mapfile -t pane_targets < <(
-            tmux list-panes \
-                -s \
-                -t "${TMUX_SESSION}" \
-                -F '#{session_name}:#{window_name}.#{pane_index}'
-        )
-
-        for pane_pid in "${pane_pids[@]}"; do
-            while IFS= read -r target; do
-                stack_pids+=("${target}")
-            done < <(
-                collect_process_tree "${pane_pid}"
-            )
-        done
-
-        if (( ${#stack_pids[@]} > 0 )); then
-            mapfile -t stack_pids < <(
-                printf '%s\n' "${stack_pids[@]}" |
-                    sort -n -u
-            )
-        fi
-
-        echo "Stopping tmux session '${TMUX_SESSION}'..."
-
-        for target in "${pane_targets[@]}"; do
-            tmux send-keys \
-                -t "${target}" \
-                C-c \
-                2>/dev/null || true
-        done
-
-        if (( ${#stack_pids[@]} > 0 )) &&
-            ! wait_for_pids 15 "${stack_pids[@]}"; then
-
-            echo "Processes still running; sending SIGINT."
-            signal_alive_pids INT "${stack_pids[@]}"
-
-            if ! wait_for_pids 15 "${stack_pids[@]}"; then
-                echo "Processes still running; sending SIGTERM."
-                signal_alive_pids TERM "${stack_pids[@]}"
-
-                if ! wait_for_pids 2 "${stack_pids[@]}"; then
-                    echo "Processes still running; sending SIGKILL."
-                    signal_alive_pids KILL "${stack_pids[@]}"
-                fi
-            fi
-        fi
-
-        tmux kill-session \
-            -t "${TMUX_SESSION}" \
-            2>/dev/null || true
-
-        echo "tmux session '${TMUX_SESSION}' stopped."
-    else
-        echo "tmux session '${TMUX_SESSION}' is not running."
-    fi
-
-    stop_repo_gazebo
-}
 
 # Status helpers intentionally report processes rather than only tmux windows;
 # this makes detached or stale components visible during diagnosis.
@@ -666,6 +512,13 @@ status_stack() {
                 mavproxy_processes
             ;;
     esac
+}
+
+
+# Stop the tmux-owned process tree, then any repo-scoped detached Gazebo tree.
+stop_stack() {
+    stop_owned_session "${TMUX_SESSION}"
+    stop_repo_gazebo
 }
 
 case "${ACTION}" in

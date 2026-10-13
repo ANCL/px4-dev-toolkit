@@ -1,3 +1,5 @@
+// Derive control periods and sample-based Offboard warmup/retry intervals.
+
 #pragma once
 
 #include <chrono>
@@ -40,18 +42,8 @@ inline int duration_to_samples(
 }
 
 
-// Runtime-timing contract:
-//
-// Inputs:
-//   control-loop rate [Hz], Offboard warmup duration [s], and mode-request
-//   retry interval [s].
-//
-// Logic:
-//   derive the timer period and convert configured durations to nearest whole
-//   control-loop sample counts so heartbeat and mode requests share one cadence.
-//
-// Output:
-//   validated timer period, warmup sample count, and retry sample count.
+// Convert configured warmup and retry durations into controller samples,
+// keeping the Offboard heartbeat and mode requests on the same timer cadence.
 inline RuntimeTiming make_runtime_timing(
   double control_rate_hz,
   double warmup_duration_s,

@@ -1,3 +1,5 @@
+// Pure Offboard-state transition helpers used by controller lifecycles.
+
 #pragma once
 
 namespace offboard_controllers

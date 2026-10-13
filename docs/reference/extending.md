@@ -11,13 +11,13 @@ Use this page when you want to add a new capability without breaking the reposit
 | controller or Offboard behavior | `ros2/src/offboard_controllers/` | `offboard_position`, `se3` |
 | trajectory | `ros2/src/offboard_controllers/config/trajectory/trajectories.yaml` and trajectory library | `line`, `circle`, `figure_eight` |
 | vehicle data | `config/vehicles/<vehicle>.yaml` | `gz_f450.yaml` |
-| recording topics | package `config/recording/` | `offboard_controllers/config/recording/se3.txt` |
+| recording topics | package `config/recording/` | `ros2/src/offboard_controllers/config/recording/se3.txt` |
 | experiment sequence | `config/sequences/` | `config/sequences/se3/handoff_comparison.yaml` |
 | analysis profile | `analysis/profiles/` | `analysis/profiles/se3/` |
-| comparison/analysis feature | `analysis/` | `analysis/profiles/se3/comparison.py` |
-| user-facing command | `tools/` | `sitl`, `experiment`, `run_sequence`, `px4_analyze` |
+| comparison/analysis feature | `analysis/` | `analysis/profiles/se3/comparison/` |
+| user-facing command | `tools/` | `sitl`, `hardware`, `run_sequence`, `px4_analyze` |
 | ROS 2 package | `ros2/src/` | toolkit-maintained packages listed in Architecture |
-| external source | `config/sources/*.repos` | common/SITL/experiment manifests |
+| external source | `config/sources/*.repos` | common/SITL/hardware manifests |
 
 Before adding a new file, check [Configuration](configuration.md) so the setting or data does not duplicate an existing canonical source.
 
@@ -129,7 +129,7 @@ A top-level tool should:
 - own any process tree it starts and shut it down predictably;
 - avoid depending on the caller's current directory when it can resolve the repository root itself.
 
-Use `tools/sitl` and `tools/experiment` for runtime/process ownership, `tools/run_sequence` for orchestration, and `tools/px4_analyze` for a small CLI around library code.
+Use `tools/sitl` and `tools/hardware` for runtime/process ownership, `tools/run_sequence` for orchestration, and `tools/px4_analyze` for a small CLI around library code.
 
 ## Add a ROS 2 package
 
@@ -149,7 +149,7 @@ External repositories are pinned through:
 ```text
 config/sources/common.repos
 config/sources/sitl.repos
-config/sources/experiment.repos
+config/sources/hardware.repos
 ```
 
 Choose the manifest based on which environment needs the dependency. `setup/fetch_sources.sh` reconstructs these source sets and deliberately avoids resetting existing checkouts.

@@ -38,7 +38,7 @@ Inside the container:
 ./tools/sitl start headless
 ```
 
-Use another shell in the same container, or attach from your editor, for ROS 2/controller commands. See [Docker installation](docs/installation/docker.md) for persistent data, source builds, and the hardware image.
+Use another shell in the same container, or attach from your editor, for ROS 2/controller commands. See [Docker installation](docs/installation/docker.md) for persistent data, source builds, and the native companion-computer installation.
 
 ## What is included
 
@@ -53,7 +53,7 @@ Use another shell in the same container, or attach from your editor, for ROS 2/c
 - single-run analysis and multi-run SE(3) comparison
 - Vicon-to-PX4 motion-capture bridge for the hardware stack
 - pinned external sources and documented host/tool versions
-- SITL and hardware Docker images
+- SITL Docker image
 
 ## System overview
 
@@ -72,7 +72,7 @@ flowchart LR
     B --> A[Analysis and comparison]
 ```
 
-Docker and native installation are two ways to obtain the same toolkit workflows; SITL and hardware are the two runtime environments. The detailed architecture and ownership boundaries are documented in [Architecture](docs/reference/architecture.md) and [Configuration](docs/reference/configuration.md).
+Docker and native installation are two deployment choices for SITL; the physical companion-computer stack is installed natively. The detailed architecture and ownership boundaries are documented in [Architecture](docs/reference/architecture.md) and [Configuration](docs/reference/configuration.md).
 
 
 ## Repository layout
@@ -81,7 +81,7 @@ Docker and native installation are two ways to obtain the same toolkit workflows
 px4-dev-toolkit/
 ├── analysis/        analysis implementation and experiment profiles
 ├── config/          runtime, vehicle, topic, sequence, source, and version config
-├── docker/          SITL/hardware container build and Compose definitions
+├── docker/          SITL-only container build and Compose definitions
 ├── docs/            user and technical documentation
 ├── px4/             PX4 build helpers and fetched PX4 source location
 ├── ros2/            ROS 2 workspace, packages, build/test/runtime helpers

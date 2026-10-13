@@ -12,11 +12,11 @@ The project deliberately separates runtime connectivity, vehicle physics, contro
 |---|---|
 | shared ROS runtime setting | `config/runtime/common.env` |
 | SITL process/simulator/XRCE/GCS settings | `config/runtime/sitl.env` |
-| hardware serial/Vicon settings | `config/runtime/experiment.env` |
+| hardware serial/Vicon settings | `config/runtime/hardware.env` |
 | vehicle mass/inertia/propulsion/allocator facts | `config/vehicles/*.yaml` |
 | SE(3) controller gains and timing | `ros2/src/offboard_controllers/config/se3/controller.yaml` |
 | shared trajectory segments/names | `ros2/src/offboard_controllers/config/trajectory/trajectories.yaml` |
-| basic Offboard staging setpoint | `ros2/src/offboard_controllers/config/offboard.yaml` |
+| basic Offboard staging setpoint | `ros2/src/px4_position_mode/config/offboard.yaml` |
 | experiment/study sequence definition | `config/sequences/` |
 | project-wide PX4 ROS topic catalog | `config/px4_topics.def` |
 | external repository revisions | `config/sources/*.repos` |
@@ -33,7 +33,7 @@ Contains settings shared by environments, currently the ROS distribution used by
 
 Owns simulator/runtime process selection and connectivity: PX4 target, Gazebo model/world, estimator runtime overrides, XRCE endpoint, MAVProxy endpoint, selected GCS, optional service start, and tmux session.
 
-### `config/runtime/experiment.env`
+### `config/runtime/hardware.env`
 
 Owns the companion-computer hardware/environment boundary: serial XRCE device/baud, Vicon server/topic/frame/transform settings, optional XRCE-agent start, and tmux session.
 
@@ -67,7 +67,7 @@ A sequence may select a controller/vehicle/trajectory, but it should not duplica
 
 ## External sources and versions
 
-`config/sources/*.repos` answers **which source revision should be fetched**.
+`config/sources/*.repos` answers **which source revision should be fetched**. The PX4-Autopilot source belongs only to the SITL scope; the native hardware scope fetches Vicon.
 
 `config/versions.env` records the host/tool/application versions used by the documented environment.
 

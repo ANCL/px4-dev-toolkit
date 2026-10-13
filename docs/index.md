@@ -25,7 +25,7 @@ hide:
 <div class="px4-card-grid">
   <a class="px4-card" href="#choose-an-installation">
     <h3>Installation</h3>
-    <p>Start with the published Docker images or install the toolkit natively on Ubuntu 24.04.</p>
+    <p>Start with the published SITL Docker image or install the toolkit natively on Ubuntu 24.04.</p>
     <span>Choose an installation →</span>
   </a>
 
@@ -58,11 +58,11 @@ hide:
 
 Use either installation path depending on how you want to work.
 
-**[Docker](installation/docker.md)** provides the lowest-setup path using the published SITL and hardware images.
+**[Docker](installation/docker.md)** provides the lowest-setup path using the published SITL image.
 
 **[Native](installation/native.md)** installs ROS 2, PX4 dependencies, pinned sources, and the toolkit workspace directly on Ubuntu 24.04.
 
-Both provide the same toolkit workflows after installation.
+Native installation supports SITL and physical companions; Docker supports SITL only.
 
 ## From simulation to hardware
 

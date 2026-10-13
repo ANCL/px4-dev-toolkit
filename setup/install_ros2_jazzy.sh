@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+profile="${1:-desktop}"
+case "${profile}" in
+    desktop|base) ;;
+    *) echo "Usage: ./setup/install_ros2_jazzy.sh [desktop|base]" >&2; exit 2 ;;
+esac
+
 source /etc/os-release
 
 # The repository has only been validated on Ubuntu 24.04. Refuse a different
@@ -12,7 +18,7 @@ if [[ "${VERSION_ID}" != "24.04" ]]; then
 fi
 
 if [[ -f /opt/ros/jazzy/setup.bash ]]; then
-    echo "ROS 2 Jazzy is already installed."
+    echo "ROS 2 Jazzy apt source already configured or ROS installed."
 else
     # Configure the official ROS 2 apt source, then install the Jazzy desktop
     # environment plus the standard ROS development tools used by this repo.
@@ -37,9 +43,24 @@ else
     sudo dpkg -i /tmp/ros2-apt-source.deb
     sudo apt update
 
-    sudo apt install -y \
-        ros-jazzy-desktop \
-        ros-dev-tools
 fi
 
-echo "ROS 2 Jazzy and repository tooling ready."
+# Preserve the requested ROS installation profile even if a smaller ROS
+# distribution was already installed on the host.
+if [[ "${profile}" == "desktop" ]]; then
+    ros_meta=ros-jazzy-desktop
+else
+    ros_meta=ros-jazzy-ros-base
+fi
+
+sudo apt update
+sudo apt install -y --no-install-recommends \
+    "${ros_meta}" \
+    ros-dev-tools \
+    ros-jazzy-rosbag2 \
+    ros-jazzy-rosbag2-storage-mcap \
+    ros-jazzy-ros2launch \
+    ros-jazzy-tf2-ros \
+    ros-jazzy-tf2-geometry-msgs
+
+echo "ROS 2 Jazzy ${profile} environment ready."

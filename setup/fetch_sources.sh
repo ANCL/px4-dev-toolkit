@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
+# Reconstruct pinned external checkouts by scope without resetting local work.
+# Scope manifests are applied in dependency order: common first, followed by
+# SITL and/or hardware; only SITL needs PX4's nested submodules.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 usage() {
-    echo "Usage: ./setup/fetch_sources.sh common|sitl|experiment|all"
+    echo "Usage: ./setup/fetch_sources.sh common|sitl|hardware|all"
 }
 
 fetch_scope() {
@@ -63,14 +66,14 @@ case "${1:-}" in
         fetch_scope common
         fetch_scope sitl
         ;;
-    experiment)
+    hardware)
         fetch_scope common
-        fetch_scope experiment
+        fetch_scope hardware
         ;;
     all)
         fetch_scope common
         fetch_scope sitl
-        fetch_scope experiment
+        fetch_scope hardware
         ;;
     *)
         usage
@@ -78,7 +81,7 @@ case "${1:-}" in
         ;;
 esac
 
-if [[ "${1}" == "sitl" || "${1}" == "experiment" || "${1}" == "all" ]]; then
+if [[ "${1}" == "sitl" || "${1}" == "all" ]]; then
     echo "Initializing PX4 nested submodules..."
 
     git -C "${ROOT}/px4/PX4-Autopilot" \

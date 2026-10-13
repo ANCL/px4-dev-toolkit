@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.8)
 project(offboard_controllers)
 
+# Build reusable trajectory, physical-model, and control-law libraries apart
+# from ROS node executables. The SE(3) node selects handoffs; the library
+# targets implement model/math operations without owning ROS process lifecycle.
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
@@ -15,23 +19,34 @@ find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(px4_msgs REQUIRED)
-find_package(px4_control_common REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
-add_executable(offboard_takeoff_handoff
-  src/offboard_takeoff_handoff.cpp
-)
-
 add_executable(offboard_position
-  src/offboard_position.cpp
+  src/offboard_position/node.cpp
+  src/offboard_position/state.cpp
+  src/offboard_position/publication.cpp
+  src/offboard_position/lifecycle.cpp
 )
 
-add_library(se3_controller
-  src/se3/controller.cpp
+# Stateless geometric control laws; called directly by the SE(3) runtime.
+add_library(se3_control
+  src/se3/control/translation.cpp
+  src/se3/control/force_dynamics.cpp
+  src/se3/control/attitude_reference.cpp
+  src/se3/control/attitude_geometry.cpp
+  src/se3/control/attitude_control.cpp
+  src/se3/control/normalized_torque.cpp
+  src/se3/control/physical_moment.cpp
+)
+
+add_library(se3_vehicle_state
+  src/se3/runtime/vehicle_state.cpp
 )
 
 add_library(trajectory
   src/trajectory/trajectory.cpp
+  src/trajectory/sampling.cpp
+  src/trajectory/config.cpp
 )
 
 add_library(px4_wrench
@@ -43,15 +58,22 @@ add_library(px4_rate
 )
 
 add_library(physical_wrench_adapter
-  src/se3/physical_wrench_adapter.cpp
+  src/se3/physical_wrench/adapter.cpp
+  src/se3/physical_wrench/matrices.cpp
+  src/se3/physical_wrench/actuators.cpp
 )
 
 add_library(vehicle_config
-  src/se3/vehicle_config.cpp
+  src/se3/physical_wrench/config/loader.cpp
+  src/se3/physical_wrench/config/parsing.cpp
 )
 
 add_executable(se3
   src/se3/node.cpp
+  src/se3/runtime/config.cpp
+  src/se3/runtime/lifecycle.cpp
+  src/se3/runtime/control.cpp
+  src/se3/runtime/publication.cpp
 )
 
 get_filename_component(
@@ -60,19 +82,20 @@ get_filename_component(
   ABSOLUTE
 )
 
-target_include_directories(offboard_takeoff_handoff PRIVATE
-  "${PX4_ENV_ROOT}/config"
-  "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
-
 target_include_directories(offboard_position PRIVATE
   "${PX4_ENV_ROOT}/config"
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
-target_include_directories(se3_controller PUBLIC
+target_include_directories(se3_control PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
+
+target_include_directories(se3_vehicle_state PUBLIC
+  "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+
+ament_target_dependencies(se3_vehicle_state px4_msgs)
 
 target_include_directories(trajectory PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
@@ -81,6 +104,8 @@ target_include_directories(trajectory PUBLIC
 target_include_directories(px4_wrench PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
+
+target_link_libraries(se3_vehicle_state px4_wrench)
 
 target_include_directories(px4_rate PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
@@ -112,12 +137,6 @@ target_include_directories(se3 PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
-ament_target_dependencies(offboard_takeoff_handoff
-  rclcpp
-  px4_msgs
-  px4_control_common
-)
-
 ament_target_dependencies(offboard_position
   rclcpp
   px4_msgs
@@ -131,7 +150,8 @@ ament_target_dependencies(se3
 )
 
 target_link_libraries(se3
-  se3_controller
+  se3_control
+  se3_vehicle_state
   trajectory
   px4_rate
   px4_wrench
@@ -141,17 +161,45 @@ target_link_libraries(se3
 )
 
 if(BUILD_TESTING)
-  add_executable(test_se3_controller
-    test/se3/test_controller.cpp
+  add_executable(test_se3_control_laws
+    test/se3/test_control_laws.cpp
   )
 
-  target_link_libraries(test_se3_controller
-    se3_controller
+  target_link_libraries(test_se3_control_laws
+    se3_control
   )
 
   add_test(
-    NAME se3_controller_math
-    COMMAND test_se3_controller
+    NAME se3_control_laws
+    COMMAND test_se3_control_laws
+  )
+
+  add_executable(test_se3_modules
+    test/se3/test_modules.cpp
+  )
+
+  target_link_libraries(test_se3_modules
+    se3_control
+  )
+
+  add_test(
+    NAME se3_modules
+    COMMAND test_se3_modules
+  )
+
+  add_executable(test_se3_vehicle_state
+    test/se3/test_vehicle_state.cpp
+  )
+
+  target_link_libraries(test_se3_vehicle_state
+    se3_vehicle_state
+  )
+
+  ament_target_dependencies(test_se3_vehicle_state px4_msgs)
+
+  add_test(
+    NAME se3_vehicle_state
+    COMMAND test_se3_vehicle_state
   )
 
   add_executable(test_trajectory
@@ -264,7 +312,6 @@ endif()
 
 install(
   TARGETS
-    offboard_takeoff_handoff
     offboard_position
     se3
   DESTINATION lib/${PROJECT_NAME}
@@ -272,7 +319,8 @@ install(
 
 install(
   TARGETS
-    se3_controller
+    se3_control
+    se3_vehicle_state
     trajectory
     px4_wrench
     px4_rate

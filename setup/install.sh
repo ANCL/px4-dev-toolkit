@@ -1,55 +1,47 @@
 #!/usr/bin/env bash
+# Install one native toolkit scope: common ROS utilities, SITL/Gazebo,
+# hardware companion services, or both. Source pins live in config/sources/;
+# this script delegates each installation stage and then builds the ROS workspace.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
-usage() {
-    echo "Usage: ./setup/install.sh common|sitl|experiment|all"
-}
-
 profile="${1:-}"
 
 case "${profile}" in
-    common|sitl|experiment|all)
+    common|sitl|hardware|all)
         ;;
     *)
-        usage
+        echo "Usage: ./setup/install.sh common|sitl|hardware|all" >&2
         exit 2
         ;;
 esac
 
-echo "========================================"
-echo " Installing PX4 environment: ${profile}"
-echo "========================================"
+# A companion computer does not require PX4 firmware sources, simulators,
+# cross-compilers, or graphical ROS desktop applications.
+if [[ "${profile}" == "hardware" || "${profile}" == "common" ]]; then
+    ros_profile=base
+    tools_profile="${profile}"
+else
+    ros_profile=desktop
+    tools_profile=sitl
+fi
 
-# Shared host environment and pinned sources.
-"${ROOT}/setup/install_ros2_jazzy.sh"
-"${ROOT}/setup/install_common_tools.sh"
+"${ROOT}/setup/install_ros2_jazzy.sh" "${ros_profile}"
+"${ROOT}/setup/install_common_tools.sh" "${tools_profile}"
 "${ROOT}/setup/fetch_sources.sh" "${profile}"
 
 case "${profile}" in
-    common)
-        ;;
-
-    sitl)
+    sitl|all)
         "${ROOT}/setup/install_px4_dependencies.sh" sitl
         "${ROOT}/setup/install_mavproxy.sh"
         ;;
-
-    experiment)
-        "${ROOT}/setup/install_px4_dependencies.sh" experiment
-        ;;
-
-    all)
-        "${ROOT}/setup/install_px4_dependencies.sh" all
-        "${ROOT}/setup/install_mavproxy.sh"
-        "${ROOT}/setup/install_qgroundcontrol.sh"
-        ;;
 esac
 
-"${ROOT}/ros2/build.sh"
+if [[ "${profile}" == "all" ]]; then
+    "${ROOT}/setup/install_qgroundcontrol.sh"
+fi
 
-echo
-echo "========================================"
-echo " PX4 environment ready: ${profile}"
-echo "========================================"
+"${ROOT}/ros2/build.sh"
+mkdir -p "${ROOT}/bags" "${ROOT}/log"
+
+echo "PX4 ${profile} toolkit environment ready."

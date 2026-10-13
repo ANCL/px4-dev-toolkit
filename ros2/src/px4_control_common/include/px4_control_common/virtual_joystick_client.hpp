@@ -1,3 +1,5 @@
+// Client for the MAVProxy virtual-joystick socket used by Position mode.
+
 #pragma once
 
 #include <cerrno>

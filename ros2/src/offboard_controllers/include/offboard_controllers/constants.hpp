@@ -1,3 +1,5 @@
+// Shared physical constants used by the PX4 control implementations.
+
 #pragma once
 
 namespace offboard_controllers

@@ -24,7 +24,7 @@ The launch files currently give the recorder a one-second startup window before 
 
 ```bash
 source ros2/runtime_env.sh
-ros2 launch px4_position_takeoff_hover position_takeoff_hover.launch.py \
+ros2 launch px4_position_mode position_takeoff_hover.launch.py \
   record:=true
 ```
 

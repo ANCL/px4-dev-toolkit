@@ -83,6 +83,10 @@ Use the summary first to establish:
 
 Then use the plots to inspect transient shape, timing, saturation, and segment-specific behavior.
 
+## Source organization
+
+The analysis entry points remain in `analysis.profiles`. The SE(3) profile delegates lifecycle, signal extraction, diagnostics, reporting and plotting to modules in `analysis/profiles/se3/`. The generic PX4 control pipeline separates topic definitions, signal extraction, statistics, reports and plots within `analysis/pipeline/`. Bag receive timestamps and interpolation rules are unchanged.
+
 ## Next
 
 - [Comparison](comparison.md)

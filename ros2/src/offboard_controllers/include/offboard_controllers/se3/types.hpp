@@ -1,17 +1,16 @@
+// SE(3) state, reference, gain, and output types for the control cascade.
+
 #pragma once
 
 #include <offboard_controllers/math/types.hpp>
 
-namespace offboard_controllers::se3
-{
+namespace offboard_controllers::se3 {
 
 using math::InertiaMatrix;
 using math::RotationMatrix;
 using math::Vector3;
 
-
-struct State
-{
+struct State {
   // Position [m] and velocity [m/s] in local NED.
   Vector3 position{};
   Vector3 velocity{};
@@ -24,9 +23,7 @@ struct State
   Vector3 angular_velocity{};
 };
 
-
-struct Reference
-{
+struct Reference {
   // Flat-output translation reference in NED. Jerk and snap are analytic
   // trajectory derivatives [m/s^3] and [m/s^4], not measured derivatives.
   Vector3 position{};
@@ -42,31 +39,7 @@ struct Reference
   double yaw_acceleration{0.0};
 };
 
-
-struct Parameters
-{
-  // Physical translational gains:
-  //   kx [N/m]
-  //   kv [N s/m]
-  double mass{0.0};
-  double kx{0.0};
-  double kv{0.0};
-
-  // Toolkit cascaded attitude-to-rate gain. It maps the dimensionless SO(3)
-  // attitude error e_R to a corrective FRD body-rate command [rad/s].
-  Vector3 attitude_gain{};
-
-  // Toolkit geometric-normalized gains. These map the geometric tracking
-  // terms directly into PX4-normalized torque coordinates; they are not
-  // physical moment gains.
-  Vector3 normalized_attitude_gain{};
-  Vector3 normalized_angular_velocity_gain{};
-  Vector3 normalized_angular_acceleration_gain{};
-};
-
-
-struct TranslationalOutput
-{
+struct TranslationalOutput {
   // Kinematic acceleration command [m/s^2] in NED. Gravity is not included
   // because the PX4 acceleration handoff expects a kinematic setpoint.
   Vector3 acceleration{};
@@ -80,9 +53,7 @@ struct TranslationalOutput
   Vector3 force_vector{};
 };
 
-
-struct DesiredAttitudeRate
-{
+struct DesiredAttitudeRate {
   RotationMatrix attitude{};
 
   // Omega_d: angular velocity of the desired attitude trajectory, expressed
@@ -91,9 +62,7 @@ struct DesiredAttitudeRate
   Vector3 angular_velocity{};
 };
 
-
-struct DesiredAttitudeDynamics
-{
+struct DesiredAttitudeDynamics {
   RotationMatrix attitude{};
 
   // Omega_d and dot(Omega_d) are kinematic derivatives of R_d, expressed in
@@ -102,9 +71,7 @@ struct DesiredAttitudeDynamics
   Vector3 angular_acceleration{};
 };
 
-
-struct GeometricNormalizedOutput
-{
+struct GeometricNormalizedOutput {
   // Controller contributions and final command in PX4-normalized FRD torque
   // coordinates. The three contributions sum to normalized_torque.
   Vector3 attitude_feedback{};
@@ -113,4 +80,4 @@ struct GeometricNormalizedOutput
   Vector3 normalized_torque{};
 };
 
-}  // namespace offboard_controllers::se3
+} // namespace offboard_controllers::se3

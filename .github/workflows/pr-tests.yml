@@ -24,10 +24,16 @@ jobs:
       - name: Check shell syntax
         run: |
           git ls-files -z '*.sh' | xargs -0 -r -n1 bash -n
+          for script in tools/sitl tools/hardware tools/tmux_log tools/topic_rates; do
+            bash -n "$script"
+          done
 
       - name: Check Python syntax
         run: |
           git ls-files -z '*.py' | xargs -0 -r python3 -m py_compile
+          for script in tools/run_sequence tools/px4_analyze tools/px4_compare; do
+            python3 -m py_compile "$script"
+          done
 
       - name: Install ROS 2 Jazzy
         run: ./setup/install_ros2_jazzy.sh
@@ -37,9 +43,6 @@ jobs:
 
       - name: Fetch pinned sources
         run: ./setup/fetch_sources.sh common
-
-      - name: Install PX4 development dependencies
-        run: ./setup/install_px4_dependencies.sh sitl
 
       - name: Build ROS 2 workspace
         run: ./ros2/build.sh

@@ -4,7 +4,7 @@
 
 This page covers the companion-computer software stack for a physical PX4 platform.
 
-The repository retains `experiment` as the implementation name for this runtime. The corresponding interfaces remain `tools/experiment`, `config/runtime/experiment.env`, and the Docker `experiment` target/image name.
+The native hardware runtime uses `tools/hardware` and `config/runtime/hardware.env`. Only SITL has a Docker image.
 
 ## Runtime architecture
 
@@ -18,31 +18,31 @@ flowchart LR
     C[Toolkit controllers] <--> R
 ```
 
-`tools/experiment` starts the Vicon/mocap pipeline and, when enabled, the serial XRCE agent in one tmux session.
+`tools/hardware` starts the Vicon/mocap pipeline and, when enabled, the serial XRCE agent in one tmux session.
 
 The PX4 flight controller itself is external hardware; this wrapper does not launch PX4 firmware.
 
 ## CLI
 
 ```bash
-./tools/experiment start
-./tools/experiment status
-./tools/experiment stop
+./tools/hardware start
+./tools/hardware status
+./tools/hardware stop
 ```
 
-The default tmux session is `px4-experiment`.
+The default tmux session is `px4-hardware`.
 
 ## Runtime configuration
 
 The canonical file is:
 
 ```text
-config/runtime/experiment.env
+config/runtime/hardware.env
 ```
 
 It currently defines:
 
-- XRCE transport (`serial` is required by `tools/experiment`)
+- XRCE transport (`serial` is required by `tools/hardware`)
 - serial device and baud rate
 - whether the XRCE agent is started by the wrapper
 - Vicon server hostname and buffer size
@@ -52,11 +52,11 @@ It currently defines:
 - timestamp behavior
 - tmux session name
 
-The checked-in device path is `/dev/ttyUSB0` at `921600` baud. In Docker, map the real host device to `/dev/ttyUSB0`; see [Docker installation](../installation/docker.md).
+The checked-in device path is `/dev/ttyUSB0` at `921600` baud. Set this path to the real companion-computer serial device for the native installation.
 
 ## Vicon and mocap path
 
-`tools/experiment` launches `px4_mocap_bridge/mocap.launch.py`. That launch file:
+`tools/hardware` launches `px4_mocap_bridge/mocap.launch.py`. That launch file:
 
 1. includes the pinned `vicon_receiver` client,
 2. applies the configured Vicon/map transform arguments,
@@ -71,7 +71,7 @@ Before `start`:
 
 1. Verify the PX4 serial device exists and is accessible.
 2. Verify `XRCE_AGENT_DEVICE` and `XRCE_AGENT_BAUD`.
-3. Verify `VICON_HOSTNAME` is reachable from the companion computer/container.
+3. Verify `VICON_HOSTNAME` is reachable from the companion computer.
 4. Verify the tracked-object topic in `MOCAP_TOPIC` matches the Vicon object you intend to fly.
 5. Verify the configured world/map transform for the current lab setup.
 6. Source `ros2/runtime_env.sh` if you are running additional ROS commands manually.
@@ -79,13 +79,13 @@ Before `start`:
 Then:
 
 ```bash
-./tools/experiment start
+./tools/hardware start
 ```
 
 From another shell:
 
 ```bash
-./tools/experiment status
+./tools/hardware status
 ```
 
 ## What `status` means
@@ -96,7 +96,7 @@ The launcher reports the tmux session and the relevant hardware-runtime processe
 
 Before flight, verify the actual airframe, sensors, actuator mapping, estimator configuration, mocap alignment, RC/failsafe behavior, vehicle parameters, and selected controller mode.
 
-`tools/experiment` prepares the companion-computer services; PX4 hardware configuration and flight readiness remain separate vehicle tasks.
+`tools/hardware` prepares the companion-computer services; PX4 hardware configuration and flight readiness remain separate vehicle tasks.
 
 ## Next
 

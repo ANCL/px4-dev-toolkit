@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Inspect output from toolkit-owned tmux windows. A session is inferred only
+# when exactly one px4-* session exists; otherwise specify --session.
 set -euo pipefail
 
 session=""

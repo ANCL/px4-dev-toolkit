@@ -8,8 +8,8 @@ The repository contains several controller/flight examples with deliberately dif
 
 | Workflow | Launch file | Toolkit ownership | PX4 ownership |
 |---|---|---|---|
-| Native Position-mode takeoff/hover/land | `px4_position_takeoff_hover/position_takeoff_hover.launch.py` | experiment orchestration and mode/command sequence | complete native flight-control stack |
-| Position-mode staging for an Offboard test | `offboard_controllers/offboard_takeoff_handoff.launch.py` | virtual-joystick staging, arm/climb, waits for independent Offboard takeover | Position-mode flight until Offboard takeover |
+| Native Position-mode takeoff/hover/land | `px4_position_mode/position_takeoff_hover.launch.py` | experiment orchestration and mode/command sequence | complete native flight-control stack |
+| Position-mode staging for an Offboard test | `px4_position_mode/offboard_takeoff_handoff.launch.py` | virtual-joystick staging, arm/climb, waits for independent Offboard takeover | Position-mode flight until Offboard takeover |
 | Offboard position trajectory | `offboard_controllers/offboard_position.launch.py` | Offboard lifecycle + trajectory position reference | position controller and all lower loops |
 | Geometric SE(3) | `offboard_controllers/se3.launch.py` | depends on selected handoff | everything below the selected handoff boundary |
 
@@ -19,7 +19,7 @@ Run the PX4-native takeoff/hover/landing experiment with:
 
 ```bash
 source ros2/runtime_env.sh
-ros2 launch px4_position_takeoff_hover position_takeoff_hover.launch.py
+ros2 launch px4_position_mode position_takeoff_hover.launch.py
 ```
 
 Add `record:=true` to record it. This is useful as a native PX4 behavior/reference run rather than an external controller.
@@ -43,7 +43,7 @@ It relies on MAVProxy's repository virtual-joystick module for the continuous ma
 
 ```bash
 source ros2/runtime_env.sh
-ros2 launch offboard_controllers offboard_takeoff_handoff.launch.py
+ros2 launch px4_position_mode offboard_takeoff_handoff.launch.py
 ```
 
 ## Offboard position controller

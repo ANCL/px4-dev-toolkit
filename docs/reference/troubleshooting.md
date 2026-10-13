@@ -49,7 +49,7 @@ The launcher deliberately locates the system Gazebo command configuration rather
 ```bash
 ./tools/sitl status
 # or
-./tools/experiment status
+./tools/hardware status
 
 source ros2/runtime_env.sh
 ros2 topic list | grep '^/fmu/'
@@ -59,42 +59,26 @@ For SITL, verify `START_XRCE_AGENT=true`, `XRCE_AGENT_TRANSPORT`, and `XRCE_AGEN
 
 For the hardware stack, verify serial device, baud, permissions, PX4's XRCE client configuration, and that the agent process is running.
 
-## Serial device is missing in Docker
+## Companion-computer serial device is missing
 
-**Symptom:** `/dev/ttyUSB0` does not exist in the hardware container.
+**Symptom:** The configured `XRCE_AGENT_DEVICE` does not exist or is not readable.
 
-**Check:** the actual host device:
+**Check:** Inspect `/dev/ttyACM*` and `/dev/ttyUSB*` on the companion computer,
+then confirm `config/runtime/hardware.env` and the user's serial-device group
+permissions. The physical runtime is installed natively; the toolkit does not
+provide a hardware Docker image.
 
-```bash
-ls -l /dev/ttyACM* /dev/ttyUSB* 2>/dev/null
-```
+## `tools/hardware` rejects the XRCE transport
 
-**Fix:** map it to the canonical container device. Example:
+**Symptom:** `hardware XRCE transport must be 'serial'.`
 
-```bash
-docker run --rm -it --network host \
-  --device=/dev/ttyACM0:/dev/ttyUSB0 \
-  ghcr.io/ancl/px4-dev-toolkit-experiment:latest bash
-```
-
-With Compose:
-
-```bash
-PX4_DOCKER_DEVICE=/dev/ttyACM0 \
-  docker compose -f docker/compose.yaml run --rm experiment bash
-```
-
-## `tools/experiment` rejects the XRCE transport
-
-**Symptom:** `experiment XRCE transport must be 'serial'.`
-
-**Check:** `config/runtime/experiment.env`.
+**Check:** `config/runtime/hardware.env`.
 
 **Fix:** the hardware runtime wrapper currently requires `XRCE_AGENT_TRANSPORT=serial`. UDP belongs to the documented SITL setup unless the software is intentionally extended.
 
 ## Vicon/mocap data is missing
 
-**Symptom:** the `tools/experiment` tmux session runs but there is no usable tracked pose / PX4 external-vision input.
+**Symptom:** the `tools/hardware` tmux session runs but there is no usable tracked pose / PX4 external-vision input.
 
 **Check:**
 
@@ -104,7 +88,7 @@ PX4_DOCKER_DEVICE=/dev/ttyACM0 \
 - map transform settings
 - `px4_mocap_bridge` process/log output
 
-**Fix:** correct the site-specific settings in `config/runtime/experiment.env`. Do not change controller gains to compensate for a wrong mocap frame.
+**Fix:** correct the site-specific settings in `config/runtime/hardware.env`. Do not change controller gains to compensate for a wrong mocap frame.
 
 ## Controller refuses a vehicle/handoff combination
 

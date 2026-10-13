@@ -1,7 +1,9 @@
 #include <array>
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
+#include <string>
 
 #include <offboard_controllers/se3/physical_wrench_adapter.hpp>
 
@@ -18,7 +20,8 @@ void expect_near(
   double actual,
   double expected)
 {
-  if (std::abs(actual - expected) > kTolerance) {
+  if (!std::isfinite(actual) || !std::isfinite(expected) ||
+      std::abs(actual - expected) > kTolerance) {
     std::cerr
       << name
       << ": expected " << expected
@@ -498,6 +501,48 @@ void test_collective_is_saturated()
 }
 
 
+void test_invalid_parameters_and_inputs()
+{
+  using namespace offboard_controllers;
+
+  const auto valid = f450_parameters();
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+
+  auto expect_invalid = [](const char * name,
+                           const physical_wrench_adapter::Parameters & parameters,
+                           double collective,
+                           const se3::Vector3 & moment) {
+      try {
+        (void)physical_wrench_adapter::adapt(parameters, collective, moment);
+      } catch (const std::invalid_argument &) {
+        return;
+      }
+      throw std::runtime_error(std::string(name) + " should reject invalid input.");
+    };
+
+  expect_invalid("non-finite collective", valid, nan, {});
+  expect_invalid("negative collective", valid, -1.0, {});
+  expect_invalid("non-finite moment", valid, 10.0, {nan, 0.0, 0.0});
+
+  auto non_monotonic = valid;
+  non_monotonic.actuator_thrust.linear_n = 0.0;
+  non_monotonic.actuator_thrust.quadratic_n = 0.0;
+  expect_invalid("non-monotonic thrust curve", non_monotonic, 10.0, {});
+
+  auto singular_physical = valid;
+  singular_physical.physical_rotors[1] = singular_physical.physical_rotors[0];
+  expect_invalid("singular physical geometry", singular_physical, 10.0, {});
+
+  auto singular_allocator = valid;
+  singular_allocator.allocator_rotors[1] = singular_allocator.allocator_rotors[0];
+  expect_invalid("singular PX4 allocator", singular_allocator, 10.0, {});
+
+  auto invalid_range = valid;
+  invalid_range.actuator_control_max = invalid_range.actuator_control_min;
+  expect_invalid("invalid actuator range", invalid_range, 10.0, {});
+}
+
+
 }  // namespace
 
 
@@ -508,6 +553,7 @@ int main()
   test_yaw_round_trip();
   test_infeasible_moment_is_scaled();
   test_collective_is_saturated();
+  test_invalid_parameters_and_inputs();
 
   std::cout
     << "Physical-wrench adapter tests passed.\n";

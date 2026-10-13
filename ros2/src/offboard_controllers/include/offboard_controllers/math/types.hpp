@@ -1,3 +1,5 @@
+// Vector and rotation types shared by the SE(3) and PX4 control stages.
+
 #pragma once
 
 namespace offboard_controllers::math

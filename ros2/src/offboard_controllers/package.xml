@@ -2,7 +2,7 @@
 <package format="3">
   <name>offboard_controllers</name>
   <version>0.1.0</version>
-  <description>ROS 2 package for PX4 Offboard controller prerequisites, controllers, and experiment recording.</description>
+  <description>ROS 2 package for PX4 Offboard controllers, trajectories, and experiment recording.</description>
 
   <maintainer email="mohssen.elshaar@gmail.com">Mohssene</maintainer>
   <license>BSD-3-Clause</license>
@@ -13,7 +13,7 @@
   <depend>geometry_msgs</depend>
   <depend>std_msgs</depend>
   <depend>px4_msgs</depend>
-  <depend>px4_control_common</depend>
+  <exec_depend>px4_control_common</exec_depend>
   <depend>yaml-cpp</depend>
 
   <!-- Runtime dependencies used only by the Python launch orchestration. -->

@@ -1,3 +1,5 @@
+// Interface and persistent state for the pinned PX4 angular-rate reproduction.
+
 #pragma once
 
 #include <array>

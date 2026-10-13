@@ -1,3 +1,5 @@
+// Map SE(3) thrust and attitude commands onto PX4 control representations.
+
 #include <algorithm>
 #include <array>
 #include <cmath>

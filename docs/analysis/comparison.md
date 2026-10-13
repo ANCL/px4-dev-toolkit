@@ -1,100 +1,90 @@
-# SE(3) comparison
+<!-- Preserve existing section links. -->
+<span id="se3-comparison"></span>
 
-[Documentation](../index.md) / Analysis / Comparison
+# Comparing SE(3) controllers
 
-`tools/px4_compare` compares two or more recorded runs from one analysis profile. The current CLI intentionally supports the `se3` profile only because its controller-comparison semantics are explicitly defined.
+A useful comparison holds the vehicle, trajectory, tuning context, and test conditions consistent, then examines both tracking and actuation. The current `px4_compare` CLI supports **two or more SE(3) bags**; other experiment profiles are not interchangeable with these metrics.
 
-## Basic usage
+<!-- Preserve existing section links. -->
+<span id="basic-usage"></span>
+<span id="output-directory"></span>
+<span id="handoff-study-example"></span>
+<span id="outputs"></span>
 
-```bash
-./tools/px4_compare BAG_A BAG_B [BAG_C ...]
-```
+## Compare a completed study
 
-At least two bags are required.
-
-## Output directory
-
-If all bags are direct children of one sequence study's `bags/` directory and that study contains `manifest.json`, output defaults to:
-
-```text
-<study>/comparison/
-```
-
-For standalone bags or bags from different locations, provide an explicit output directory:
+Use the actual finalized six-mode study from the [complete example](../experiments/complete-example.md#6-compare-finalized-study-bags). In its **repository-root shell**, with ROS sourced and `study_bags` already checked:
 
 ```bash
-./tools/px4_compare \
-  /path/to/bag-a \
-  /path/to/bag-b \
-  --output /path/to/comparison
+./tools/px4_compare "${study_bags[@]}" --trajectory full_excitation
 ```
+
+If bags are direct children of one study `bags/` directory with a `manifest.json`, output defaults to `<study>/comparison/`. For separately recorded bags, define an array containing their actual paths and provide `--output`; do not assume directory naming supplies experiment identity. The tool writes `summary.txt` and overlay PNGs. It does not reset or execute controllers.
+
+<!-- Preserve existing section links. -->
+<span id="labels"></span>
 
 ## Offboard alignment
 
-Each bag is analyzed independently, then comparison runs are aligned to **confirmed PX4 Offboard entry**. This avoids treating process start, recorder start, or mode-request time as the common physical origin.
+Each run is analyzed independently. The comparison shifts time so **$t=0$ is recorded PX4-confirmed Offboard entry**, and clips to its confirmed Position return. It uses rosbag receive time, not controller process start, recorder start, command acknowledgement, or gyro `timestamp_sample`.
 
-That alignment is especially important because prestream and handoff timing can differ slightly between runs.
+Each series keeps its own time samples. Measured/reference errors use interpolation over their overlapping interval. Missing or differing run durations must be considered when reading overlays. Mode labels come from recorded heartbeat and metadata; duplicate labels are disambiguated by bag identity rather than silently merged.
 
-## Labels
+## Common quantities and limits
 
-When experiment metadata is available, comparison uses the configured handoff/direct-controller identity. The standard labels correspond to:
+The common view compares measured position/velocity tracking, yaw error, body-rate magnitude, normalized thrust/torque, and the maximum absolute motor command envelope. Different command levels do not expose identical internal signals: for acceleration mode PX4 creates attitude/rate commands, while direct modes create torque externally.
 
-```text
-Acceleration
-Attitude
-Rate
-Geometric
-PX4 rate
-Geometric physical
-```
+Normalized torque is not N·m. Hover calibration, actuator mapping, frames, PX4 configuration, and saturation affect the relationship between requests and motion. Lower tracking error accompanied by much greater actuator activity can be a relevant tradeoff; without measured data there is no controller ranking.
 
-Duplicate labels are disambiguated using bag information rather than silently merging runs.
+<figure class="px4-figure-slot">
+  <img src="../../assets/measured-plot-placeholder.svg" width="760" height="190" alt="Empty axes reserved for controller comparison; measured data has not been supplied">
+  <figcaption><strong>Controller comparison · figure placeholder.</strong> NED position-error magnitude [m] and motor envelope [normalized], aligned to confirmed Offboard entry [s], with maneuver windows labeled. An approved study is needed before this figure can compare controller responses.</figcaption>
+</figure>
+
+<!-- Preserve existing section links. -->
+<span id="comparison-implementation"></span>
+
+## Metric definitions
+
+[analysis/comparison.py](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/comparison.py) defines the shared statistics. For scalar magnitude/error samples $q_k$ and positive finite intervals $\Delta t_k$:
+
+$$
+q_{\mathrm{RMS}}=\sqrt{
+\frac{\sum_k\tfrac12(q_k^2+q_{k+1}^2)\Delta t_k}
+{\sum_k\Delta t_k}}.
+$$
+
+Position/velocity metrics use Euclidean error norms; wrench and rate metrics use signal magnitudes. Peak is maximum absolute value. Fewer than two samples gives zero covered duration and a single absolute-value RMS; when no valid interval exists, the code falls back to sample RMS. Treat these edge cases as insufficient coverage, not a robust performance estimate.
+
+Roughness uses time-weighted RMS of finite-difference signal slopes:
+
+$$
+q_{\mathrm{rough}}=\sqrt{
+\frac{\sum_k\left(\frac{q_{k+1}-q_k}{\Delta t_k}\right)^2\Delta t_k}
+{\sum_k\Delta t_k}}.
+$$
+
+Motor metrics use the maximum absolute motor envelope, not measured electrical power. Near-limit duration/fraction integrate the binary condition at or above **0.99 of nominal limit 1.0**. This reveals requested actuator activity; it is not battery energy consumption or a motor thrust measurement.
 
 ## Trajectory-aware metrics
 
-Add the configured trajectory name to resolve segment boundaries from the canonical trajectory YAML:
+`--trajectory full_excitation` resolves the canonical [trajectory YAML](../controllers/trajectories.md) into cumulative segment times. It must match the configuration used for recording. See [comparison/metrics.py](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/se3/comparison/metrics.py):
 
-```bash
-./tools/px4_compare \
-  BAG_A BAG_B BAG_C \
-  --trajectory full_excitation
-```
+| Maneuver | Implemented interpretation |
+|---|---|
+| Single-axis step | Sampled 10–90% rise time, overshoot, settling, integral absolute error, final residual RMS, uncommanded-axis RMS |
+| Yaw | Wrapped yaw RMS/peak and final residual RMS in degrees |
+| Figure eight | Time-weighted position/velocity error, measured body-rate activity, normalized wrench, and motor effort/roughness |
 
-This enables segment-aware metrics in addition to the common whole-run physical comparison.
+Step response normalizes measured motion by the signed configured amplitude. The target is the first reference **strictly after** the boundary. The window includes one immediately following hold when present. Settling requires all remaining sampled errors within the larger of **0.02 m or 5% of step amplitude**. Residual uses the final 0.5 s; integral absolute error uses trapezoidal integration in m·s. Multi-axis steps are excluded from single-axis step metrics.
 
-## Handoff study example
+Yaw/figure-eight windows use start-inclusive/end-exclusive intervals. Yaw errors wrap to $[-180,180)$ degrees. Threshold crossings are observed sample times, not interpolated synthetic crossing times. Missing crossings or coverage can yield unavailable/NaN values.
 
-After:
+<!-- Preserve existing section links. -->
+<span id="next"></span>
 
-```bash
-source ros2/runtime_env.sh
-./tools/run_sequence config/sequences/se3/handoff_comparison.yaml
-```
+## Before drawing a conclusion
 
-compare the finalized bags from that study, for example:
+Confirm all expected study steps succeeded, data is complete, each run used the same canonical trajectory/vehicle, and the Offboard window covers the intended segments. Inspect state quality and allocation/motor limits alongside errors. Account for drift/re-anchoring between steps, transport/logging rate differences, and real-world environmental variation. A source-compatible launch and a finalized bag do not by themselves establish a controlled scientific comparison.
 
-```bash
-./tools/px4_compare \
-  bags/se3_handoff_comparison/<timestamp>/bags/* \
-  --trajectory full_excitation
-```
-
-The shell expansion should resolve only finalized bag directories from the study.
-
-## Outputs
-
-Comparison writes:
-
-```text
-comparison/
-├── summary.txt
-└── *.png
-```
-
-The plot set focuses on common physical quantities that remain meaningful across different handoff boundaries, with segment context when requested.
-
-## Next
-
-- [SE(3)](../controllers/se3.md)
-- [Sequences](../workflows/sequences.md)
-- [Single-run analysis](analysis.md)
+Continue with [Adding to the toolkit](../reference/extending.md) when you need another controller or analysis view.

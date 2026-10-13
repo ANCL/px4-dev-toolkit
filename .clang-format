@@ -1,0 +1,12 @@
+BasedOnStyle: LLVM
+Language: Cpp
+Standard: c++17
+ColumnLimit: 100
+IndentWidth: 2
+ContinuationIndentWidth: 4
+BreakBeforeBraces: Attach
+PointerAlignment: Left
+ReferenceAlignment: Left
+BinPackArguments: true
+BinPackParameters: true
+SortIncludes: true

@@ -1,3 +1,6 @@
+// Fixed-size vector and rotation operations for the control laws.
+// These operations carry no ROS dependencies.
+
 #pragma once
 
 #include <cmath>

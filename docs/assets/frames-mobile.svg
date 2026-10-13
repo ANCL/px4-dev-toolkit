@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 530" role="img" aria-labelledby="title desc">
+<title id="title">NED and FRD frames</title><desc id="desc">World and body axes stacked for a narrow screen. Gravity points along world down; thrust points opposite body down. R maps body to world.</desc>
+<style>
+:root { --line:#41676d; --faint:#a4bfba; --accent:#006b62; --text:#213237; }
+@media (prefers-color-scheme:dark) { :root { --line:#accac5; --faint:#527572; --accent:#81d5bc; --text:#e1e9e7; } }
+.axis { fill:none; stroke:var(--line); stroke-width:2.5; }
+.force { fill:none; stroke:var(--accent); stroke-width:3; }
+.label { fill:var(--text); font-family:"Segoe UI",sans-serif; font-size:20px; }
+</style><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0 0 7 3 0 6" fill="none" stroke="var(--line)"/></marker><marker id="force" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0 0 7 3 0 6" fill="none" stroke="var(--accent)"/></marker></defs>
+<g class="axis" marker-end="url(#arrow)"><path d="M95 100H265 M95 100 35 60 M95 100V202"/><path d="M95 365H265 M95 365 35 325 M95 365V470"/></g>
+<path class="force" marker-end="url(#force)" d="M300 405V320"/>
+<g class="label" style="font-size:18px"><text x="20" y="30" font-weight="600">World · NED</text><text x="162" y="88">North x</text><text x="12" y="50">East y</text><text x="107" y="224">Down z, gravity</text><text x="20" y="288" font-weight="600">Body · FRD</text><text x="162" y="353">Forward x</text><text x="12" y="316">Right y</text><text x="107" y="492">Body down z</text><text x="246" y="305">Thrust −z</text></g>
+</svg>

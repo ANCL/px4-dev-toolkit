@@ -1,3 +1,5 @@
+// PX4 thrust normalization and body-attitude conversion interfaces.
+
 #pragma once
 
 #include <array>

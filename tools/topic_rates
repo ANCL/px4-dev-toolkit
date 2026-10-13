@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Source the workspace before running the ROS 2 Python topic-rate monitor.
+# Its statistics describe host callback arrivals, not message timestamps.
 set -eo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

@@ -1,56 +1,55 @@
-# PX4 Development Toolkit documentation
+---
+hide:
+  - toc
+---
 
-Use this page to go directly to the task you are trying to complete. You should not need to browse the repository tree to discover the workflow.
+<div class="px4-home">
+  <section class="px4-home-intro" aria-labelledby="px4-development-toolkit">
+    <h1 id="px4-development-toolkit">PX4 Development Toolkit</h1>
+    <p class="px4-home-lede">A development environment for PX4 and ROS 2, supporting controller experiments in Gazebo simulation and on physical aircraft.</p>
+    <p class="px4-home-summary">Run controllers, record flight data, and analyze their behavior. The documentation explains the implementation and mathematics of the supported control methods.</p>
+    <div class="px4-home-actions">
+      <a href="installation/" class="md-button md-button--primary">Get started</a>
+      <a href="controllers/overview/" class="px4-home-secondary">Explore controllers <span aria-hidden="true">→</span></a>
+    </div>
+  </section>
 
-## Install the toolkit
+  <section class="px4-home-media" aria-label="Simulation and physical-flight illustrations">
+    <div class="px4-home-media-grid">
+      <figure class="px4-home-media-item">
+        <div class="px4-home-media-frame px4-home-media-frame--sim">
+          <img src="assets/hero-gazebo-placeholder.svg" width="640" height="360" alt="Schematic Gazebo simulation with a quadrotor inside a modeled three-dimensional environment">
+        </div>
+        <figcaption><strong>Gazebo SITL</strong><span>Simulation illustration · video to be added</span></figcaption>
+      </figure>
+      <figure class="px4-home-media-item">
+        <div class="px4-home-media-frame px4-home-media-frame--lab">
+          <img src="assets/hero-f450-placeholder.svg" width="640" height="360" alt="Schematic quadrotor inside a motion-capture flight laboratory with ceiling cameras">
+        </div>
+        <figcaption><strong>Physical flight</strong><span>Laboratory illustration · video to be added</span></figcaption>
+      </figure>
+    </div>
+  </section>
 
-Choose one installation method:
+  <!-- Preserve links to sections from the earlier documentation homepage. -->
+  <span id="choose-an-installation"></span>
+  <span id="suggested-first-journey"></span>
+  <span id="start-here"></span>
+  <span id="from-simulation-to-hardware"></span>
+  <span id="simulation-and-hardware"></span>
+  <span id="from-an-idea-to-a-recorded-flight"></span>
+  <span id="understand-what-each-controller-calculates"></span>
+  <span id="controller-interfaces"></span>
 
-- **[Docker](installation/docker.md)** — use the published images immediately, or clone the repository and build the toolkit images with Compose.
-- **[Native](installation/native.md)** — install ROS 2, PX4 dependencies, pinned sources, and the toolkit workspace directly on Ubuntu 24.04.
-
-Docker and native installation are alternatives. The runtime pages below are the same conceptual workflows after installation.
-
-## Run an environment
-
-- **[SITL](environments/sitl.md)** — PX4 SITL + Gazebo + uXRCE-DDS + MAVProxy/QGroundControl.
-- **[Hardware](environments/hardware.md)** — physical PX4 + serial uXRCE-DDS + Vicon/mocap bridge.
-
-## Run a controller
-
-Start with **[Controller overview](controllers/overview.md)** to choose the right workflow.
-
-- **[SE(3)](controllers/se3.md)** — controller architecture, handoff modes, direct rotational controllers, frames, timing, and vehicle requirements.
-- **[Trajectories](controllers/trajectories.md)** — shared NED trajectory definitions and timing/anchoring semantics.
-
-## Run repeatable experiments
-
-- **[Recording](workflows/recording.md)** — how controller launch files own rosbag lifecycle and bag placement.
-- **[Sequences](workflows/sequences.md)** — run ordered controller studies with deterministic bag paths, logs, manifests, and settle intervals.
-
-## Analyze results
-
-- **[Single-run analysis](analysis/analysis.md)** — `px4_analyze`, profile detection, summaries, plots, and timing alignment.
-- **[Comparison](analysis/comparison.md)** — `px4_compare`, confirmed-Offboard alignment, controller labels, and trajectory-segment metrics.
-
-## Understand or extend the toolkit
-
-These pages are for development and deeper system work; they are not prerequisites for the basic run workflow.
-
-- **[Architecture](reference/architecture.md)** — how the repository, runtime environments, ROS 2 packages, and PX4 data flow fit together.
-- **[Configuration](reference/configuration.md)** — where each kind of configuration belongs.
-- **[Extending](reference/extending.md)** — add controllers, trajectories, vehicles, sequences, analysis profiles, tools, ROS packages, or external sources.
-- **[Troubleshooting](reference/troubleshooting.md)** — recurring actionable failures and checks.
-
-## Suggested first journey
-
-For a new simulation user:
-
-1. [Docker installation](installation/docker.md) or [Native installation](installation/native.md)
-2. [Run SITL](environments/sitl.md)
-3. [Controller overview](controllers/overview.md)
-4. [Run SE(3)](controllers/se3.md)
-5. [Record](workflows/recording.md) or [run a sequence](workflows/sequences.md)
-6. [Analyze](analysis/analysis.md) and [compare](analysis/comparison.md)
-
-[Back to repository README](../README.md)
+  <section class="px4-home-docs" aria-labelledby="documentation">
+    <h2 id="documentation">Documentation</h2>
+    <nav class="px4-home-directory" aria-label="Documentation sections">
+      <a href="installation/" class="px4-home-doc-link"><span class="px4-home-doc-title">Getting started <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Installation and first simulation</span></a>
+      <a href="environments/sitl/" class="px4-home-doc-link"><span class="px4-home-doc-title">Running the toolkit <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Simulation and physical hardware</span></a>
+      <a href="controllers/overview/" class="px4-home-doc-link"><span class="px4-home-doc-title">Controllers <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Position, Offboard, and six SE(3) configurations</span></a>
+      <a href="experiments/complete-example/" class="px4-home-doc-link"><span class="px4-home-doc-title">Experiments and analysis <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Recording and interpreting flight data</span></a>
+      <a href="reference/extending/" class="px4-home-doc-link"><span class="px4-home-doc-title">Extending the toolkit <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Vehicles, controllers, and trajectories</span></a>
+      <a href="reference/architecture/" class="px4-home-doc-link"><span class="px4-home-doc-title">Technical reference <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Software structure and configuration</span></a>
+    </nav>
+  </section>
+</div>

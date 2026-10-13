@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-labelledby="title desc">
+<title id="title">Gazebo simulation illustration</title><desc id="desc">Quadrotor and coordinate axes in a three-dimensional simulation grid; illustrative, not actual footage.</desc>
+<style>
+:root{--grid:#9bbcb4;--edge:#4c817d;--ink:#2b5658;--rotor:#297d75;--fill:#d3e5de;--label:#3c7771;--shadow:#b3d3cb}
+@media(prefers-color-scheme:dark){:root{--grid:#4f7b77;--edge:#89b4ad;--ink:#c7e1d9;--rotor:#a4e1ce;--fill:#24454a;--label:#a4d9c8;--shadow:#315959}}
+.grid{fill:none;stroke:var(--grid);stroke-width:1.6;stroke-linejoin:round}
+.model{stroke:var(--ink);stroke-width:4;stroke-linejoin:round;stroke-linecap:round;fill:var(--fill)}
+.rotors{stroke:var(--rotor);stroke-width:3;fill:none}
+.text{fill:var(--label);font:600 15px sans-serif;letter-spacing:2px}
+</style>
+<g class="grid"><path d="M65 242 320 105 576 242 321 342Z M65 242V114L320 18 576 114V242 M320 105V18"/>
+<path d="M121 266 375 128 M177 291 432 159 M234 315 487 188 M122 194 377 305 M179 165 435 283 M237 144 492 262" opacity=".8"/>
+<path d="M65 178 320 56 576 178 M65 114 320 18 576 114" opacity=".55"/></g>
+<ellipse cx="322" cy="276" rx="124" ry="29" fill="var(--shadow)" opacity=".5"/>
+<g class="model"><path d="M244 152 400 220 M391 144 251 226" fill="none" stroke-width="13"/><rect x="294" y="163" width="56" height="42" rx="12"/><path d="M305 207v21h34v-21" fill="none"/></g>
+<g class="rotors"><ellipse cx="236" cy="149" rx="42" ry="12"/><ellipse cx="398" cy="145" rx="42" ry="12"/><ellipse cx="246" cy="227" rx="42" ry="12"/><ellipse cx="401" cy="221" rx="42" ry="12"/><circle cx="236" cy="149" r="5" fill="var(--rotor)"/><circle cx="398" cy="145" r="5" fill="var(--rotor)"/><circle cx="246" cy="227" r="5" fill="var(--rotor)"/><circle cx="401" cy="221" r="5" fill="var(--rotor)"/></g>
+<g stroke-width="3" stroke-linecap="round"><path d="M78 310h55" stroke="#387e75"/><path d="M78 310v-48" stroke="#64939e"/><path d="M78 310 55 331" stroke="#b37f56"/></g>
+<text class="text" x="80" y="53">SIMULATION</text>
+</svg>

@@ -1,55 +1,38 @@
 #!/usr/bin/env bash
+# Install either a SITL workstation or a physical-vehicle companion computer.
+# These are separate environments; both resolve their own pinned sources.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
-usage() {
-    echo "Usage: ./setup/install.sh common|sitl|experiment|all"
-}
-
 profile="${1:-}"
 
+if (( $# != 1 )); then
+    echo "Usage: ./setup/install.sh sitl|hardware" >&2
+    exit 2
+fi
+
 case "${profile}" in
-    common|sitl|experiment|all)
+    sitl)
+        # SITL needs PX4/Gazebo, the graphical ROS distribution, and MAVProxy.
+        "${ROOT}/setup/install_ros2_jazzy.sh" desktop
+        "${ROOT}/setup/install_tools.sh" sitl
+        "${ROOT}/setup/fetch_sources.sh" sitl
+        "${ROOT}/setup/install_px4_dependencies.sh" sitl
+        "${ROOT}/setup/install_mavproxy.sh"
+        ;;
+    hardware)
+        # The companion uses ROS-base, Vicon, and a serial DDS agent.
+        # It does not install PX4 firmware sources or Gazebo dependencies.
+        "${ROOT}/setup/install_ros2_jazzy.sh" base
+        "${ROOT}/setup/install_tools.sh" hardware
+        "${ROOT}/setup/fetch_sources.sh" hardware
         ;;
     *)
-        usage
+        echo "Usage: ./setup/install.sh sitl|hardware" >&2
         exit 2
         ;;
 esac
 
-echo "========================================"
-echo " Installing PX4 environment: ${profile}"
-echo "========================================"
-
-# Shared host environment and pinned sources.
-"${ROOT}/setup/install_ros2_jazzy.sh"
-"${ROOT}/setup/install_common_tools.sh"
-"${ROOT}/setup/fetch_sources.sh" "${profile}"
-
-case "${profile}" in
-    common)
-        ;;
-
-    sitl)
-        "${ROOT}/setup/install_px4_dependencies.sh" sitl
-        "${ROOT}/setup/install_mavproxy.sh"
-        ;;
-
-    experiment)
-        "${ROOT}/setup/install_px4_dependencies.sh" experiment
-        ;;
-
-    all)
-        "${ROOT}/setup/install_px4_dependencies.sh" all
-        "${ROOT}/setup/install_mavproxy.sh"
-        "${ROOT}/setup/install_qgroundcontrol.sh"
-        ;;
-esac
-
-"${ROOT}/ros2/build.sh"
-
-echo
-echo "========================================"
-echo " PX4 environment ready: ${profile}"
-echo "========================================"
+"${ROOT}/ros2/build.sh" "${profile}"
+mkdir -p "${ROOT}/bags" "${ROOT}/log"
+echo "PX4 ${profile} toolkit environment ready."

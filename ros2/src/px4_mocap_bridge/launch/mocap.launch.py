@@ -64,36 +64,59 @@ def generate_launch_description() -> LaunchDescription:
 
     return LaunchDescription(
         [
-            DeclareLaunchArgument("hostname"),
-            DeclareLaunchArgument("buffer_size", default_value="200"),
+            DeclareLaunchArgument(
+                "hostname",
+                description="Hostname or IP address of the Vicon DataStream server.",
+            ),
+            DeclareLaunchArgument(
+                "buffer_size",
+                default_value="200",
+                description="Vicon receiver frame buffer size.",
+            ),
             DeclareLaunchArgument(
                 "topic_namespace",
                 default_value="vicon",
+                description="ROS topic namespace used by the Vicon receiver.",
             ),
             DeclareLaunchArgument(
                 "world_frame",
                 default_value="map",
+                description="World-frame name passed to the Vicon receiver.",
             ),
             DeclareLaunchArgument(
                 "vicon_frame",
                 default_value="vicon",
+                description="Vicon-frame name passed to the Vicon receiver.",
             ),
             DeclareLaunchArgument(
                 "map_xyz",
                 default_value="[0.0,0.0,0.0]",
+                description=(
+                    "Translation parameter passed to the Vicon receiver for frame "
+                    "mapping."
+                ),
             ),
             DeclareLaunchArgument(
                 "map_rpy",
                 default_value="[0.0,0.0,0.0]",
+                description=(
+                    "Roll, pitch, yaw parameter passed to the Vicon receiver for frame "
+                    "mapping."
+                ),
             ),
             DeclareLaunchArgument(
                 "map_rpy_in_degrees",
                 default_value="false",
+                description="Whether the frame-mapping RPY values are in degrees.",
             ),
-            DeclareLaunchArgument("mocap_topic"),
+            DeclareLaunchArgument(
+                "mocap_topic",
+                description="Input PoseStamped topic used by the PX4 motion-capture bridge.",
+            ),
             DeclareLaunchArgument(
                 "use_header_stamp",
                 default_value="true",
+                description="Use PoseStamped header timestamps for PX4 odometry conversion.",
             ),
             vicon_launch,
             bridge_node,

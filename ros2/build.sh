@@ -3,6 +3,18 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# Build packages appropriate to the installed environment. Common ROS 2
+# libraries are shared; SITL does not need the Vicon bridge and the companion
+# does not need the simulated-pilot Position-mode examples.
+if (( $# != 1 )); then
+    echo "Usage: ./ros2/build.sh sitl|hardware" >&2
+    exit 2
+fi
+case "$1" in
+    sitl|hardware) profile="$1" ;;
+    *) echo "Usage: ./ros2/build.sh sitl|hardware" >&2; exit 2 ;;
+esac
+
 source "${ROOT}/config/runtime/common.env"
 
 # Build in a deliberately small environment so an already-sourced ROS/PX4
@@ -17,6 +29,7 @@ CLEAN_ENV=(
     "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
     "PX4_ENV_ROOT=${ROOT}"
     "ROS_DISTRO=${ROS_DISTRO}"
+    "PX4_INSTALL_PROFILE=${profile}"
 )
 
 for name in \
@@ -46,7 +59,10 @@ source "/opt/ros/${ROS_DISTRO}/setup.bash"
 set -u
 
 cd "${PX4_ENV_ROOT}/ros2"
-colcon build
+case "${PX4_INSTALL_PROFILE}" in
+    sitl) colcon build --packages-skip px4_mocap_bridge ;;
+    hardware) colcon build --packages-skip px4_position_mode ;;
+esac
 EOF_BUILD
 
 echo

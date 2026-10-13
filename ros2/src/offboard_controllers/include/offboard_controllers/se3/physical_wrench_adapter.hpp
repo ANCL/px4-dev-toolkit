@@ -1,3 +1,5 @@
+// Convert physical multicopter wrench commands to PX4 actuator controls.
+
 #pragma once
 
 #include <array>

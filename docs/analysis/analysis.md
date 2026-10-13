@@ -1,90 +1,83 @@
-# Single-run analysis
+<!-- Preserve existing section links. -->
+<span id="single-run-analysis"></span>
 
-[Documentation](../index.md) / Analysis / Single run
+# Analyzing one run
 
-`tools/px4_analyze` analyzes one recorded experiment bag. The textual summary is the primary output; plots are additional output when plotting dependencies are available.
+`px4_analyze` loads one finalized rosbag, selects an experiment profile, and writes a textual summary plus available plots. Start with the summary to establish what happened before interpreting a curve.
 
-## Run
+<!-- Preserve existing section links. -->
+<span id="run"></span>
+<span id="output-location"></span>
+
+## Run and outputs
+
+In a **repository-root shell with `ros2/runtime_env.sh` sourced**, use the discovered bag path from the [complete example](../experiments/complete-example.md#4-inspect-and-analyze-the-finalized-bag):
 
 ```bash
-./tools/px4_analyze <bag-directory>
+./tools/px4_analyze "$bag_path"
 ```
 
-Example:
+Set `bag_path` to a finalized bag directory. Example result structure:
 
-```bash
-./tools/px4_analyze bags/se3/20261007_120000
-```
-
-## Profile detection
-
-The analyzer supports these registered profiles:
-
-```text
-position_takeoff_hover
-offboard_takeoff_handoff
-offboard_position
-se3
-```
-
-Profile selection is explicit when the bag contains `experiment.json`. Otherwise the analyzer falls back to the bag's parent-directory name.
-
-Sequence-runner metadata is therefore preferred because it decouples profile detection from directory naming.
-
-## Analysis flow
-
-```mermaid
-flowchart LR
-    B[rosbag] --> P[Detect profile]
-    P --> L[Load required + optional topics]
-    L --> A[Profile analysis]
-    A --> S[summary.txt]
-    A --> F[plots]
-```
-
-The analyzer loads only the topics required/optionally used by the selected profile rather than assuming every bag contains every PX4 signal.
-
-## Output location
-
-Results are written inside the bag:
-
-```text
+```{ .text .no-copy }
 <bag>/analysis/
 ├── summary.txt
 └── *.png
 ```
 
-If plot generation cannot run, the completed summary is retained and the tool reports a warning rather than invalidating the textual analysis.
+The summary is written before plotting. A plotting dependency failure can leave a usable summary and a warning. Required-topic or data errors can prevent analysis entirely; optional missing topics suppress the corresponding observations. The reader supports rosbag storage backends through their installed ROS plugins, using `metadata.yaml` to select the storage identifier.
 
-## SE(3) analysis
+<!-- Preserve existing section links. -->
+<span id="analysis-flow"></span>
 
-The SE(3) profile reconstructs a physical/control comparison view from the recorded trajectory reference, toolkit handoff, PX4 downstream pipeline, and optional controller diagnostics.
+## Profile detection
 
-The common plot set includes position, velocity, acceleration, attitude, rate, thrust, torque, actuator, and mode/timeline views. Controller-specific diagnostic plots are added when the corresponding diagnostic topics are present.
+Registered profiles are `position_takeoff_hover`, `offboard_takeoff_handoff`, `offboard_position`, and `se3`. [detect_profile_name](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/__init__.py) prefers `experiment.json`; otherwise it uses the parent directory name. Study metadata is therefore necessary for bags stored under arbitrary step names.
 
-The summary includes the experiment/lifecycle context and the metrics that are available for the recorded handoff rather than pretending every controller boundary exposes the same signals.
+For SE(3), recorded `OffboardControlMode` determines the active command level. Simultaneous or changing levels are rejected. Direct-law identity comes from explicit metadata; without it, normalized geometric diagnostics can identify that law, but PX4-rate and physical modes cannot reliably be distinguished from downstream wrench messages alone. `unknown` is a data limitation, not a missing controller label to guess.
 
 ## Time alignment
 
-Recorded PX4 topics are independently timestamped. Analysis aligns the relevant reference/actual series by time; comparison work additionally aligns separate runs to confirmed PX4 Offboard entry.
+[analysis/core.py](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/core.py) uses **rosbag receive timestamps** as the common cross-topic clock. It does not mix PX4 boot/sample timestamps with host/ROS time. Each topic is independently sampled.
 
-Do not compare samples by array index simply because two topics have similar rates.
+The full bag establishes lifecycle events. SE(3) extraction begins at confirmed Offboard entry; the common performance view clips to the interval ending at the first confirmed Position return. The profile requires recorded armed state, Offboard entry, Position return, heartbeat/diagnostic reference before entry, and selected handoff samples. An interrupted run without return may fail this profile rather than yielding a normal performance report.
 
-## Interpreting the summary
+Reference signals are interpolated onto measured-signal times over their common interval. Stable sorting retains the first reference value at duplicate times. Do not compare arrays by index just because their rates look similar.
 
-Use the summary first to establish:
+<!-- Preserve existing section links. -->
+<span id="se3-analysis"></span>
+<span id="interpreting-the-summary"></span>
 
-- whether the expected profile was selected,
-- whether Offboard entry/exit happened as intended,
-- whether required signals were present,
-- which handoff/direct controller was used when metadata is available,
-- tracking-error magnitude at the layers observable for that mode,
-- actuator/control-allocation behavior where recorded.
+## Read the summary first
 
-Then use the plots to inspect transient shape, timing, saturation, and segment-specific behavior.
+Check profile, controller identity, bag duration, arming and mode transitions, prestream, handoff timing, and missing signals. Then read tracking and control statistics. Two statistical treatments appear in the code:
 
-## Next
+- Axis tracking tables in [pipeline/statistics.py](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/pipeline/statistics.py) use sample RMS $\sqrt{\frac1N\sum e_k^2}$ and maximum absolute error after interpolation.
+- Common Offboard performance and maneuver metrics use time-weighted RMS from trapezoidal squared-error integration, explained in [comparison](comparison.md#metric-definitions).
 
-- [Comparison](comparison.md)
-- [Recording](../workflows/recording.md)
-- [Architecture](../reference/architecture.md)
+Uneven logging rates can make these numbers differ. Read the table's context instead of applying one generic RMS interpretation to every metric.
+
+<!-- Preserve existing section links. -->
+<span id="source-organization"></span>
+<span id="next"></span>
+
+## Interpret the plots
+
+**Position and velocity:** compare the desired reference to measured NED state. Position error is measured minus desired, in metres; velocity error is in m/s. Look for steady offsets, lag, overshoot, cross-axis coupling, and sudden estimator changes. Upward motion appears as decreasing Z.
+
+<figure class="px4-figure-slot">
+  <img src="../../assets/measured-plot-placeholder.svg" width="760" height="190" alt="Empty axes reserved for position tracking; measured data has not been supplied">
+  <figcaption><strong>Position tracking · figure placeholder.</strong> Desired and measured NED position [m], position error [m], and time from confirmed Offboard entry [s]. An approved flight recording is needed before this figure can show tracking or segment transitions.</figcaption>
+</figure>
+
+**Acceleration:** separate desired kinematic acceleration, commanded acceleration, PX4/estimated signals, and gravity compensation. They are different quantities. Model-based force derivatives and reconstructed physical quantities are not additional sensors.
+
+**Attitude and body rate:** inspect desired versus measured attitude and commanded versus measured FRD rate. Angle/rate plots can use degrees/deg/s while the controller uses rad/rad/s; read labels. Wrapped yaw error prevents a 360° jump from appearing as a large physical error.
+
+**Mode transitions:** inspect pre-entry and return timing before judging startup transients. ROS launch time is not trajectory zero. A failed or repeated takeover can invalidate a simple single-interval comparison.
+
+**Thrust, torque, and motors:** normalized setpoints are requested control coordinates, not measured thrust [N] or torque [N·m]. Look for clipping, allocation residuals, motor limits, and chatter. Physical-mode “applied moment” is the adapter's modeled $\lambda M$, not a measured moment. PX4-rate diagnostics separate old/new integrator state and filtered torque.
+
+**Missing data:** an absent diagnostic/actuator stream cannot demonstrate absence of saturation or good tracking at that stage. Optional diagnostics differ by mode; the common measured response is the more consistent comparison basis.
+
+Read [SE(3) reporting](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/se3/reporting.py) for output details, then continue with [Comparing controllers](comparison.md).

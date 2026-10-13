@@ -1,5 +1,12 @@
 #include <cmath>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <functional>
 #include <iostream>
+#include <string>
+#include <system_error>
+#include <yaml-cpp/yaml.h>
 #include <stdexcept>
 
 #include <offboard_controllers/se3/vehicle_config.hpp>
@@ -15,7 +22,8 @@ void expect_near(
   double actual,
   double expected)
 {
-  if (std::abs(actual - expected) > kTolerance) {
+  if (!std::isfinite(actual) || !std::isfinite(expected) ||
+      std::abs(actual - expected) > kTolerance) {
     std::cerr
       << name
       << ": expected " << expected
@@ -150,12 +158,129 @@ void test_f450_physical_wrench_configuration()
     1.0);
 }
 
+struct TemporaryVehicleDirectory
+{
+  std::filesystem::path path;
+
+  TemporaryVehicleDirectory()
+  {
+    char name[] = "/tmp/px4_vehicle_config_XXXXXX";
+    const char * created = ::mkdtemp(name);
+
+    if (created == nullptr) {
+      throw std::runtime_error("Could not create temporary vehicle test directory.");
+    }
+
+    path = created;
+  }
+
+  ~TemporaryVehicleDirectory()
+  {
+    std::error_code error;
+    std::filesystem::remove_all(path, error);
+  }
+
+  TemporaryVehicleDirectory(const TemporaryVehicleDirectory &) = delete;
+  TemporaryVehicleDirectory & operator=(const TemporaryVehicleDirectory &) = delete;
+};
+
+
+void test_invalid_vehicle_configuration()
+{
+  using namespace offboard_controllers;
+
+  const TemporaryVehicleDirectory temporary;
+  const YAML::Node baseline = YAML::LoadFile(
+    std::string(VEHICLE_CONFIG_DIR) + "/gz_f450.yaml");
+
+  auto expect_invalid = [&](const char * name) {
+      try {
+        (void)vehicle_config::load_physical_wrench_configuration(
+          temporary.path.string(), "test_vehicle");
+      } catch (const std::invalid_argument &) {
+        return;
+      }
+
+      throw std::runtime_error(std::string(name) + " should be rejected.");
+    };
+
+  expect_invalid("missing vehicle file");
+
+  auto test_case = [&](const char * name,
+                       const std::function<void(YAML::Node &)> & mutate) {
+      YAML::Node config = YAML::Clone(baseline);
+      mutate(config);
+
+      YAML::Emitter emitter;
+      emitter << config;
+
+      if (!emitter.good()) {
+        throw std::runtime_error("Could not encode test vehicle YAML.");
+      }
+
+      const std::filesystem::path file = temporary.path / "test_vehicle.yaml";
+      {
+        std::ofstream output(file);
+        output << emitter.c_str();
+
+        if (!output.good()) {
+          throw std::runtime_error("Could not write test vehicle YAML.");
+        }
+      }
+
+      expect_invalid(name);
+    };
+
+  test_case("invalid plant frame", [](YAML::Node & config) {
+      config["plant"]["frame"] = "ENU";
+    });
+
+  test_case("non-positive inertia", [](YAML::Node & config) {
+      config["plant"]["inertia_kg_m2"]["xx"] = -1.0;
+    });
+
+  test_case("invalid center of mass", [](YAML::Node & config) {
+      config["plant"]["center_of_mass_m"]["z"] = "not-a-number";
+    });
+
+  test_case("wrong rotor count", [](YAML::Node & config) {
+      config["propulsion"]["rotor_count"] = 6;
+    });
+
+  test_case("duplicate physical rotor", [](YAML::Node & config) {
+      config["propulsion"]["rotors"][1]["index"] = 0;
+    });
+
+  test_case("invalid physical rotor direction", [](YAML::Node & config) {
+      config["propulsion"]["rotors"][0]["direction"] = "unknown";
+    });
+
+  test_case("invalid thrust polynomial", [](YAML::Node & config) {
+      config["propulsion"]["actuator_thrust"]["polynomial_n"] =
+        YAML::Load("[0.27, 3.06]");
+    });
+
+  test_case("invalid allocator frame", [](YAML::Node & config) {
+      config["px4_allocator"]["frame"] = "FLU";
+    });
+
+  test_case("duplicate allocator rotor", [](YAML::Node & config) {
+      config["px4_allocator"]["rotors"][1]["index"] = 0;
+    });
+
+  test_case("opposite rotor yaw direction", [](YAML::Node & config) {
+      config["px4_allocator"]["rotors"][0]["km"] = -0.014;
+    });
+}
+
+
 }  // namespace
 
 
 int main()
 {
   test_f450_physical_wrench_configuration();
+  test_invalid_vehicle_configuration();
 
   std::cout
     << "Vehicle configuration tests passed.\n";

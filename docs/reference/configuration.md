@@ -1,83 +1,64 @@
-# Configuration ownership
+<!-- Preserve existing section links. -->
+<span id="configuration-ownership"></span>
+<span id="rule-of-thumb"></span>
 
-[Documentation](../index.md) / Reference / Configuration
+# Configuration files
 
-Use this page when the question is: **"I want to change X; where does that configuration belong?"**
+Use this reference to find where a setting belongs. Physical facts, controller tuning, requested motion, and runtime connectivity have separate files so a change has a clear meaning.
 
-The project deliberately separates runtime connectivity, vehicle physics, controller tuning, trajectory definition, study orchestration, PX4 topic names, external source pins, and tool versions.
+<!-- Preserve existing section links. -->
+<span id="ownership-map"></span>
+<span id="configruntimecommonenv"></span>
+<span id="configruntimesitlenv"></span>
+<span id="configruntimehardwareenv"></span>
+<span id="px4-topics"></span>
 
-## Ownership map
+## Where to change a setting
 
-| What you are changing | Canonical location |
+| Setting | Canonical file or directory |
 |---|---|
-| shared ROS runtime setting | `config/runtime/common.env` |
-| SITL process/simulator/XRCE/GCS settings | `config/runtime/sitl.env` |
-| hardware serial/Vicon settings | `config/runtime/experiment.env` |
-| vehicle mass/inertia/propulsion/allocator facts | `config/vehicles/*.yaml` |
-| SE(3) controller gains and timing | `ros2/src/offboard_controllers/config/se3/controller.yaml` |
-| shared trajectory segments/names | `ros2/src/offboard_controllers/config/trajectory/trajectories.yaml` |
-| basic Offboard staging setpoint | `ros2/src/offboard_controllers/config/offboard.yaml` |
-| experiment/study sequence definition | `config/sequences/` |
-| project-wide PX4 ROS topic catalog | `config/px4_topics.def` |
-| external repository revisions | `config/sources/*.repos` |
-| host/tool/application versions | `config/versions.env` |
-| per-controller rosbag topic selection | package `config/recording/` files |
+| Shared ROS distribution | [config/runtime/common.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/common.env) |
+| PX4 target/model/world, estimator overrides, GCS, UDP agent, session | [config/runtime/sitl.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/sitl.env) |
+| Serial agent, Vicon server/object, frames/transforms, timestamps, session | [config/runtime/hardware.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/hardware.env) |
+| Mass, inertia, COM, propulsion, allocator facts, hover scale | [config/vehicles](https://github.com/ANCL/px4-dev-toolkit/tree/main/config/vehicles) |
+| SE(3) gains, rate reproduction parameters, outer/warmup/retry timing | [controller.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/config/se3/controller.yaml) |
+| Trajectory segments and names | [trajectories.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/config/trajectory/trajectories.yaml) |
+| Position-mode staging settings | [offboard.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_position_mode/config/offboard.yaml) |
+| Ordered launch study | [config/sequences](https://github.com/ANCL/px4-dev-toolkit/tree/main/config/sequences) |
+| PX4 topic symbols | [config/px4_topics.def](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/px4_topics.def) |
+| Recorded topic selection | Package `config/recording/` and Position-reference `recording_topics.txt` |
+| External repository revisions | [config/sources](https://github.com/ANCL/px4-dev-toolkit/tree/main/config/sources) |
+| Validated host/tools and managed application versions | [config/versions.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/versions.env) |
 
-## Runtime configuration
+<!-- Preserve existing section links. -->
+<span id="runtime-configuration"></span>
+<span id="vehicle-configuration"></span>
+<span id="controller-tuning"></span>
+<span id="trajectories"></span>
+<span id="sequences"></span>
 
-### `config/runtime/common.env`
+## Selection and when changes take effect
 
-Contains settings shared by environments, currently the ROS distribution used by runtime/build helpers.
+Environment wrappers source their `.env` files when invoked. Changing a file does not update an already-running tmux process. Stop/restart at an appropriate time to apply service changes; do not stop a flight's required communication as a configuration shortcut.
 
-### `config/runtime/sitl.env`
+The standard SE(3) launch loads the installed controller tuning, then supplies vehicle, trajectory, command-level, direct-controller, and diagnostic launch selections. Vehicle and trajectory source data are installed into the package during the ROS build; rebuild after changing them. The [vehicle guide](adding-a-vehicle.md) distinguishes controller-data selection from simulator/PX4 airframe selection.
 
-Owns simulator/runtime process selection and connectivity: PX4 target, Gazebo model/world, estimator runtime overrides, XRCE endpoint, MAVProxy endpoint, selected GCS, optional service start, and tmux session.
+Sequences select launches and their arguments; the runner overrides recording output for its study. It does not change gains or calibrations. Keep the configuration used with the recorded data so later trajectory-aware analysis does not read changed maneuver definitions.
 
-### `config/runtime/experiment.env`
+<!-- Preserve existing section links. -->
+<span id="external-sources-and-versions"></span>
 
-Owns the companion-computer hardware/environment boundary: serial XRCE device/baud, Vicon server/topic/frame/transform settings, optional XRCE-agent start, and tmux session.
+## Missing data and source pins
 
-Do not put controller gains here.
+Missing hover calibration or physical propulsion data deliberately limits supported modes. Do not invent values to pass validation. Gains belong in controller tuning rather than vehicle files; Vicon host/device identifiers belong in the site-specific runtime configuration rather than public walkthroughs.
 
-## Vehicle configuration
+`config/sources/*.repos` specifies what exact revisions to fetch. `config/versions.env` records tested tools and managed download pins; it is not a declaration that arbitrary installed versions were automatically verified. Each environment has a complete source manifest: see [Native SITL](../installation/native.md#pinned-external-sources) and [Companion computer](../installation/companion.md#install-on-the-companion-computer).
 
-`config/vehicles/*.yaml` contains curated facts about a specific vehicle/model. Examples include mass, inertia, center of mass, rotor geometry/directions, PX4 allocator data, hover thrust, and, where available for that vehicle, physical actuator thrust mapping.
+<!-- Preserve existing section links. -->
+<span id="next"></span>
 
-Missing data is meaningful. For example, the FY690S file deliberately does not invent a hover-thrust value and therefore constrains the currently supported SE(3) handoff modes.
+## Documentation media
 
-Do not add controller tuning to a vehicle file.
+The homepage currently has two static, clearly labeled 16:9 media slots. Replace their asset references only with approved SITL/lab footage. Short muted WebM/MP4 loops can use `playsinline`, a still poster, conservative preload, and pause/play controls; reduced-motion users must see the still image without automatic movement. No site content should depend on playback. The present slots intentionally have no moving media or playback controls.
 
-## Controller tuning
-
-`ros2/src/offboard_controllers/config/se3/controller.yaml` owns gains and controller/lifecycle timing. Parameters that reproduce the pinned PX4 rate controller are tuning values, not vehicle properties.
-
-## Trajectories
-
-`ros2/src/offboard_controllers/config/trajectory/trajectories.yaml` owns reusable motion definitions in local NED coordinates. It should describe requested motion, not study ordering or controller gains.
-
-## Sequences
-
-`config/sequences/` owns repeatable orchestration: which launch file runs, with which launch arguments, in which order, and with what settle time.
-
-A sequence may select a controller/vehicle/trajectory, but it should not duplicate their canonical definitions.
-
-## PX4 topics
-
-`config/px4_topics.def` is the canonical project-wide mapping of symbolic names to `/fmu/in/*` and `/fmu/out/*` ROS topics. Prefer adding/resolving a catalog entry instead of scattering a new literal PX4 topic through C++, recorder files, and Python analysis.
-
-## External sources and versions
-
-`config/sources/*.repos` answers **which source revision should be fetched**.
-
-`config/versions.env` records the host/tool/application versions used by the documented environment.
-
-Those are different responsibilities and should remain separate.
-
-## Rule of thumb
-
-A fact gets one canonical home. Other pages/code should resolve or link to that fact rather than maintaining slightly different copies.
-
-## Next
-
-- [Architecture](architecture.md)
-- [Extending the toolkit](extending.md)
+Continue with [Troubleshooting](troubleshooting.md) for a setting that is accepted but behaves unexpectedly.

@@ -1,3 +1,5 @@
+// Validated vehicle-parameter interfaces for physical-wrench control.
+
 #pragma once
 
 #include <string>

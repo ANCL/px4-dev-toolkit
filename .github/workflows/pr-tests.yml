@@ -35,17 +35,28 @@ jobs:
             python3 -m py_compile "$script"
           done
 
-      - name: Install ROS 2 Jazzy
-        run: ./setup/install_ros2_jazzy.sh
+      - name: Verify installer contracts
+        run: python3 -m unittest discover -s tools/tests -p test_installation.py -v
 
-      - name: Install common tools
-        run: ./setup/install_common_tools.sh
+      - name: Install ROS 2 Jazzy
+        run: ./setup/install_ros2_jazzy.sh base
+
+      - name: Install hardware build tools
+        run: ./setup/install_tools.sh hardware
 
       - name: Fetch pinned sources
-        run: ./setup/fetch_sources.sh common
+        run: ./setup/fetch_sources.sh hardware
 
       - name: Build ROS 2 workspace
-        run: ./ros2/build.sh
+        run: ./ros2/build.sh hardware
 
-      - name: Run toolkit tests
-        run: ./ros2/test.sh
+      # Numerical dependencies are needed by analysis regressions, but
+      # are intentionally not part of the lean companion installation.
+      - name: Install analysis test dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends python3-numpy python3-matplotlib python3-scipy
+
+      - name: Run analysis regressions
+        run: python3 -m unittest discover -s analysis/tests -p 'test_*.py' -v
+
+      - name: Run hardware ROS tests
+        run: ./ros2/test.sh hardware

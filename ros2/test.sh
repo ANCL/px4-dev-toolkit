@@ -3,6 +3,15 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+if (( $# != 1 )); then
+    echo "Usage: ./ros2/test.sh sitl|hardware" >&2
+    exit 2
+fi
+case "$1" in
+    sitl|hardware) profile="$1" ;;
+    *) echo "Usage: ./ros2/test.sh sitl|hardware" >&2; exit 2 ;;
+esac
+
 source "${ROOT}/config/runtime/common.env"
 
 CLEAN_ENV=(
@@ -14,6 +23,7 @@ CLEAN_ENV=(
     "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
     "PX4_ENV_ROOT=${ROOT}"
     "ROS_DISTRO=${ROS_DISTRO}"
+    "PX4_INSTALL_PROFILE=${profile}"
 )
 
 for name in \
@@ -49,9 +59,12 @@ TOOLKIT_PACKAGES=(
     offboard_controllers
     px4_bringup
     px4_control_common
-    px4_mocap_bridge
-    px4_position_mode
 )
+if [[ "${PX4_INSTALL_PROFILE}" == "sitl" ]]; then
+    TOOLKIT_PACKAGES+=(px4_position_mode)
+else
+    TOOLKIT_PACKAGES+=(px4_mocap_bridge)
+fi
 
 # The SITL container deliberately excludes hardware-only ROS packages.
 # Select maintained packages actually present in the current workspace.
@@ -80,10 +93,13 @@ set +e
 
 cd "${PX4_ENV_ROOT}"
 
-python3 -m unittest discover \
-    -s analysis/tests \
-    -p 'test_*.py'
-analysis_status=$?
+analysis_status=0
+if [[ "${PX4_INSTALL_PROFILE}" == "sitl" ]]; then
+    python3 -m unittest discover \
+        -s analysis/tests \
+        -p 'test_*.py'
+    analysis_status=$?
+fi
 python3 -m unittest discover \
     -s tools/tests \
     -p 'test_*.py'

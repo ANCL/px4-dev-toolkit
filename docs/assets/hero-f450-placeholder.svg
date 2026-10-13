@@ -1,37 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" fill="none">
-  <rect width="1600" height="900" rx="24" fill="#0B1320"/>
-  <rect x="36" y="36" width="1528" height="828" rx="18" fill="#101826" stroke="#334155" stroke-width="2"/>
-
-  <rect x="90" y="90" width="1420" height="720" rx="18" fill="url(#sky)"/>
-  <rect x="90" y="620" width="1420" height="190" rx="0" fill="#16324F"/>
-  <rect x="90" y="700" width="1420" height="110" rx="0" fill="#0F5132"/>
-
-  <g transform="translate(800 390)">
-    <circle r="54" fill="#D1D5DB"/>
-    <rect x="-24" y="0" width="48" height="105" rx="18" fill="#F8FAFC"/>
-    <line x1="0" y1="0" x2="-135" y2="-95" stroke="#F8FAFC" stroke-width="16" stroke-linecap="round"/>
-    <line x1="0" y1="0" x2="135" y2="-95" stroke="#F8FAFC" stroke-width="16" stroke-linecap="round"/>
-    <line x1="0" y1="18" x2="-145" y2="105" stroke="#F8FAFC" stroke-width="16" stroke-linecap="round"/>
-    <line x1="0" y1="18" x2="145" y2="105" stroke="#F8FAFC" stroke-width="16" stroke-linecap="round"/>
-
-    <circle cx="-145" cy="105" r="38" fill="#38BDF8"/>
-    <circle cx="145" cy="105" r="38" fill="#38BDF8"/>
-    <circle cx="-135" cy="-95" r="38" fill="#38BDF8"/>
-    <circle cx="135" cy="-95" r="38" fill="#38BDF8"/>
-  </g>
-
-  <text x="800" y="165" text-anchor="middle" fill="#E2E8F0" font-family="Arial, sans-serif" font-size="40" font-weight="700">
-    F450 flight placeholder
-  </text>
-
-  <text x="800" y="760" text-anchor="middle" fill="#E2E8F0" font-family="Arial, sans-serif" font-size="26">
-    Replace this with a real hardware or realistic flight image later
-  </text>
-
-  <defs>
-    <linearGradient id="sky" x1="800" y1="90" x2="800" y2="620" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#60A5FA"/>
-      <stop offset="1" stop-color="#BFDBFE"/>
-    </linearGradient>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-labelledby="title desc">
+<title id="title">Laboratory motion-capture flight illustration</title><desc id="desc">Quadrotor in an indoor flight volume with frame-mounted motion capture cameras.</desc>
+<style>
+:root{--frame:#9cad9c;--ink:#495e5e;--accent:#807f5c;--sensor:#487d71;--floor:#d8ded2;--fill:#e3e9df;--text:#63756b}
+@media(prefers-color-scheme:dark){:root{--frame:#647c78;--ink:#cad9d2;--accent:#c2bd91;--sensor:#93c4ad;--floor:#2e4848;--fill:#315151;--text:#b6ccbf}}
+.frame{fill:none;stroke:var(--frame);stroke-width:3;stroke-linejoin:round}
+.drone{stroke:var(--ink);stroke-width:4;stroke-linecap:round;fill:var(--fill)}
+.markers{fill:var(--sensor);stroke:var(--fill);stroke-width:2}
+.text{fill:var(--text);font:600 15px sans-serif;letter-spacing:2px}
+</style>
+<path d="M58 294 580 294 531 323 110 323Z" fill="var(--floor)"/>
+<g class="frame"><path d="M75 295V78L250 38H565V295 M75 78H565 M75 295H565 M250 38V295 M75 78 250 38 M565 78 250 38"/><path d="M130 295V110L250 80H514V295" opacity=".5"/></g>
+<g fill="var(--ink)"><rect x="99" y="89" width="21" height="18" rx="3"/><circle cx="109" cy="98" r="5" fill="var(--sensor)"/><rect x="531" y="89" width="21" height="18" rx="3"/><circle cx="541" cy="98" r="5" fill="var(--sensor)"/><rect x="239" y="44" width="21" height="18" rx="3"/><circle cx="250" cy="53" r="5" fill="var(--sensor)"/></g>
+<g stroke="var(--frame)" stroke-width="1.4" stroke-dasharray="5 8" fill="none" opacity=".7"><path d="M109 98 324 192 541 98 M250 53 324 192"/></g>
+<g class="drone"><path d="M264 158 377 212 M375 157 269 213" stroke-width="11" fill="none"/><rect x="297" y="166" width="47" height="34" rx="8"/><path d="M306 201v14h32v-14" fill="none"/></g>
+<g fill="none" stroke="var(--accent)" stroke-width="3"><ellipse cx="264" cy="157" rx="36" ry="11"/><ellipse cx="378" cy="156" rx="36" ry="11"/><ellipse cx="265" cy="215" rx="36" ry="11"/><ellipse cx="380" cy="214" rx="36" ry="11"/></g>
+<g class="markers"><circle cx="316" cy="165" r="5"/><circle cx="302" cy="188" r="5"/><circle cx="339" cy="189" r="5"/></g>
+<text class="text" x="81" y="51">MOTION-CAPTURE LAB</text>
 </svg>

@@ -1,142 +1,133 @@
-# SITL environment
+<!-- Preserve existing section links. -->
+<span id="sitl-environment"></span>
 
-[Documentation](../index.md) / Environments / SITL
+# Running SITL
 
-This page covers operation of the toolkit's PX4 software-in-the-loop stack after either [Docker](../installation/docker.md) or [native](../installation/native.md) installation.
+**SITL** runs PX4 flight software on the workstation while **Gazebo** simulates the aircraft and its sensors. The launcher starts the environment services; controller launches are separate.
 
-## What the launcher owns
+<!-- Preserve existing section links. -->
+<span id="what-the-launcher-owns"></span>
 
-`tools/sitl` owns one tmux session containing the configured simulation services.
+## How the parts connect
 
 ```mermaid
-flowchart LR
-    G[Gazebo] <--> P[PX4 SITL]
-    P <--> M[MAVLink GCS endpoint]
-    M --> C{Configured GCS}
-    C --> MP[MAVProxy]
-    C --> Q[QGroundControl]
-    P <--> X[uXRCE-DDS Agent]
-    X <--> R[ROS 2]
+---
+config:
+  flowchart:
+    useMaxWidth: false
+    wrappingWidth: 180
+    padding: 10
+    rankSpacing: 22
+    nodeSpacing: 24
+---
+flowchart TB
+    G["Gazebo"] <--> P["PX4 SITL"]
+    P <--> M["MAVLink<br/>Ground control"]
+    P <--> X["DDS agent<br/>UDP"]
+    X <--> R["ROS 2<br/>Controller + recorder"]
 ```
 
-The current runtime configuration is `config/runtime/sitl.env`.
+MAVLink carries ground-control messages. uXRCE-DDS connects PX4 to ROS 2 through the agent, so ROS nodes can receive state and send setpoints. A **setpoint** is the requested value, such as a position or body rate, that a controller tries to reach.
 
-## CLI
+<!-- Preserve existing section links. -->
+<span id="cli"></span>
+<span id="start-with-gazebo-gui"></span>
+<span id="start-without-gazebo-gui"></span>
+<span id="inspect-status"></span>
+<span id="stop"></span>
+<span id="ros-2-connectivity"></span>
 
-```bash
-./tools/sitl start [headless]
-./tools/sitl status
-./tools/sitl stop
-```
+## Start, inspect, and stop
 
-Running `start` when the tmux session already exists attaches to that session instead of launching duplicates.
-
-### Start with Gazebo GUI
+After [installation](../installation/index.md), in a **repository-root shell**:
 
 ```bash
 ./tools/sitl start
 ```
 
-### Start without Gazebo GUI
+The default `px4-sitl` tmux session contains:
+
+| Window | Process |
+|---|---|
+| `px4` | PX4 build/launch and Gazebo connection |
+| `xrce-dds` | DDS agent, if `START_XRCE_AGENT=true` |
+| `mavproxy` or `qgroundcontrol` | Configured ground-control frontend |
+
+The launcher attaches to tmux. Starting again attaches to the existing session instead of creating another stack. **Ctrl-b, then d** detaches; **Ctrl-b, then n** changes windows. Open another shell for manual ROS commands.
+
+For **headless Gazebo**, use this command instead of the GUI start:
 
 ```bash
 ./tools/sitl start headless
 ```
 
-`headless` changes Gazebo presentation only. PX4 SITL, the simulator server, ROS 2 connectivity, and the configured GCS still run.
+Headless changes Gazebo presentation only. The simulator server, PX4, DDS, and configured GCS still run. A graphical QGroundControl configuration still needs a display.
 
-### Inspect status
+In a **second repository-root shell**:
 
 ```bash
+source ros2/runtime_env.sh
 ./tools/sitl status
+./tools/topic_rates
 ```
 
-Status reports both tmux state and the relevant processes so detached/stale components are visible.
+Status reports tmux and processes, including components that may have detached. The rate tool checks arriving ROS messages. It does not arm or launch a controller. Stop its display with Ctrl-C.
 
-### Stop
+After the aircraft is landed and disarmed, in a **repository-root shell**:
 
 ```bash
 ./tools/sitl stop
 ```
 
-The stop path first shuts down tmux-owned processes and then cleans up Gazebo processes associated with this repository if Gazebo detached from the original process tree.
+The wrapper shuts down the tmux process trees, then searches for Gazebo processes associated with this repository. Use it instead of killing tmux alone.
+
+<!-- Preserve existing section links. -->
+<span id="ground-control-frontend"></span>
+<span id="typical-controller-workflow"></span>
+<span id="configuration-boundary"></span>
+<span id="next"></span>
+
+
+## Land and reset the simulated vehicle
+
+Use this procedure **only in the documented MAVProxy SITL environment**, after the controller has completed and PX4 has confirmed its return to Position mode. It supplies the operator controls needed between separate Offboard demonstrations and before environment shutdown.
+
+In a **repository-root shell in the running simulation environment** (inside the container when using Docker), attach to the session:
+
+```bash
+tmux attach-session -t px4-sitl
+```
+
+Press **Ctrl-b, then w** and select `mavproxy`. At the **MAVProxy console**, enter this command, not a Bash command:
+
+```{ .text .copy }
+mode LAND
+```
+
+MAVProxy resolves PX4's `LAND` mode and requests it over MAVLink. Verify the mode change in console/PX4 telemetry; watch the descent and wait for ground contact. If the request is rejected or the vehicle does not descend as expected, inspect the state/logs before proceeding. This command is not an instantaneous landing or disarm.
+
+In a **second repository-root shell**, verify PX4's landing state:
+
+```bash
+source ros2/runtime_env.sh
+ros2 topic echo /fmu/out/vehicle_land_detected --qos-reliability best_effort --once
+ros2 topic echo /fmu/out/vehicle_status_v1 --qos-reliability best_effort --once
+```
+
+Require `landed: true`. Check arming state as well: `ARMING_STATE_DISARMED` is **1** in the pinned message. PX4 may disarm automatically; if it remains armed **after landed is confirmed**, return to the **MAVProxy console** and enter:
+
+```{ .text .copy }
+disarm
+```
+
+Check `/fmu/out/vehicle_status_v1` again and require disarmed state before stopping SITL or beginning another staging demonstration. Do not disarm an airborne vehicle. Once landed/disarmed, the staging helper can prepare a new flight; restore/restart the simulator if a failed experiment left an unsuitable starting state.
+
+These operator commands are verified in pinned MAVProxy [mode handling](https://github.com/ArduPilot/MAVProxy/blob/932f6945cfc7fbc6579e166667d43e327fe44f2d/MAVProxy/modules/mavproxy_mode.py) and [disarm handling](https://github.com/ArduPilot/MAVProxy/blob/932f6945cfc7fbc6579e166667d43e327fe44f2d/MAVProxy/modules/mavproxy_arm.py). Check the actual mode, landing, and arming state after each request.
 
 ## Current default runtime
 
-`config/runtime/sitl.env` currently selects:
+[config/runtime/sitl.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/sitl.env) selects the PX4 target, `gz_f450` model, world, estimator overrides, UDP DDS endpoint, optional agent, GCS, and session. The checked-in estimator settings enable external-vision/Gazebo odometry aiding and disable the other listed aiding sources. Changing these settings is a vehicle/estimator decision, not controller tuning.
 
-```text
-PX4_BUILD_TARGET=px4_sitl
-PX4_SIM_MODEL=gz_f450
-PX4_GZ_WORLD=default
-XRCE_AGENT_TRANSPORT=udp4
-XRCE_AGENT_PORT=8888
-START_XRCE_AGENT=true
-GCS=mavproxy
-TMUX_SESSION=px4-sitl
-```
+The current launcher accepts `GCS=mavproxy` or `GCS=qgc`; there is no `none` option. MAVProxy loads the toolkit virtual joystick, which reproduces manual input for repeatable simulation takeoff/staging examples. Other controllers can work without that input when the aircraft is already prepared. QGroundControl requires the optional installation described in the [native guide](../installation/native.md).
 
-The file also carries the estimator parameter overrides used by the default SITL setup. These settings configure external-vision/Gazebo odometry aiding and explicitly disable the other listed aiding sources.
-
-## Ground-control frontend
-
-The launcher accepts exactly:
-
-```text
-GCS=mavproxy
-GCS=qgc
-```
-
-There is no `none` launcher mode in the current implementation.
-
-MAVProxy is also the owner of the repository's software virtual-joystick stream used by the Position-mode staging helper. The `sitl` native install profile installs MAVProxy. QGroundControl is installed by the `all` profile or by `setup/install_qgroundcontrol.sh`.
-
-## ROS 2 connectivity
-
-When `START_XRCE_AGENT=true`, `tools/sitl` opens an `xrce-dds` tmux window and launches the agent through `px4_bringup/xrce.launch.py` using the configured UDP transport/port.
-
-For manual ROS commands in another shell:
-
-```bash
-source ros2/runtime_env.sh
-```
-
-Useful checks include:
-
-```bash
-ros2 topic list | grep '^/fmu/'
-./tools/topic_rates
-```
-
-The project-wide PX4 ROS topic names are centralized in `config/px4_topics.def`.
-
-## Typical controller workflow
-
-Start SITL first:
-
-```bash
-./tools/sitl start headless
-```
-
-Then, in another shell in the same environment:
-
-```bash
-source ros2/runtime_env.sh
-ros2 launch offboard_controllers se3.launch.py \
-  vehicle:=gz_f450 \
-  trajectory:=hover \
-  handoff:=acceleration
-```
-
-For the other controller examples and their ownership boundaries, see [Controllers](../controllers/overview.md).
-
-## Configuration boundary
-
-Use `config/runtime/sitl.env` for environment/process connectivity and simulator selection. Do not put controller gains or trajectory definitions there; those have separate canonical homes documented in [Configuration](../reference/configuration.md).
-
-## Next
-
-- [Controllers](../controllers/overview.md)
-- [SE(3)](../controllers/se3.md)
-- [Recording](../workflows/recording.md)
-- [Troubleshooting](../reference/troubleshooting.md)
+Controller gains and trajectories live in their own files. Starting SITL does not arm, start Offboard control, or record a bag. Continue with [First simulation](../getting-started/first-simulation.md) or the [controller overview](../controllers/overview.md).

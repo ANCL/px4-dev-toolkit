@@ -1,104 +1,108 @@
-# Recording experiments
+<!-- Preserve existing section links. -->
+<span id="recording-experiments"></span>
 
-[Documentation](../index.md) / Workflows / Recording
+# Recording
 
-Recording is integrated into the launch workflows so the recorder starts before control and is finalized after the experiment process exits.
+Recording captures a flight's messages, not just its final controller result. Add `record:=true` to the supported launch to start a recorder before the node and stop it after node exit.
 
 ## Lifecycle
 
-For the controller launch files that support recording:
-
-```text
-start rosbag
-→ allow DDS discovery
-→ start controller / flight process
-→ controller owns experiment completion
-→ stop rosbag
-→ wait for recorder finalization
-→ terminate launch
+```mermaid
+---
+config:
+  flowchart:
+    useMaxWidth: false
+    wrappingWidth: 180
+    padding: 10
+    rankSpacing: 22
+    nodeSpacing: 24
+---
+flowchart TB
+    R["Start rosbag recorder"] --> D["Wait 1 s for topic discovery"]
+    D --> C["Start flight/controller node"]
+    C --> E["Node exits → stop recorder"]
+    E --> F["Recorder exits → inspect metadata"]
 ```
 
-The launch files currently give the recorder a one-second startup window before starting the controller so early handoff traffic is not missed.
+[px4_control_common.recording](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_control_common/px4_control_common/recording.py) delays node startup by one second **after recorder process start**. This is a discovery allowance, not a guarantee that every topic has been discovered. Early recorder exit or nonzero node exit fails the launch. Recorder shutdown follows node exit; node completion alone does not prove the bag was finalized.
 
 ## Record a native Position-mode run
 
+With a ready, initially landed/disarmed **SITL** vehicle and MAVProxy, in a **second repository-root shell**:
+
 ```bash
 source ros2/runtime_env.sh
-ros2 launch px4_position_mode position_takeoff_hover.launch.py \
-  record:=true
+ros2 launch px4_position_mode position_takeoff_hover.launch.py record:=true
 ```
 
-The bag is placed under the profile-specific `bags/` directory.
+This produces `bags/position_takeoff_hover/<timestamp>/`. For the separate airborne staging demonstration, the equivalent launch is `offboard_takeoff_handoff.launch.py` and the bag family is `offboard_takeoff_handoff`. Do not run those demonstrations concurrently.
 
-## Record Offboard position
+<!-- Preserve existing section links. -->
+<span id="record-offboard-position"></span>
+<span id="record-se3"></span>
+
+## Record Offboard position or SE(3)
+
+After preparing the aircraft for the chosen controller, use **one** launch in a **separate repository-root shell**. Offboard position:
 
 ```bash
+source ros2/runtime_env.sh
 ros2 launch offboard_controllers offboard_position.launch.py \
-  trajectory:=step_response \
-  record:=true
+  trajectory:=line_tracking record:=true
 ```
 
-## Record SE(3)
+SE(3), as a separate experiment:
 
 ```bash
+source ros2/runtime_env.sh
 ros2 launch offboard_controllers se3.launch.py \
-  vehicle:=gz_f450 \
-  trajectory:=full_excitation \
-  handoff:=acceleration \
-  publish_diagnostics:=true \
-  record:=true
+  vehicle:=gz_f450 trajectory:=full_excitation handoff:=acceleration \
+  publish_diagnostics:=true record:=true
 ```
 
-Standalone SE(3) recording defaults to:
+They create `bags/offboard_position/<timestamp>/` and `bags/se3/<timestamp>/` respectively. SE(3) additionally supports `recording_output` for an explicit **new** directory; the study runner uses that argument for deterministic paths. Existing output paths are rejected rather than overwritten.
 
-```text
+<!-- Preserve existing section links. -->
+<span id="topic-ownership"></span>
+<span id="se3-recording-scope"></span>
+
+## Topic selection
+
+PX4 topic names are symbolic entries in [config/px4_topics.def](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/px4_topics.def). Package [recording lists](https://github.com/ANCL/px4-dev-toolkit/tree/main/ros2/src/offboard_controllers/config/recording) select those symbols. SE(3) recording also permits absolute toolkit diagnostic topic names.
+
+The SE(3) list captures state/status, estimator/failsafe context, heartbeat, handoff setpoints, downstream PX4 setpoints, allocation/motors, and the generated trajectory. Diagnostics need `publish_diagnostics:=true` to produce samples; listing a topic does not cause a publisher to run.
+
+<!-- Preserve existing section links. -->
+<span id="finalization-contract"></span>
+<span id="analyze-a-bag"></span>
+
+## Finalization and inspection
+
+Example directory structure (storage files depend on the installed rosbag backend):
+
+```{ .text .no-copy }
 bags/se3/<timestamp>/
+├── metadata.yaml
+├── <rosbag storage files>
+└── analysis/                 # created later by px4_analyze
 ```
 
-The SE(3) launch also exposes `recording_output:=...` so the sequence runner can provide a deterministic study-owned bag path.
+The sequence runner checks for `metadata.yaml` before advertising a bag as finalized. It writes `experiment.json` inside finalized study bags with the profile, step, and effective launch arguments. Standalone launches do not write this experiment identity file; retain the launch arguments yourself. Direct-controller identity may otherwise be `unknown` in analysis.
 
-## Topic ownership
-
-Recording selections live with the controller packages, for example:
-
-```text
-ros2/src/offboard_controllers/config/recording/
-```
-
-PX4 topics in those files use symbolic names from the central catalog:
-
-```text
-config/px4_topics.def
-```
-
-Toolkit-owned ROS topics, such as SE(3) diagnostics, can be listed directly as absolute topic names.
-
-This separation avoids scattering literal `/fmu/in/*` and `/fmu/out/*` strings through launch/analysis configuration.
-
-## SE(3) recording scope
-
-The SE(3) recording profile includes:
-
-- PX4 vehicle status/state and estimator/failsafe context
-- Offboard control mode and the selected handoff setpoints
-- downstream PX4 trajectory/attitude/rate/thrust/torque setpoints
-- control allocator status and actuator motors
-- the toolkit's trajectory reference
-- optional controller diagnostics when published
-
-## Finalization contract
-
-The sequence runner treats `metadata.yaml` as the rosbag completion contract. It only advertises a sequence bag as finalized after that file exists. It then writes `experiment.json` beside the bag so later analysis can use explicit profile, sequence/step identity, and launch arguments instead of inferring controller configuration from downstream signals.
-
-## Analyze a bag
+In a **repository-root shell with ROS sourced**, find the most recent finalized standalone SE(3) bag and inspect it:
 
 ```bash
-./tools/px4_analyze bags/<profile>/<run>
+bag_path="$(find bags/se3 -mindepth 2 -maxdepth 2 -name metadata.yaml -printf '%h\n' | sort | tail -n 1)"
+test -n "$bag_path" && ros2 bag info "$bag_path"
 ```
 
-Sequence-study bags live under a study directory; see [Sequences](sequences.md).
+Confirm topic names/counts, duration, readable storage, and expected early/late messages. Metadata presence is necessary for the runner, but does not prove the experiment succeeded or every required signal exists.
 
-## Next
+<!-- Preserve existing section links. -->
+<span id="next"></span>
 
-- [Sequences](sequences.md)
-- [Single-run analysis](../analysis/analysis.md)
+## Interrupted recording
+
+Allow the recorder to exit cleanly after an interruption. Preserve the bag and logs; do not immediately delete or rename storage files. If metadata is missing, first check the recorder is no longer writing. ROS supports reindexing some storage formats, but recoverability depends on backend and installed plugins. Inspect the recovered bag before analysis; a reindexed file cannot recreate messages never recorded.
+
+Continue with [Analyzing one run](../analysis/analysis.md).

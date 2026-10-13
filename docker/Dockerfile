@@ -54,21 +54,18 @@ RUN chown "${TOOLKIT_UID}:${TOOLKIT_GID}" /opt/px4-dev-toolkit
 # Shared ROS 2 and source dependencies. Dependency layers precede all
 # controller, analysis, documentation, and other frequently edited sources.
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} setup/install_ros2_jazzy.sh setup/
-COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} setup/install_common_tools.sh setup/
-COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} setup/fetch_sources.sh setup/
-COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} config/sources/common.repos config/sources/common.repos
+COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} setup/install_tools.sh setup/
 
 USER ${TOOLKIT_USER}
 
 RUN ./setup/install_ros2_jazzy.sh desktop \
-    && ./setup/install_common_tools.sh sitl \
+    && ./setup/install_tools.sh sitl \
     && sudo apt-get clean \
     && sudo rm -rf /var/lib/apt/lists/*
 
-RUN ./setup/fetch_sources.sh common
-
 FROM bootstrap AS sitl
 
+COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} setup/fetch_sources.sh setup/
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} config/sources/sitl.repos config/sources/sitl.repos
 RUN ./setup/fetch_sources.sh sitl
 
@@ -97,7 +94,7 @@ COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} ros2/src/offboard_controllers/ ros2/s
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} ros2/src/px4_bringup/ ros2/src/px4_bringup/
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} ros2/src/px4_control_common/ ros2/src/px4_control_common/
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} ros2/src/px4_position_mode/ ros2/src/px4_position_mode/
-RUN ./ros2/build.sh
+RUN ./ros2/build.sh sitl
 
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} config/sequences/ config/sequences/
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} config/tmux.conf config/tmux.conf

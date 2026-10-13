@@ -1,102 +1,62 @@
 # PX4 Development Toolkit
 
-A PX4 development toolkit for simulation, ROS 2 integration, Offboard control experiments, flight-data recording, and controller-pipeline analysis.
+A ROS 2 environment for studying PX4 flight control in Gazebo and on physical aircraft.
 
-The repository keeps the runtime environments, controller examples, experiment workflows, and analysis tools together while pinning external PX4/ROS sources separately.
+The repository includes simulation and companion-computer services, Position-mode examples, Offboard position and six SE(3) controller configurations, rosbag recording, and flight-data analysis. The documentation explains the controller mathematics and their implementation. External dependencies use pinned source revisions.
 
-## Start here
-
-Choose the path that matches what you want to do:
-
-| Goal | Start here |
-|---|---|
-| Use a ready-made container | [Docker installation](docs/installation/docker.md) |
-| Install directly on Ubuntu | [Native installation](docs/installation/native.md) |
-| Run PX4 + Gazebo simulation | [SITL environment](docs/environments/sitl.md) |
-| Run on a physical PX4 platform | [Hardware environment](docs/environments/hardware.md) |
-| Run or understand controller examples | [Controllers](docs/controllers/overview.md) |
-| Record or automate experiment runs | [Experiment workflows](docs/workflows/recording.md) |
-| Analyze one run or compare controllers | [Analysis](docs/analysis/analysis.md) |
-| Understand the repository and data flow | [Architecture reference](docs/reference/architecture.md) |
-
-The complete documentation map is in [`docs/index.md`](docs/index.md).
+**[Full documentation](https://ancl.github.io/px4-dev-toolkit/)** · **[Getting started](https://ancl.github.io/px4-dev-toolkit/installation/)**
 
 ## Quick start: Docker SITL
 
-The lowest-setup path is the published SITL image:
+On a Linux host with Docker, open a **host terminal**. This example uses the maintained headless simulation image and saves data in the current directory:
 
 ```bash
+mkdir -p bags log
 docker pull ghcr.io/ancl/px4-dev-toolkit-sitl:latest
-
-docker run --rm -it --network host \
+docker run --rm -it --name px4-sitl --network host \
+  -v "$PWD/bags:/opt/px4-dev-toolkit/bags" \
+  -v "$PWD/log:/opt/px4-dev-toolkit/log" \
   ghcr.io/ancl/px4-dev-toolkit-sitl:latest bash
 ```
 
-Inside the container:
+**Inside the container**, at `/opt/px4-dev-toolkit`:
 
 ```bash
 ./tools/sitl start headless
 ```
 
-Use another shell in the same container, or attach from your editor, for ROS 2/controller commands. See [Docker installation](docs/installation/docker.md) for persistent data, source builds, and the native companion-computer installation.
+The launcher attaches to tmux. Open a **second host terminal** and enter the same container:
 
-## What is included
-
-- PX4 SITL with Gazebo
-- ROS 2 Jazzy integration through uXRCE-DDS
-- reusable SITL and physical-hardware launchers
-- MAVProxy and QGroundControl integration
-- native PX4 Position-mode and Offboard controller examples
-- geometric SE(3) control with multiple PX4 handoff boundaries
-- configurable trajectories and repeatable experiment sequences
-- rosbag recording with explicit experiment metadata
-- single-run analysis and multi-run SE(3) comparison
-- Vicon-to-PX4 motion-capture bridge for the hardware stack
-- pinned external sources and documented host/tool versions
-- SITL Docker image
-
-## System overview
-
-```mermaid
-flowchart LR
-    U[User / researcher] --> E{Environment}
-    E -->|Simulation| S[PX4 SITL + Gazebo]
-    E -->|Physical platform| H[PX4 hardware]
-    R[ROS 2 toolkit] <--> S
-    R <--> H
-    V[Vicon / mocap] --> R
-    R --> C[Controllers]
-    C --> S
-    C --> H
-    R --> B[rosbag / studies]
-    B --> A[Analysis and comparison]
+```bash
+docker exec -it px4-sitl bash
 ```
 
-Docker and native installation are two deployment choices for SITL; the physical companion-computer stack is installed natively. The detailed architecture and ownership boundaries are documented in [Architecture](docs/reference/architecture.md) and [Configuration](docs/reference/configuration.md).
+**In that container shell**, source the built ROS environment and check communication:
 
-
-## Repository layout
-
-```text
-px4-dev-toolkit/
-├── analysis/        analysis implementation and experiment profiles
-├── config/          runtime, vehicle, topic, sequence, source, and version config
-├── docker/          SITL-only container build and Compose definitions
-├── docs/            user and technical documentation
-├── px4/             PX4 build helpers and fetched PX4 source location
-├── ros2/            ROS 2 workspace, packages, build/test/runtime helpers
-├── setup/           native installation and pinned-source setup
-└── tools/           user-facing runtime, sequence, and analysis commands
+```bash
+cd /opt/px4-dev-toolkit
+source ros2/runtime_env.sh
+./tools/sitl status
+ros2 topic list
 ```
 
-External projects are fetched at pinned revisions instead of being vendored into this repository. Source and configuration ownership are described in [Architecture](docs/reference/architecture.md) and [Configuration](docs/reference/configuration.md).
+Starting the environment does not arm or fly the aircraft. Continue with [First simulation](https://ancl.github.io/px4-dev-toolkit/getting-started/first-simulation/) for a Position-mode demonstration and stopping instructions. When the simulated aircraft is landed and disarmed, run `./tools/sitl stop` inside the container, then exit both container shells.
 
-## Documentation
+See the [Docker guide](docs/installation/docker.md) for data persistence and graphical use. Check communication and PX4 state on your installation before launching a flight example.
 
-Use the task-oriented documentation landing page: **[docs/index.md](docs/index.md)**.
+## Simulation and physical hardware
 
-The main entry points are [Docker](docs/installation/docker.md), [Native installation](docs/installation/native.md), [SITL](docs/environments/sitl.md), [Hardware](docs/environments/hardware.md), [Controllers](docs/controllers/overview.md), [Recording](docs/workflows/recording.md), [Sequences](docs/workflows/sequences.md), [Analysis](docs/analysis/analysis.md), [Comparison](docs/analysis/comparison.md), and [Extending the toolkit](docs/reference/extending.md).
+SITL can run [natively on Ubuntu](docs/installation/native.md) or through [Docker](docs/installation/docker.md). The independent [companion-computer installation](docs/installation/companion.md) provides Vicon pose reception, conversion to PX4 odometry, and a serial uXRCE-DDS link for a physical PX4 vehicle. The [hardware guide](docs/environments/hardware.md) explains the services and the checks required on the actual vehicle.
+
+## Read further
+
+- [Controllers](docs/controllers/overview.md) and [SE(3) mathematics](docs/controllers/se3/foundations.md)
+- [A complete experiment](docs/experiments/complete-example.md), [analysis](docs/analysis/analysis.md), and [comparison](docs/analysis/comparison.md)
+- [Adding a vehicle or controller](docs/reference/extending.md)
+- [Software structure](docs/reference/architecture.md), [configuration](docs/reference/configuration.md), and [troubleshooting](docs/reference/troubleshooting.md)
+
+For contributions, open an [issue](https://github.com/ANCL/px4-dev-toolkit/issues) or [pull request](https://github.com/ANCL/px4-dev-toolkit/pulls) with the affected behavior, source, and verification results. Keep configuration and documentation aligned with the implementation.
 
 ## License
 
-Toolkit code is released under the BSD 3-Clause License. Fetched third-party projects retain their upstream licenses.
+Toolkit code uses the [BSD 3-Clause License](LICENSE). Fetched third-party projects retain their upstream licenses.

@@ -1,0 +1,50 @@
+# Offboard position control
+
+This node sends a trajectory reference to PX4. PX4 calculates position feedback and all lower control stages. The external node generates the requested motion and handles the mode/arming sequence; it does not replace PX4's translational feedback with the SE(3) law.
+
+```mermaid
+---
+config:
+  flowchart:
+    useMaxWidth: false
+    wrappingWidth: 180
+    padding: 10
+    rankSpacing: 22
+    nodeSpacing: 24
+---
+flowchart TB
+    T["Named NED trajectory"] --> N["Toolkit · reference + feedforward"]
+    N --> S["Trajectory setpoint + heartbeat"]
+    S --> P["PX4 · position, attitude, rate"]
+    P --> A["PX4 · allocation + motors"]
+```
+
+## Reference and messages
+
+`TrajectorySetpoint` carries NED position [m], velocity [m/s], acceleration [m/s²], jerk [m/s³], yaw [rad], and yaw rate [rad/s]. Position is the active feedback level (`OffboardControlMode.position=true`); velocity and acceleration provide translational feedforward. Jerk is carried in the message, but the pinned PX4 position controller does not consume it. Both messages share each publication timestamp. See [publication.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/offboard_position/publication.cpp).
+
+The node runs at **20 Hz**. During prestream, the trajectory stays at time zero and its origin follows the latest local position. The last pre-entry origin is retained for the run; the trajectory clock starts when PX4 confirms Offboard. Desired yaw comes from trajectory configuration. Read [Trajectories](trajectories.md) for relative offsets and segment definitions.
+
+## Run
+
+Prepare SITL and verify valid local position/status. This controller **can request arming** when disarmed and PX4 pre-flight checks pass. For an airborne comparison, first prepare the aircraft using the [staging example](position-mode.md#position-mode-staging-helper). A `hover` trajectory holds its entry position; it is not an automatic climb from the ground.
+
+In a **separate repository-root shell**, after checking the intended simulated vehicle and ensuring no other Offboard controller is running:
+
+```bash
+source ros2/runtime_env.sh
+ros2 launch offboard_controllers offboard_position.launch.py \
+  trajectory:=line_tracking
+```
+
+## Readiness, timing, and return
+
+The [lifecycle](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/offboard_position/lifecycle.cpp) waits for status and valid position, then arming/pre-flight checks. It sends **30 heartbeat/setpoint samples** (about 1.5 s at 20 Hz), requests Offboard, and waits for `nav_state` confirmation.
+
+At trajectory completion it requests Position mode while continuing a valid stream. Only confirmed Position-mode return completes the experiment. Unexpected disarm, invalid position, lost Offboard, or a phase timeout exits with failure. Readiness can time out after 20 s; pre-flight waiting after 10 s; arm, takeover, and return waits after 5 s. These deadlines use a steady clock; trajectory time uses the ROS clock.
+
+Failure/interrupt exit does not issue a guaranteed landing command. After return, land and disarm the simulated vehicle through the prepared flight controls before stopping SITL.
+
+## Recording and interpretation
+
+Add `record:=true` for a standalone bag under `bags/offboard_position/`. Compare measured position to the desired trajectory and inspect PX4 mode transitions before interpreting error. A downstream attitude/rate setpoint is calculated by PX4, so it should not be described as the external controller's law. Continue with [SE(3) control](se3.md) to move the command level farther down the stack.

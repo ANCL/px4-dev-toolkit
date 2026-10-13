@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 190" role="img" aria-labelledby="title desc">
+<title id="title">Measured plot not yet supplied</title><desc id="desc">An empty set of axes reserves space for an approved measured plot. No curves, results, or scale values are shown.</desc>
+<style>
+:root { --line:#41676d; --faint:#a4bfba; --accent:#006b62; --text:#213237; }
+@media (prefers-color-scheme:dark) { :root { --line:#accac5; --faint:#527572; --accent:#81d5bc; --text:#e1e9e7; } }
+.structure { fill:none; stroke:var(--faint); stroke-width:2; }
+.axis { fill:none; stroke:var(--line); stroke-width:2.5; }
+</style><style>.status{fill:var(--text);font:22px "Segoe UI",sans-serif}@media(max-width:480px){.status{font-size:34px}.axis{display:none}}</style>
+<path class="axis" d="M50 28V159H720"/><path class="structure" d="M50 115H720 M50 71H720" stroke-dasharray="4 8" opacity=".45"/>
+<text class="status" x="380" y="100" text-anchor="middle">Awaiting measured data</text>
+</svg>

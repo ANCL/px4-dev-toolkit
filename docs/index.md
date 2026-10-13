@@ -3,100 +3,58 @@ hide:
   - toc
 ---
 
-<div class="px4-hero">
-  <h1>PX4 Development Toolkit</h1>
-  <p class="px4-tagline">Reproducible PX4 and ROS 2 development from simulation to physical flight.</p>
-  <p class="px4-description">
-    Build, run, record, and analyze PX4 experiments using the same toolkit
-    across Gazebo SITL and physical hardware.
-  </p>
-  <div class="px4-actions">
-    <a href="#choose-an-installation" class="md-button md-button--primary">Get started</a>
-    <a href="#documentation" class="md-button">Documentation</a>
-    <a href="https://github.com/ANCL/px4-dev-toolkit" class="md-button">View on GitHub</a>
-  </div>
+<div class="px4-hero" markdown="1">
+
+# PX4 Development Toolkit
+
+Develop, test, record, and analyze PX4 and ROS 2 controllers in Gazebo and on physical vehicles. Keep the flight software, controller examples, and tools for understanding a flight together.
+
+<div class="px4-actions" markdown="1">
+
+[Get started](installation/index.md){ .md-button .md-button--primary }
+[Explore the documentation](#start-here)
+[GitHub repository](https://github.com/ANCL/px4-dev-toolkit)
+
+</div>
 </div>
 
-<div class="px4-hero-images">
-  <img src="assets/hero-gazebo-placeholder.svg" alt="PX4 F450 running in Gazebo simulation" class="px4-hero-image">
-  <img src="assets/hero-f450-placeholder.svg" alt="F450 quadrotor in flight" class="px4-hero-image">
+<!-- Both frames are static, honest placeholders. Replace an img with approved
+     muted/loop/playsinline video and a poster without changing the paired layout.
+     Any future autoplay must respect reduced motion and offer pause/play. -->
+<div class="px4-media-pair">
+  <figure class="px4-media">
+    <div class="px4-media-frame">
+      <img src="assets/hero-gazebo-placeholder.svg" width="640" height="360" alt="Neutral simulation graphic; placeholder for a future Gazebo SITL flight video">
+    </div>
+    <figcaption><strong>Gazebo SITL</strong>Simulation flight video coming soon.</figcaption>
+  </figure>
+  <figure class="px4-media">
+    <div class="px4-media-frame">
+      <img src="assets/hero-f450-placeholder.svg" width="640" height="360" alt="Neutral indoor-flight graphic; placeholder for a future lab flight video">
+    </div>
+    <figcaption><strong>Lab flight</strong>Physical flight video coming soon.</figcaption>
+  </figure>
 </div>
 
-<div class="px4-card-grid">
-  <a class="px4-card" href="#choose-an-installation">
-    <h3>Installation</h3>
-    <p>Start with the published SITL Docker image or install the toolkit natively on Ubuntu 24.04.</p>
-    <span>Choose an installation →</span>
-  </a>
+## From an idea to a recorded flight
 
-  <a class="px4-card" href="environments/sitl/">
-    <h3>Simulation</h3>
-    <p>Run PX4 SITL with Gazebo, uXRCE-DDS, MAVProxy, and QGroundControl.</p>
-    <span>Run SITL →</span>
-  </a>
+Set up the environment, run a flight, record its signals, then read the results. **Software-in-the-loop (SITL)** runs PX4, the aircraft's flight-control software, against a Gazebo simulation. On a physical vehicle, a native companion computer connects **ROS 2**, the message-based robotics framework, to PX4 and the motion-capture system.
 
-  <a class="px4-card" href="environments/hardware/">
-    <h3>Hardware</h3>
-    <p>Run the same ROS 2 workflows with a physical PX4 vehicle, serial XRCE-DDS, and Vicon motion capture.</p>
-    <span>Run on hardware →</span>
-  </a>
+Docker provides the maintained simulation image. Native Ubuntu supports both simulation and physical companion services; each environment starts independently of the controller.
 
-  <a class="px4-card" href="controllers/overview/">
-    <h3>Control</h3>
-    <p>Develop and evaluate Offboard controllers, geometric SE(3) control, and reusable trajectories.</p>
-    <span>Explore controllers →</span>
-  </a>
+## Understand what each controller calculates
 
-  <a class="px4-card" href="analysis/analysis/">
-    <h3>Analysis</h3>
-    <p>Record repeatable experiments and analyze trajectories, controller behavior, and the PX4 control pipeline.</p>
-    <span>Analyze results →</span>
-  </a>
+PX4 can track a position reference, or accept commands farther down its control stack. The toolkit's **SE(3)** controller describes position and rotation together and offers six configurations, from acceleration requests to direct thrust and torque. The [controller overview](controllers/overview.md) explains the choices; the [mathematical chapters](controllers/se3/foundations.md) connect them to the implementation.
+
+## Start here
+
+<div class="px4-start-list" markdown="1">
+
+- [Getting started](installation/index.md) — install the environment and run your first simulation.
+- [Running the toolkit](environments/sitl.md) — inspect simulation services or prepare a [physical companion](environments/hardware.md).
+- [Controllers and trajectories](controllers/overview.md) — follow a reference and understand how commands reach PX4.
+- [A complete experiment](experiments/complete-example.md) — record, analyze, and compare runs.
+- [Adding to the toolkit](reference/extending.md) — introduce a vehicle or controller with documented verification.
+- [Technical reference](reference/architecture.md) — find the source, configuration, and troubleshooting checks.
+
 </div>
-
-## Choose an installation
-
-Use either installation path depending on how you want to work.
-
-**[Docker](installation/docker.md)** provides the lowest-setup path using the published SITL image.
-
-**[Native](installation/native.md)** installs ROS 2, PX4 dependencies, pinned sources, and the toolkit workspace directly on Ubuntu 24.04.
-
-Native installation supports SITL and physical companions; Docker supports SITL only.
-
-## From simulation to hardware
-
-The toolkit keeps the workflow consistent across the two runtime environments.
-
-```mermaid
-flowchart LR
-    D[Install toolkit] --> E{Environment}
-    E -->|Simulation| S[PX4 SITL + Gazebo]
-    E -->|Physical platform| H[PX4 hardware + Vicon]
-    S --> C[ROS 2 controllers]
-    H --> C
-    C --> R[Recording]
-    R --> A[Analysis and comparison]
-```
-
-## Suggested first journey
-
-For a new simulation user:
-
-1. [Install with Docker](installation/docker.md) or [install natively](installation/native.md).
-2. [Run the SITL environment](environments/sitl.md).
-3. Review the [controller overview](controllers/overview.md).
-4. [Run the SE(3) controller](controllers/se3.md).
-5. [Record a run](workflows/recording.md) or [run a sequence](workflows/sequences.md).
-6. [Analyze](analysis/analysis.md) and [compare](analysis/comparison.md) the results.
-
-## Documentation
-
-Browse all documentation using the sidebar, or jump directly to a topic:
-
-- **Installation:** [Docker](installation/docker.md) · [Native](installation/native.md)
-- **Environments:** [SITL](environments/sitl.md) · [Hardware](environments/hardware.md)
-- **Controllers:** [Overview](controllers/overview.md) · [SE(3)](controllers/se3.md) · [Trajectories](controllers/trajectories.md)
-- **Workflows:** [Recording](workflows/recording.md) · [Sequences](workflows/sequences.md)
-- **Analysis:** [Single-run analysis](analysis/analysis.md) · [Comparison](analysis/comparison.md)
-- **Reference:** [Architecture](reference/architecture.md) · [Configuration](reference/configuration.md) · [Extending](reference/extending.md) · [Troubleshooting](reference/troubleshooting.md)

@@ -6,7 +6,7 @@ A controller addition needs a mathematical calculation, a ROS/PX4 interface, a p
 
 State the inputs, frames, units, outputs, and which stages PX4 still calculates. Choose a supported `OffboardControlMode` level and matching setpoint message. Undefined/unused fields must follow that interface's semantics; the acceleration example uses NaN for unused position/velocity, not zero.
 
-Keep pure laws independent of ROS subscriptions where practical. The existing [se3/control](https://github.com/ANCL/px4-dev-toolkit/tree/main/ros2/src/offboard_controllers/src/se3/control) functions provide testable examples. Use explicit physical versus normalized outputs rather than inferring units from a topic name.
+Keep pure laws independent of ROS subscriptions where practical. The [SE(3) control functions](https://github.com/ANCL/px4-dev-toolkit/tree/main/ros2/src/offboard_controllers/src/se3/control) are testable independently; [`Se3::execute_handoff()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/runtime/control.cpp#L23) shows where their outputs are selected for PX4 publication. Use explicit physical versus normalized outputs rather than inferring units from a topic name.
 
 ## 2. Add package/node integration
 
@@ -30,7 +30,7 @@ Specify whether the controller can arm and how an interruption affects flight. A
 
 ## 5. Add recording and analysis
 
-Use `px4_control_common.recording.launch_experiment` when its finite-run semantics fit the new node. Select required topics in a package list and document discovery/start/stop behavior. Explicit metadata should identify the profile and effective settings for a study.
+Use [`px4_control_common.recording.launch_experiment()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_control_common/px4_control_common/recording.py#L69) when its finite-run semantics fit the new node. Select required topics in a package list and document discovery/start/stop behavior. Explicit metadata should identify the profile and effective settings for a study.
 
 Add/extend an analysis profile only for observables that are meaningful for this controller. Separate measured state, computed targets, and reconstructed values; explain unavailable optional metrics. For comparison, define time origin and common quantities before extending the current SE(3)-only CLI.
 
@@ -48,4 +48,4 @@ git diff --check
 
 Use `ros2 launch ... --show-args` with the actual new package/file for harmless argument inspection. If behavior changes, prepare and inspect an appropriate SITL experiment, recorder finalization, and analysis. Record what was executed and what is only source-checked. Physical validation is separate; ordinary toolkit additions should not edit the pinned upstream PX4 repository.
 
-Continue with [Configuration files](configuration.md) to find the existing settings before adding new ones.
+Use [Configuration](configuration.md) to locate existing settings before adding new ones.

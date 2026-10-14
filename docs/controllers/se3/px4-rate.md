@@ -1,4 +1,6 @@
-# PX4 rate controller
+<span id="px4-rate-controller"></span>
+
+# PX4 Rate PID
 
 The toolkit's outer geometric attitude controller holds a body-rate command and collective thrust. A reproduced **pinned PX4 angular-rate loop** then calculates normalized torque on each gyro sample. PX4 receives the wrench and performs control allocation.
 
@@ -6,19 +8,19 @@ The toolkit's outer geometric attitude controller holds a body-rate command and 
 ---
 config:
   flowchart:
-    useMaxWidth: false
-    wrappingWidth: 140
-    padding: 10
-    rankSpacing: 22
-    nodeSpacing: 24
+    useMaxWidth: true
+    wrappingWidth: 130
+    padding: 12
+    rankSpacing: 28
+    nodeSpacing: 26
 ---
 flowchart TB
-    T["Outer loop<br/>100 Hz by default"] --> H["Held body rate<br/>+ thrust"]
-    G["Gyro sample<br/>Rate + derivative"] --> C["PX4 P/I/D<br/>+ yaw filter"]
+    O["Outer loop<br/>rate + thrust"] --> H["Held target"]
+    G["Gyro sample"] --> C["Rate PID"]
     H --> C
-    C --> S["Normalized<br/>thrust + torque"]
-    S --> P["PX4 allocation<br/>Torque residual"]
-    P -.-> C
+    C --> S["PX4 thrust<br/>+ torque"]
+    S --> A["Allocation"]
+    A -.->|residual| C
 ```
 
 ## Two control clocks
@@ -126,5 +128,3 @@ ros2 launch offboard_controllers se3.launch.py \
 Inspect P/I/D/feedforward contributions, old/new integrator state, raw versus filtered yaw torque, sample intervals, allocator residuals, and motors. Increasing gains can raise requested torque without increasing available torque. Transport latency and dropped messages can change the experiment even with identical formulas.
 
 The toolkit calculation is [px4/rate_controller.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/px4/rate_controller.cpp); field/timing publication is [runtime/publication.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/runtime/publication.cpp).
-
-Continue with [Geometric physical moment](geometric-physical.md) for the inertia-based law.

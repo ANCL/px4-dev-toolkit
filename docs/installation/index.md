@@ -14,7 +14,7 @@ Both paths support the same SITL workflow. Start with [First simulation](../gett
 
 **[Companion-computer installation](companion.md)** installs ROS 2 Jazzy, the Vicon receiver, mocap conversion, and the serial DDS agent on Ubuntu 24.04. It does **not** install PX4 SITL, Gazebo, or MAVProxy. The PX4 flight controller and physical system require their own firmware and configuration.
 
-For live services and flight-readiness checks, use the separate [Physical hardware guide](../environments/hardware.md). The automated SITL takeoff example is not a physical-flight procedure.
+For live services and flight-readiness checks, use the separate [Companion Computer guide](../environments/hardware.md). The automated SITL takeoff example is not a physical-flight procedure.
 
 ## Before installing
 

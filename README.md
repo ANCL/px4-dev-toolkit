@@ -1,14 +1,24 @@
 # PX4 Development Toolkit
 
-A ROS 2 environment for studying PX4 flight control in Gazebo and on physical aircraft.
+A PX4 and ROS 2 environment for developing and studying flight control in Gazebo simulation and on physical multirotors.
 
-The repository includes simulation and companion-computer services, Position-mode examples, Offboard position and six SE(3) controller configurations, rosbag recording, and flight-data analysis. The documentation explains the controller mathematics and their implementation. External dependencies use pinned source revisions.
+The toolkit brings together reproducible runtime setup, controller examples, experiment recording, and flight-data analysis. Simulation and companion-computer installations are independent, and external source revisions are pinned.
 
-**[Full documentation](https://ancl.github.io/px4-dev-toolkit/)** · **[Getting started](https://ancl.github.io/px4-dev-toolkit/installation/)**
+**[Full documentation](https://ancl.github.io/px4-dev-toolkit/)** · **[Get started](https://ancl.github.io/px4-dev-toolkit/installation/)** · **[Controllers](https://ancl.github.io/px4-dev-toolkit/controllers/overview/)** · **[Experiments](https://ancl.github.io/px4-dev-toolkit/experiments/complete-example/)**
+
+## Choose an environment
+
+| Environment | Purpose | Installation |
+|---|---|---|
+| Native SITL | PX4, Gazebo Harmonic, and ROS 2 Jazzy on Ubuntu 24.04 | [Native Ubuntu](https://ancl.github.io/px4-dev-toolkit/installation/native/) |
+| Docker SITL | Prebuilt, headless simulation with controllers and analysis | [Docker](https://ancl.github.io/px4-dev-toolkit/installation/docker/) |
+| Companion computer | ROS 2 Jazzy, Vicon pose conversion, and a serial DDS agent for a physical PX4 flight controller | [Companion computer](https://ancl.github.io/px4-dev-toolkit/installation/companion/) |
+
+The companion profile does not install PX4 SITL or Gazebo. The physical vehicle needs its own PX4 firmware, airframe configuration, estimator setup, RC/failsafe provisions, and flight-readiness checks.
 
 ## Quick start: Docker SITL
 
-On a Linux host with Docker, open a **host terminal**. This example uses the maintained headless simulation image and saves data in the current directory:
+On a Linux host with Docker, create persistent data directories and start the published SITL image:
 
 ```bash
 mkdir -p bags log
@@ -19,44 +29,43 @@ docker run --rm -it --name px4-sitl --network host \
   ghcr.io/ancl/px4-dev-toolkit-sitl:latest bash
 ```
 
-**Inside the container**, at `/opt/px4-dev-toolkit`:
+Inside the container, start the simulation without a Gazebo GUI:
 
 ```bash
 ./tools/sitl start headless
 ```
 
-The launcher attaches to tmux. Open a **second host terminal** and enter the same container:
+Leave that container running. In a **second host terminal**, open another shell in it:
 
 ```bash
 docker exec -it px4-sitl bash
 ```
 
-**In that container shell**, source the built ROS environment and check communication:
+In the second container shell, check PX4 and ROS 2 communication:
 
 ```bash
 cd /opt/px4-dev-toolkit
 source ros2/runtime_env.sh
 ./tools/sitl status
-ros2 topic list
+./tools/topic_rates
 ```
 
-Starting the environment does not arm or fly the aircraft. Continue with [First simulation](https://ancl.github.io/px4-dev-toolkit/getting-started/first-simulation/) for a Position-mode demonstration and stopping instructions. When the simulated aircraft is landed and disarmed, run `./tools/sitl stop` inside the container, then exit both container shells.
+Stop the rate display with Ctrl-C. Starting SITL does **not** arm or fly the vehicle. Follow [First simulation](https://ancl.github.io/px4-dev-toolkit/getting-started/first-simulation/) for the reference flight, and [Running SITL](https://ancl.github.io/px4-dev-toolkit/environments/sitl/) for landing, disarming, and shutdown. The [Docker guide](https://ancl.github.io/px4-dev-toolkit/installation/docker/) explains volumes, permissions, and graphical options.
 
-See the [Docker guide](docs/installation/docker.md) for data persistence and graphical use. Check communication and PX4 state on your installation before launching a flight example.
+## Controllers and experiments
 
-## Simulation and physical hardware
+The toolkit includes a PX4 Position-mode reference flight, a separate Offboard staging helper, Offboard position control, and an SE(3) controller with **six configurations**: acceleration, attitude, attitude rate, geometric normalized torque, geometric physical moment, and a PX4 rate-loop reproduction. Each configuration delegates different stages of control to PX4; PX4 retains actuator allocation.
 
-SITL can run [natively on Ubuntu](docs/installation/native.md) or through [Docker](docs/installation/docker.md). The independent [companion-computer installation](docs/installation/companion.md) provides Vicon pose reception, conversion to PX4 odometry, and a serial uXRCE-DDS link for a physical PX4 vehicle. The [hardware guide](docs/environments/hardware.md) explains the services and the checks required on the actual vehicle.
+Use the [controller overview](https://ancl.github.io/px4-dev-toolkit/controllers/overview/) to choose an interface and the [SE(3) documentation](https://ancl.github.io/px4-dev-toolkit/controllers/se3/) for mathematics, implementation, and vehicle requirements. The [trajectory guide](https://ancl.github.io/px4-dev-toolkit/controllers/trajectories/) describes shared reference motions.
 
-## Read further
+Experiments can record rosbags, execute an ordered six-mode study, analyze individual runs, and compare compatible SE(3) runs. Begin with the [complete experiment](https://ancl.github.io/px4-dev-toolkit/experiments/complete-example/); [recording](https://ancl.github.io/px4-dev-toolkit/workflows/recording/), [sequences](https://ancl.github.io/px4-dev-toolkit/workflows/sequences/), and [analysis](https://ancl.github.io/px4-dev-toolkit/analysis/analysis/) are documented separately. A finalized bag is not, by itself, evidence of a successful or comparable flight.
 
-- [Controllers](docs/controllers/overview.md) and [SE(3) mathematics](docs/controllers/se3/foundations.md)
-- [A complete experiment](docs/experiments/complete-example.md), [analysis](docs/analysis/analysis.md), and [comparison](docs/analysis/comparison.md)
-- [Adding a vehicle or controller](docs/reference/extending.md)
-- [Software structure](docs/reference/architecture.md), [configuration](docs/reference/configuration.md), and [troubleshooting](docs/reference/troubleshooting.md)
+## Source and extensions
 
-For contributions, open an [issue](https://github.com/ANCL/px4-dev-toolkit/issues) or [pull request](https://github.com/ANCL/px4-dev-toolkit/pulls) with the affected behavior, source, and verification results. Keep configuration and documentation aligned with the implementation.
+`ros2/` contains the ROS 2 packages and controllers; `tools/` contains runtime, recording-study, and analysis commands; `analysis/` defines report and comparison logic; `config/` holds vehicle, trajectory, runtime, topic, source, and study configuration. The toolkit fetches pinned external projects rather than vendoring them into the repository.
+
+See [Software structure](https://ancl.github.io/px4-dev-toolkit/reference/architecture/), [Configuration files](https://ancl.github.io/px4-dev-toolkit/reference/configuration/), and [Extending the toolkit](https://ancl.github.io/px4-dev-toolkit/reference/extending/) before adding a controller, vehicle, trajectory, or analysis profile. Contributions should include the affected behavior and verification results.
 
 ## License
 
-Toolkit code uses the [BSD 3-Clause License](LICENSE). Fetched third-party projects retain their upstream licenses.
+Toolkit code is released under the [BSD 3-Clause License](LICENSE). Fetched third-party projects retain their upstream licenses.

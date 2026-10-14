@@ -1,119 +1,143 @@
-# Geometric physical moment
+<span id="geometric-physical-moment"></span>
 
-This mode calculates a **physical body moment in N·m** using a Lee-style rigid-body law. A separate toolkit adapter converts physical collective thrust and moment into normalized PX4 commands. PX4 then performs allocation; the original controller law does not define that conversion.
+# Geometric (Physical)
 
-```mermaid
----
-config:
-  flowchart:
-    useMaxWidth: false
-    wrappingWidth: 180
-    padding: 10
-    rankSpacing: 22
-    nodeSpacing: 24
----
-flowchart TB
-    I["State + inertia + trajectory"] --> C["Toolkit · physical moment law"]
-    C --> W["Adapter · feasible rotor thrust"]
-    W --> S["Normalized thrust + torque"]
-    S --> P["PX4 · allocation + motors"]
-```
+This controller computes **collective thrust in newtons** and **body moment in newton-metres** from an SE(3) reference. A separate, vehicle-specific adapter converts that physical wrench into the **normalized thrust and torque setpoints** expected by PX4. PX4 still performs control allocation.
 
-## Physical rotational law
+The distinction matters: the geometric control law, actuator feasibility model, and PX4 normalization are three different calculations. The current adapter is implemented for **four rotors**, not arbitrary multirotor configurations.
 
-Use the shared $Q=R^\top R_d$, $e_R$, $e_\Omega=\Omega-Q\Omega_d$, and
+<span id="physical-rotational-law"></span>
+
+## 1. Physical moment law
+
+Let $R$ and $R_d$ map current and desired FRD body coordinates into NED. The measured angular velocity $\Omega$ is in the current body frame; $\Omega_d$ and $\dot\Omega_d$ are in the desired body frame. Define the rotation from desired-body to current-body coordinates as
 
 $$
-\alpha_{\mathrm{ff}}=-\Omega\times(Q\Omega_d)+Q\dot\Omega_d.
+Q = R^\top R_d.
 $$
 
-The FRD moment is
+The attitude and angular-rate errors, both expressed in the **current FRD frame**, are
 
 $$
 \begin{aligned}
-M&=-K_R e_R-K_\Omega e_\Omega \\
-&\quad+\Omega\times(J\Omega)+J\alpha_{\mathrm{ff}}.
+e_R &= \tfrac12\left(R_d^\top R - R^\top R_d\right)^\vee, \\
+e_\Omega &= \Omega - Q\Omega_d.
 \end{aligned}
 $$
 
-$J$ is the symmetric positive-definite body inertia in kg·m². $K_R$ maps attitude error to N·m and $K_\Omega$ maps rad/s to N·m (N·m·s when radians are dimensionless). They are `geometric_physical_k_r` and `geometric_physical_k_omega` in controller tuning.
-
-The gyroscopic term compensates $\Omega\times(J\Omega)$ in the rigid-body dynamics; $J\alpha_{\mathrm{ff}}$ supplies desired angular acceleration in current-body axes. This corresponds to Lee 2010 Eq. (13), with the [NED/FRD conventions and citation](foundations.md). Physical collective is
+Here $(\cdot)^\vee$ converts a skew-symmetric matrix into its corresponding three-vector; the [Math page](foundations.md#rotation-errors-and-feedforward) defines it. The feedforward angular acceleration in current-body coordinates is
 
 $$
-f=-A^\top R e_3\quad[\mathrm N].
+\alpha_{\mathrm{ff}}
+= -\Omega\times(Q\Omega_d) + Q\dot\Omega_d.
 $$
 
-It is projected onto the current body axis. The adapter rejects negative/non-finite requested collective. Neither $M$ nor $f$ is sent as a physical-valued PX4 wrench message.
-
-## Physical rotor allocation
-
-**The current adapter supports exactly four rotors.** It forms a square four-coordinate system for roll, pitch, yaw, and collective. A hexarotor cannot use it merely by adding vehicle YAML; generic N-rotor allocation requires an adapter implementation change.
-
-For rotor $i$ with FRD arm $r_i=(x_i,y_i,z_i)$ relative to the center of mass, upward force is $(0,0,-T_i)$. Thus its arm moment is $(-y_iT_i,x_iT_i,0)$. Signed reaction ratio $\kappa_i$ adds yaw moment. Define
+With body inertia $J$ and diagonal physical gains $K_R$ and $K_\Omega$, the implemented moment law is
 
 $$
 \begin{aligned}
-B_{\mathrm{phys},i}&=(-y_i,\ x_i,\ \kappa_i,\ 1)^\top \\
-T&=B_{\mathrm{phys}}^{-1}(M_x,M_y,M_z,f)^\top.
+M ={}&-K_Re_R-K_\Omega e_\Omega \\
+     &+\Omega\times(J\Omega)+J\alpha_{\mathrm{ff}}.
 \end{aligned}
 $$
 
-The loader converts FLU physical data to FRD and subtracts the center of mass. It maps `ccw` to positive and `cw` to negative reaction ratio according to its schema convention. This convention and rotor indexing must agree with the plant and PX4 mapping.
+The first two terms reduce attitude and rate error. The cross-product compensates rigid-body gyroscopic coupling; the final term tracks the moving desired attitude. This is a **moment in FRD N·m**, not normalized PX4 torque. $J$ must be the inertia about the vehicle's center of mass in the same body frame. The diagonal gains are in the toolkit's SE(3) controller configuration; they are not PX4 rate-loop gains.
 
-Each physical rotor uses the configured monotonic polynomial
+The translational law produces a gravity-compensated NED force $A$. Positive upward collective thrust is the projection onto the **current** body-down direction $b_3=Re_3$:
+
+$$
+f=-A^\top b_3.
+$$
+
+Thus $f$ need not equal $\|A\|$ when attitude tracking is imperfect. The runtime computes $M$ in [`physical_moment::compute()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/physical_moment.cpp#L12-L43), obtains the projected collective, and calls the adapter from [`Se3::execute_handoff()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/runtime/control.cpp#L23-L120). The desired rotation, rates, and angular acceleration originate in [`attitude_reference::compute_dynamics()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/attitude_reference.cpp#L79).
+
+<span id="physical-rotor-allocation"></span>
+
+## 2. From wrench to four rotor thrusts
+
+Rotor $i$ is located at $r_i=(x_i,y_i,z_i)$ relative to the center of mass, in FRD metres. Its upward thrust is $(0,0,-T_i)$, so the roll and pitch moments from the arm are $(-y_iT_i,x_iT_i)$. The signed reaction-moment ratio $\kappa_i$ supplies yaw moment.
+
+For each rotor, the column of the **physical effectiveness matrix** is
+
+$$
+B_{\mathrm{ph},i}=
+\begin{bmatrix}-y_i & x_i & \kappa_i & 1\end{bmatrix}^{\!\top}.
+$$
+
+Stacking these four columns gives $B_{\mathrm{ph}}\in\mathbb R^{4\times4}$. The requested physical rotor thrusts are
+
+$$
+\begin{bmatrix}T_0&T_1&T_2&T_3\end{bmatrix}^{\!\top}
+=B_{\mathrm{ph}}^{-1}
+\begin{bmatrix}M_x&M_y&M_z&f\end{bmatrix}^{\!\top}.
+$$
+
+This is an exact square-matrix inverse, **not a generic N-rotor allocator**. Geometry or rotor ordering that makes the matrix singular is rejected. See [`physical_effectiveness()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/physical_wrench/matrices.cpp#L127) and [`inverse()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/physical_wrench/matrices.cpp#L21).
+
+The YAML loader converts supported input frames into FRD, subtracts the center of mass, validates four unique rotor indices, and checks physical/PX4 yaw-moment signs. The source of these checks is [`load_physical_wrench_configuration()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/physical_wrench/config/loader.cpp#L19). The geometry and propulsion data **must match the aircraft**, including rotor order.
+
+<span id="feasible-thrust-and-moment-scaling"></span>
+
+## 3. Feasibility and actuator model
+
+The physical motor model is a monotonic thrust curve over a configured control range:
+
+$$
+T_i(u_i)=c_0+c_1u_i+c_2u_i^2,
+\qquad u_i\in[u_{\min},u_{\max}].
+$$
+
+The current F450 fixture uses $T(u)=0.27+3.06u+8.67u^2$ N; these are **fixture-specific coefficients**, not a generally valid thrust model. The interval determines the feasible per-rotor thrust range $[T_{\min},T_{\max}]$.
+
+The adapter first clamps the requested collective to $[4T_{\min},4T_{\max}]$, yielding $f_a$. It then solves two allocations with the same collective:
 
 $$
 \begin{aligned}
-T_i(u_i)&=c_0+c_1u_i+c_2u_i^2\quad[\mathrm N], \\
-u_i&\in[u_{\min},u_{\max}]\subseteq[0,1].
+T^0 &= B_{\mathrm{ph}}^{-1}(0,0,0,f_a)^\top,\\
+T^* &= B_{\mathrm{ph}}^{-1}(M_x,M_y,M_z,f_a)^\top.
 \end{aligned}
 $$
 
-For the curated F450 fixture, the source-backed polynomial is $0.27+3.06u+8.67u^2$ N, derived from its pinned rotor-speed relation. It is fixture data, not a generic motor model.
-
-## Feasible thrust and moment scaling
-
-First clip collective to $4T_{\min}\le f_a\le4T_{\max}$. Compute a collective-only vector $T^0=B_{\mathrm{phys}}^{-1}(0,0,0,f_a)^\top$ and the requested vector $T^*=B_{\mathrm{phys}}^{-1}(M_x,M_y,M_z,f_a)^\top$.
-
-Choose the largest feasible $\lambda\in[0,1]$ such that
+$T^0$ is the zero-moment baseline, and $T^*$ requests the full moment. The adapter selects the **largest** $\lambda\in[0,1]$ for which every component of
 
 $$
-\begin{aligned}
-T_i^a&=T_i^0+\lambda(T_i^*-T_i^0) \\
-&\in[T_{\min},T_{\max}]\quad\text{for every rotor}.
-\end{aligned}
+T^a=T^0+\lambda(T^*-T^0)
 $$
 
-Positive rotor deltas bound $\lambda$ by $(T_{\max}-T_i^0)/(T_i^*-T_i^0)$; negative deltas bound it by $(T_i^0-T_{\min})/(T_i^0-T_i^*)$. An infeasible collective-only allocation throws rather than hiding invalid geometry. Uniform scaling preserves roll/pitch/yaw moment ratios: the applied modeled moment is $\lambda M$. This is a toolkit feasibility choice, not part of Lee's unconstrained law.
+lies in $[T_{\min},T_{\max}]$. Each positive rotor delta bounds $\lambda$ by its remaining upper-thrust margin divided by that delta; each negative delta uses the remaining lower-thrust margin. The smallest bound wins. The resulting modeled moment is $\lambda M$, preserving its roll/pitch/yaw proportions while reducing magnitude. If even $T^0$ is infeasible, the adapter rejects the request instead of silently changing the allocation.
 
-Invert the monotonic thrust polynomial on its configured interval to obtain $u_i$: a direct linear inverse when $c_2$ is negligible, otherwise the feasible quadratic root. These are modeled actuator controls, not measured rotor thrusts.
+This is a **toolkit feasibility policy**, not a consequence of Lee's unconstrained law. Its implementation is [`allocate_feasible_physical_wrench()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/physical_wrench/adapter.cpp#L52-L176).
 
-## Convert to PX4 normalized coordinates
+Each feasible $T_i^a$ is converted into actuator control $u_i$ by inverting the monotonic polynomial. Linear curves use a direct inverse; quadratic curves choose the root inside the configured interval. See [`thrust_from_control()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/physical_wrench/actuators.cpp#L25) and [`control_from_thrust()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/physical_wrench/actuators.cpp#L41).
 
-The PX4 allocator matrix is distinct from the physical matrix. For upward FRD rotor axis and allocator coefficients $C_{T,i},K_{M,i}$:
+<span id="convert-to-px4-normalized-coordinates"></span>
 
-$$
-B_{\mathrm{PX4},i}=C_{T,i}(-y_i,\ x_i,\ K_{M,i},\ -1)^\top.
-$$
+## 4. Convert to PX4's normalized interface
 
-The negative fourth row represents **body-Z thrust**, whereas the physical matrix's fourth row represents positive collective. Allocator geometry/coefficient values can differ from physical propulsion geometry and must match the actual PX4 airframe.
-
-The adapter reproduces the pinned pseudo-inverse normalization. Let $L=B_{\mathrm{PX4}}^{-1}$. Roll/pitch scales use the larger column norm divided by $\sqrt{n/2}$, where $n$ counts entries above $10^{-3}$; yaw uses the maximum yaw mixer entry; thrust uses mean absolute nonzero thrust-column magnitude. Collect these scales in diagonal $S$. Then
+The PX4 effectiveness matrix is **not** $B_{\mathrm{ph}}$. With allocator thrust coefficient $C_{T,i}$ and signed yaw coefficient $K_{M,i}$, its rotor column is
 
 $$
-c_n=S B_{\mathrm{PX4}}u.
+B_{\mathrm{PX4},i}=C_{T,i}
+\begin{bmatrix}-y_i&x_i&K_{M,i}&-1\end{bmatrix}^{\!\top}.
 $$
 
-The first three coordinates are normalized torque, and the fourth is normalized thrust Z. With the corresponding normalized mixer $L S^{-1}$, the algebra reconstructs the selected actuator vector $u$. It depends on matching the pinned allocator normalization, rotor order, airframe type, and actuator model; different PX4 allocation behavior invalidates that correspondence.
+The final entry is **negative FRD body-Z thrust**, whereas the physical matrix's final entry is positive upward collective. The adapter constructs this matrix in [`allocator_effectiveness()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/physical_wrench/matrices.cpp#L167).
 
-## Parameters, timing, and messages
+Let $u$ contain the four actuator controls and let $S$ be the diagonal normalization scale derived from the pinned PX4 inverse mixer. The normalized PX4 request is
 
-Required data includes mass, center of mass, FRD-convertible inertia, four rotor positions/directions, moment ratio, actuator polynomial/range, and FRD PX4 allocator geometry/coefficients for airframe type 0. **Hover-thrust calibration is not used by this path.** F450 is the curated reference fixture; another compatible quadrotor can be added with verified data.
+$$
+c_n=S\,B_{\mathrm{PX4}}u.
+$$
 
-Valid position/velocity, attitude, and body rate are required. The outer timer computes analytic attitude dynamics through desired snap/yaw acceleration and publishes the adapted wrench (100 Hz default) after Offboard confirmation. Only `OffboardControlMode.thrust_and_torque` is true. Both wrench messages share publication time; `timestamp_sample` remains default for this outer-loop path. Shared [startup/return behavior](../se3.md#when-the-controller-starts-and-stops) applies.
+Its first three coordinates are normalized torque; the fourth is normalized body-Z thrust. The roll and pitch scales share the larger normalized inverse-column norm; yaw and thrust use the corresponding mixer-column rules. [`allocator_normalization_scale()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/physical_wrench/matrices.cpp#L213) implements those rules, and [`adapt()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/physical_wrench/adapter.cpp#L182) assembles the final command.
 
-In a **separate repository-root shell**, with the prepared airborne F450 simulation and no competing controller:
+The intention is that the pinned PX4 allocator's corresponding normalized inverse mixer reconstructs the same modeled $u$. This correspondence depends on the **pinned PX4 allocation algorithm, coefficients, geometry, and rotor order**; it does not prove that the motors deliver the modeled thrust. See [PX4's pinned `ControlAllocationPseudoInverse.cpp`](https://github.com/ANCL/PX4-Autopilot/blob/f5083ca2c5b919350880e8667e636ef70715db17/src/lib/control_allocation/control_allocation/ControlAllocationPseudoInverse.cpp).
+
+<span id="parameters-timing-and-messages"></span>
+
+## 5. Run and interpret
+
+Use a configured F450 SITL aircraft that is already airborne, with valid position, velocity, attitude, and body angular velocity. Ensure no other Offboard controller is running. The outer SE(3) loop (100 Hz by default) needs trajectory derivatives through snap and desired yaw acceleration for this law. Selected thrust/torque setpoints start **after confirmed Offboard entry**.
 
 ```bash
 source ros2/runtime_env.sh
@@ -122,8 +146,8 @@ ros2 launch offboard_controllers se3.launch.py \
   direct_controller:=geometric_physical publish_diagnostics:=true record:=true
 ```
 
-Diagnostics show requested/applied modeled collective, requested moment, $\lambda M$, and moment scale. A scale below one means the adapter limited the modeled wrench; it does not measure achieved aircraft moment. Physical model error, saturation, singular allocation matrices, and SO(3) critical attitudes remain limitations.
+Diagnostics distinguish **requested** collective and body moment from **applied modeled** collective and $\lambda M$, plus the moment scale $\lambda$. A scale below one indicates modeled actuator feasibility reduction—not measured motor torque or proof of closed-loop performance.
 
-Read [physical_moment.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/physical_moment.cpp), [adapter.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/physical_wrench/adapter.cpp), [matrices.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/physical_wrench/matrices.cpp), [actuators.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/physical_wrench/actuators.cpp), and the [vehicle loader](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/physical_wrench/config/loader.cpp). The normalization follows pinned PX4 [ControlAllocationPseudoInverse.cpp](https://github.com/ANCL/PX4-Autopilot/blob/f5083ca2c5b919350880e8667e636ef70715db17/src/lib/control_allocation/control_allocation/ControlAllocationPseudoInverse.cpp).
+**Current limits:** exactly four modeled rotors, validated physical and PX4 rotor mappings, a monotonic identified propulsion curve, and the pinned normalization algorithm. Saturation, model mismatch, tracking transients, singular geometry, and critical SO(3) attitudes remain relevant. This is not a general hardware-ready allocation guarantee.
 
-Continue with [Trajectories](../trajectories.md) to connect analytic references to experiments.
+For shared definitions, force derivatives, and attitude dynamics, see [Math](foundations.md). For controller startup and return-to-Position behavior, see [SE(3) Control](../se3.md#when-the-controller-starts-and-stops).

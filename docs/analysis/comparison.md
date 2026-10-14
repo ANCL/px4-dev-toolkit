@@ -1,7 +1,8 @@
 <!-- Preserve existing section links. -->
 <span id="se3-comparison"></span>
 
-# Comparing SE(3) controllers
+<span id="comparing-se3-controllers"></span>
+# SE(3) comparison
 
 A useful comparison holds the vehicle, trajectory, tuning context, and test conditions consistent, then examines both tracking and actuation. The current `px4_compare` CLI supports **two or more SE(3) bags**; other experiment profiles are not interchangeable with these metrics.
 
@@ -36,17 +37,13 @@ The common view compares measured position/velocity tracking, yaw error, body-ra
 
 Normalized torque is not N·m. Hover calibration, actuator mapping, frames, PX4 configuration, and saturation affect the relationship between requests and motion. Lower tracking error accompanied by much greater actuator activity can be a relevant tradeoff; without measured data there is no controller ranking.
 
-<figure class="px4-figure-slot">
-  <img src="../../assets/measured-plot-placeholder.svg" width="760" height="190" alt="Empty axes reserved for controller comparison; measured data has not been supplied">
-  <figcaption><strong>Controller comparison · figure placeholder.</strong> NED position-error magnitude [m] and motor envelope [normalized], aligned to confirmed Offboard entry [s], with maneuver windows labeled. An approved study is needed before this figure can compare controller responses.</figcaption>
-</figure>
 
 <!-- Preserve existing section links. -->
 <span id="comparison-implementation"></span>
 
 ## Metric definitions
 
-[analysis/comparison.py](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/comparison.py) defines the shared statistics. For scalar magnitude/error samples $q_k$ and positive finite intervals $\Delta t_k$:
+[`timed_stats()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/comparison.py#L246), [`activity_stats()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/comparison.py#L336), and [`effort_stats()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/comparison.py#L408) compute the shared time-weighted and actuator-activity statistics. For scalar magnitude/error samples $q_k$ and positive finite intervals $\Delta t_k$:
 
 $$
 q_{\mathrm{RMS}}=\sqrt{
@@ -68,7 +65,7 @@ Motor metrics use the maximum absolute motor envelope, not measured electrical p
 
 ## Trajectory-aware metrics
 
-`--trajectory full_excitation` resolves the canonical [trajectory YAML](../controllers/trajectories.md) into cumulative segment times. It must match the configuration used for recording. See [comparison/metrics.py](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/se3/comparison/metrics.py):
+`--trajectory full_excitation` resolves the canonical [trajectory YAML](../controllers/trajectories.md) into cumulative segment times. It must match the configuration used for recording. See [`step_response_metrics()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/se3/comparison/metrics.py#L280), [`yaw_segment_metrics()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/se3/comparison/metrics.py#L533), and [`figure_eight_metrics()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/se3/comparison/metrics.py#L585):
 
 | Maneuver | Implemented interpretation |
 |---|---|
@@ -87,4 +84,4 @@ Yaw/figure-eight windows use start-inclusive/end-exclusive intervals. Yaw errors
 
 Confirm all expected study steps succeeded, data is complete, each run used the same canonical trajectory/vehicle, and the Offboard window covers the intended segments. Inspect state quality and allocation/motor limits alongside errors. Account for drift/re-anchoring between steps, transport/logging rate differences, and real-world environmental variation. A source-compatible launch and a finalized bag do not by themselves establish a controlled scientific comparison.
 
-Continue with [Adding to the toolkit](../reference/extending.md) when you need another controller or analysis view.
+To add a controller or a metric, use [Extending the Toolkit](../reference/extending.md).

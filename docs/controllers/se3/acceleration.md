@@ -2,22 +2,6 @@
 
 The toolkit calculates position/velocity feedback and sends a **NED acceleration request** to PX4. PX4 converts it to attitude/thrust and runs its lower feedback loops and control allocation. This mode requires the least vehicle data: mass.
 
-```mermaid
----
-config:
-  flowchart:
-    useMaxWidth: false
-    wrappingWidth: 180
-    padding: 10
-    rankSpacing: 22
-    nodeSpacing: 24
----
-flowchart TB
-    I["NED state + trajectory"] --> T["Toolkit · translation law"]
-    T --> S["Acceleration + yaw"]
-    S --> P["PX4 · attitude, rate, allocation"]
-```
-
 ## Translation law
 
 With $e_x=x-x_d$ and $e_v=v-v_d$ in NED:
@@ -60,5 +44,3 @@ ros2 launch offboard_controllers se3.launch.py \
 Inspect measured position/velocity against the trajectory, commanded acceleration, and downstream PX4 attitude/thrust. A nonzero tracking error may come from lower-loop response or saturation, not solely the translational gains. Mass-only availability does not validate a new physical airframe.
 
 The calculation is in [translation.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/translation.cpp); exact fields are in [runtime/publication.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/runtime/publication.cpp), selected by [runtime/control.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/runtime/control.cpp).
-
-Continue with [Attitude](attitude.md) to calculate the desired rotation in the toolkit.

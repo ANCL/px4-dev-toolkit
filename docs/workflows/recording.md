@@ -5,26 +5,14 @@
 
 Recording captures a flight's messages, not just its final controller result. Add `record:=true` to the supported launch to start a recorder before the node and stop it after node exit.
 
-## Lifecycle
+<span id="lifecycle"></span>
+## How recording works
 
-```mermaid
----
-config:
-  flowchart:
-    useMaxWidth: false
-    wrappingWidth: 180
-    padding: 10
-    rankSpacing: 22
-    nodeSpacing: 24
----
-flowchart TB
-    R["Start rosbag recorder"] --> D["Wait 1 s for topic discovery"]
-    D --> C["Start flight/controller node"]
-    C --> E["Node exits → stop recorder"]
-    E --> F["Recorder exits → inspect metadata"]
-```
+1. Start `ros2 bag record` and allow **1 second** for topic discovery.
+2. Start the selected flight/controller node.
+3. On node exit, stop the recorder and wait for its exit. Check `metadata.yaml` and the recorded topics before analysis.
 
-[px4_control_common.recording](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_control_common/px4_control_common/recording.py) delays node startup by one second **after recorder process start**. This is a discovery allowance, not a guarantee that every topic has been discovered. Early recorder exit or nonzero node exit fails the launch. Recorder shutdown follows node exit; node completion alone does not prove the bag was finalized.
+[`launch_experiment()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_control_common/px4_control_common/recording.py#L69) owns this sequence. Its [`on_node_exit()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_control_common/px4_control_common/recording.py#L80) and [`on_recorder_exit()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_control_common/px4_control_common/recording.py#L113) handlers propagate failures. One second permits discovery but does **not** guarantee full topic coverage or a valid experiment.
 
 ## Record a native Position-mode run
 
@@ -87,7 +75,7 @@ bags/se3/<timestamp>/
 └── analysis/                 # created later by px4_analyze
 ```
 
-The sequence runner checks for `metadata.yaml` before advertising a bag as finalized. It writes `experiment.json` inside finalized study bags with the profile, step, and effective launch arguments. Standalone launches do not write this experiment identity file; retain the launch arguments yourself. Direct-controller identity may otherwise be `unknown` in analysis.
+The sequence runner requires `metadata.yaml` before reporting a finalized bag. It writes `experiment.json` inside finalized study bags with the profile, step, and effective launch arguments. Standalone launches do not write this experiment identity file; retain the launch arguments yourself. Direct-controller identity may otherwise be `unknown` in analysis.
 
 In a **repository-root shell with ROS sourced**, find the most recent finalized standalone SE(3) bag and inspect it:
 
@@ -105,4 +93,4 @@ Confirm topic names/counts, duration, readable storage, and expected early/late 
 
 Allow the recorder to exit cleanly after an interruption. Preserve the bag and logs; do not immediately delete or rename storage files. If metadata is missing, first check the recorder is no longer writing. ROS supports reindexing some storage formats, but recoverability depends on backend and installed plugins. Inspect the recovered bag before analysis; a reindexed file cannot recreate messages never recorded.
 
-Continue with [Analyzing one run](../analysis/analysis.md).
+For a finalized run, use [Analyze a Run](../analysis/analysis.md).

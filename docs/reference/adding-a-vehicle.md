@@ -51,7 +51,7 @@ propulsion:
     polynomial_n: [0.27, 3.06, 8.67]
 ```
 
-`px4_allocator` requires FRD geometry, airframe type 0, four indexed rotors, positive thrust coefficient, rotor positions and `km`. The current loader uses the common `thrust_coefficient` for all four rotors. These must describe **PX4's active configuration**, which may differ numerically from the physical geometry. Consult [loader.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/physical_wrench/config/loader.cpp) and [gz_f450.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/vehicles/gz_f450.yaml) for the complete schema.
+`px4_allocator` requires FRD geometry, airframe type 0, four indexed rotors, positive thrust coefficient, rotor positions and `km`. The current loader uses the common `thrust_coefficient` for all four rotors. These must describe **PX4's active configuration**, which may differ numerically from the physical geometry. Consult [`load_physical_wrench_configuration()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/physical_wrench/config/loader.cpp#L19) and [gz_f450.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/vehicles/gz_f450.yaml) for the complete schema.
 
 The [physical adapter](../controllers/se3/geometric-physical.md) is fixed at four rotors. A six-rotor YAML can support acceleration and, with verified hover data, normalized modes; it cannot create a generic physical adapter. Other thrust-axis/allocator designs also require implementation analysis.
 

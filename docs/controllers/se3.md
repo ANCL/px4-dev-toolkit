@@ -1,54 +1,48 @@
 <!-- Preserve existing section links. -->
 <span id="geometric-se3-controller"></span>
 
-# SE(3) control
+# SE(3) Control
 
-**SE(3)** combines a position in three-dimensional space with a rotation in **SO(3)**, the set of proper three-dimensional rotation matrices. For a multicopter, position feedback determines a desired force, and that force plus heading determines an attitude. The toolkit can stop its calculation at several stages and ask PX4 to calculate the rest.
+The toolkit tracks an SE(3) trajectory and hands control to PX4 at one of
+four levels: acceleration, attitude, body rate, or thrust/torque. **The handoff
+level determines what the toolkit calculates and what PX4 still controls.**
+PX4 performs actuator allocation in every mode.
 
 <!-- Preserve existing section links. -->
 <span id="runtime-flow"></span>
 <span id="control-ownership"></span>
+<span id="six-configurations"></span>
 
-## Six configurations
+## Choose a handoff
 
-```mermaid
----
-config:
-  flowchart:
-    useMaxWidth: false
-    wrappingWidth: 180
-    padding: 10
-    rankSpacing: 22
-    nodeSpacing: 24
----
-flowchart TB
-    T["Trajectory + measured state"] --> F["Translational feedback"]
-    F --> R["Desired attitude + derivatives"]
-    R --> C["Body rate or rotational law"]
-    C --> P["PX4 · remaining stages + allocation"]
-```
+| Toolkit output | PX4 handles | Details |
+|---|---|---|
+| **Acceleration + yaw** | Attitude/thrust conversion, rate control, allocation | [Acceleration](se3/acceleration.md) |
+| **Attitude + thrust** | Attitude/rate control, allocation | [Attitude](se3/attitude.md) |
+| **Body rate + thrust** | Rate control, allocation | [Body Rate](se3/attitude-rate.md) |
+| **Thrust + torque** | Allocation | Three laws below |
 
-The diagram shows the complete calculation. Each configuration publishes earlier or later in it:
+The **Thrust & Torque** interface has three distinct implementations:
 
-| Configuration | Launch selection | Sent to PX4 | PX4 calculates next |
-|---|---|---|---|
-| [Acceleration](se3/acceleration.md) | `handoff:=acceleration` | `TrajectorySetpoint` acceleration | Attitude/thrust conversion and lower loops |
-| [Attitude](se3/attitude.md) | `handoff:=attitude` | `VehicleAttitudeSetpoint` | Attitude/rate feedback and allocation |
-| [Attitude rate](se3/attitude-rate.md) | `handoff:=attitude_rate` | `VehicleRatesSetpoint` | Rate feedback and allocation |
-| [Geometric normalized](se3/geometric-normalized.md) | `handoff:=thrust_and_torque direct_controller:=geometric_normalized` | Normalized thrust and torque | Allocation |
-| [PX4 rate](se3/px4-rate.md) | `handoff:=thrust_and_torque direct_controller:=px4_rate` | Normalized thrust and torque | Allocation |
-| [Geometric physical](se3/geometric-physical.md) | `handoff:=thrust_and_torque direct_controller:=geometric_physical` | Physical wrench converted to normalized thrust and torque | Allocation |
+- **[Geometric (Normalized)](se3/geometric-normalized.md)** — computes dimensionless PX4 torque from geometric attitude/rate errors.
+- **[Geometric (Physical)](se3/geometric-physical.md)** — computes a body moment in N·m and converts it through a vehicle-specific adapter.
+- **[PX4 Rate PID](se3/px4-rate.md)** — reproduces the pinned PX4 rate-controller behavior inside the toolkit.
 
-The geometric normalized law uses SO(3) tracking errors directly in normalized torque coordinates. The PX4 rate option reproduces a particular pinned rate loop. The physical law computes an inertia-based moment and uses a separate adapter. They are distinct controllers, even though they publish the same PX4 message types.
+These laws all publish normalized PX4 thrust/torque setpoints; a physical body
+moment is **not** sent directly to PX4. Read the [Math](se3/foundations.md)
+page for frames, equations, and assumptions.
 
 <!-- Preserve existing section links. -->
 <span id="launch"></span>
 
-## Run a controller
+<span id="run-a-controller"></span>
 
-First prepare an airborne, state-ready SITL vehicle in Position mode, for example with the [staging helper](position-mode.md#position-mode-staging-helper). SE(3) does **not** arm or take off. Ensure the simulator and selected vehicle file agree, and no competing controller is publishing.
+## Run
 
-In a **separate repository-root shell**:
+Prepare an airborne, state-ready SITL aircraft with
+[Offboard Staging](offboard-staging.md). SE(3) does **not** arm or take off.
+Ensure the selected vehicle file matches the simulator and no other Offboard
+controller is running. In a second repository-root shell:
 
 ```bash
 source ros2/runtime_env.sh
@@ -57,26 +51,41 @@ ros2 launch offboard_controllers se3.launch.py \
   publish_diagnostics:=true
 ```
 
-`hover` holds the anchored entry position for two seconds. Use a [named trajectory](trajectories.md) for longer motion and add `record:=true` when you want a bag.
+`hover` holds the entry position for two seconds. Choose another
+[trajectory](trajectories.md) for motion; add `record:=true` for a bag.
+Each mode page shows its exact launch arguments.
 
-## When the controller starts and stops
+<span id="when-the-controller-starts-and-stops"></span>
 
-The wall timer publishes the Offboard heartbeat even while waiting for state. Ready updates publish the generated `/se3/trajectory_reference` at trajectory time zero. The checked-in warmup is 1.5 s, with mode-request retries every 1 s; these durations are converted to ready-update counts at the configured outer rate (100 Hz by default).
+## Lifecycle
 
-**The actual selected control setpoints begin after confirmed Offboard entry.** The pre-entry stream is the heartbeat and diagnostic trajectory reference, not the acceleration/attitude/rate/wrench output. This is the behavior of [runtime/lifecycle.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/runtime/lifecycle.cpp); it differs from the Offboard-position node's actual setpoint prestream.
+1. Wait for valid state; publish the Offboard heartbeat and a diagnostic
+   trajectory reference. The configured warmup is 1.5 s, with mode-request
+   retries every 1 s (100 Hz outer loop by default).
+2. **Start control output only after PX4 confirms Offboard** through
+   `VehicleStatus.nav_state`. Unlike Offboard Position, SE(3) does not
+   prestream its selected acceleration, attitude, rate, or wrench setpoint.
+3. At trajectory completion, request Position mode while maintaining the
+   stream. Finish only when PX4 confirms the return.
 
-`VehicleStatus.nav_state` confirms takeover. On entry the node anchors position to the latest state and starts trajectory time on the ROS clock. Unexpected Offboard loss invalidates a held PX4-rate target; a later confirmed entry restarts and re-anchors the trajectory. At completion, the node repeatedly requests Position mode while continuing the Offboard stream. Confirmed Position return ends the node; it does not land/disarm the aircraft. Invalid state pauses control calculation while the heartbeat continues; these readiness checks do not implement a complete physical-flight failsafe.
+Offboard loss or invalid state can interrupt control. A subsequent confirmed
+Offboard entry re-anchors and restarts the trajectory; PX4-rate internal state
+is invalidated after Offboard loss. Returning to Position mode **does not land
+or disarm the aircraft**. Follow the [SITL landing procedure](../environments/sitl.md#land-and-reset-the-simulated-vehicle).
+These readiness checks are not a complete flight failsafe.
+
+<!-- Preserve existing section links. -->
+<span id="vehicle-support"></span>
 
 ## Vehicle support
 
-| Vehicle file | Acceleration | Attitude/rate/normalized torque/PX4 rate | Physical moment |
-|---|---|---|---|
-| `gz_f450` | Mass supplied | Hover thrust supplied | Curated four-rotor model supplied |
-| `gz_x500` | Mass supplied | Hover thrust supplied | No curated physical propulsion mapping |
-| `gz_px4vision` | Mass supplied | Hover thrust supplied | No curated physical propulsion mapping |
-| `gz_fy690s` | Mass supplied | No curated hover thrust | Six rotors; current adapter unavailable |
+- **`gz_f450`:** all six configurations, including the four-rotor physical adapter.
+- **`gz_x500`, `gz_px4vision`:** acceleration, attitude, body rate, normalized geometric torque, and PX4 Rate PID; no curated physical propulsion mapping.
+- **`gz_fy690s`:** acceleration only with current curated data. Its six rotors are not supported by the four-rotor physical adapter.
 
-The physical path uses its propulsion curve instead of `MPC_THR_HOVER`. Adding data does not make the four-rotor adapter generic. See [Adding a vehicle](../reference/adding-a-vehicle.md) for exact requirements.
+Physical moment control uses a propulsion model rather than `MPC_THR_HOVER`.
+See [Adding a Vehicle](../reference/adding-a-vehicle.md) before transferring
+settings to another airframe.
 
 <!-- Preserve existing section links. -->
 <span id="frames-units-and-timing"></span>
@@ -85,6 +94,11 @@ The physical path uses its propulsion curve instead of `MPC_THR_HOVER`. Adding d
 <span id="recording-and-comparison"></span>
 <span id="next"></span>
 
-## Read the mathematics
+<span id="read-the-mathematics"></span>
 
-Begin with [Mathematical foundations](se3/foundations.md), then follow the selected mode. Gains/timing live in [controller.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/config/se3/controller.yaml); physical facts live in vehicle files. Optional diagnostics observe calculations without changing their outputs. The [analysis guide](../analysis/analysis.md) separates recorded state, computed references, and reconstructed quantities.
+## Configuration and data
+
+Controller gains and timing: [controller.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/config/se3/controller.yaml).
+Vehicle parameters belong in vehicle files. Diagnostics report calculated
+signals; [analysis](../analysis/analysis.md) distinguishes references,
+measured state, and reconstructed quantities.

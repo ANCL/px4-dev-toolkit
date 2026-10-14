@@ -69,32 +69,34 @@ nav:
       - First simulation: getting-started/first-simulation.md
   - Running the toolkit:
       - SITL: environments/sitl.md
-      - Physical hardware: environments/hardware.md
-      - Position mode and switching to Offboard: controllers/position-mode.md
-      - Offboard position control: controllers/offboard-position.md
+      - Companion Computer: environments/hardware.md
   - Controllers:
       - Overview: controllers/overview.md
-      - SE(3) control:
-          - Introduction: controllers/se3.md
-          - Mathematical foundations: controllers/se3/foundations.md
+      - Position Mode: controllers/position-mode.md
+      - Offboard Staging: controllers/offboard-staging.md
+      - Offboard Position: controllers/offboard-position.md
+      - SE(3) Control:
+          - Overview: controllers/se3.md
+          - Math: controllers/se3/foundations.md
           - Acceleration: controllers/se3/acceleration.md
           - Attitude: controllers/se3/attitude.md
-          - Attitude rate: controllers/se3/attitude-rate.md
-          - Geometric normalized torque: controllers/se3/geometric-normalized.md
-          - PX4 rate controller: controllers/se3/px4-rate.md
-          - Geometric physical moment: controllers/se3/geometric-physical.md
+          - Body Rate: controllers/se3/attitude-rate.md
+          - Thrust & Torque:
+              - Geometric (Normalized): controllers/se3/geometric-normalized.md
+              - Geometric (Physical): controllers/se3/geometric-physical.md
+              - PX4 Rate PID: controllers/se3/px4-rate.md
       - Trajectories: controllers/trajectories.md
-  - Experiments and analysis:
-      - Complete SITL experiment: experiments/complete-example.md
+  - Experiments:
+      - SITL Experiment: experiments/complete-example.md
       - Recording: workflows/recording.md
-      - Running a series of experiments: workflows/sequences.md
-      - Analyzing one run: analysis/analysis.md
-      - Comparing SE(3) controllers: analysis/comparison.md
+      - Sequences: workflows/sequences.md
+      - Analyze a Run: analysis/analysis.md
+      - SE(3) Comparison: analysis/comparison.md
   - Extending the toolkit:
-      - Adding to the toolkit: reference/extending.md
-      - Adding a vehicle: reference/adding-a-vehicle.md
-      - Developing a controller: reference/developing-a-controller.md
+      - Overview: reference/extending.md
+      - Vehicles: reference/adding-a-vehicle.md
+      - Controllers: reference/developing-a-controller.md
   - Technical reference:
-      - Software structure: reference/architecture.md
-      - Configuration files: reference/configuration.md
+      - Architecture: reference/architecture.md
+      - Configuration: reference/configuration.md
       - Troubleshooting: reference/troubleshooting.md

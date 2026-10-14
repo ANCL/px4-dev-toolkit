@@ -1,39 +1,68 @@
 <!-- Preserve existing section links. -->
 <span id="hardware-environment"></span>
+<span id="physical-hardware"></span>
 
-# Physical hardware
+# Companion Computer
 
-On a physical vehicle, PX4 firmware is already running on the flight controller. A **companion computer** runs the toolkit's ROS 2 services and communicates with PX4 over serial. Follow [Companion-computer installation](../installation/companion.md) for the native `hardware` profile; the maintained Docker image supports SITL only.
+PX4 firmware runs on the aircraft's flight controller. The companion computer
+runs ROS 2 services and communicates with PX4 over a serial link. Follow
+[Companion Computer installation](../installation/companion.md) for the native
+`hardware` profile. The maintained Docker image supports SITL only.
 
 <!-- Preserve existing section links. -->
 <span id="vicon-and-mocap-path"></span>
+<span id="runtime-architecture"></span>
 
-## Runtime architecture
+## Architecture
 
 ```mermaid
 ---
 config:
   flowchart:
-    useMaxWidth: false
+    useMaxWidth: true
     wrappingWidth: 180
     padding: 10
     rankSpacing: 22
     nodeSpacing: 24
 ---
 flowchart TB
-    V["Vicon pose"] --> VR["vicon_receiver"]
-    VR --> B["Mocap bridge<br/>ENU/FLU → NED/FRD"]
-    B -->|VehicleOdometry| X["ROS 2 + DDS agent"]
-    X <-->|serial| P["PX4 flight controller"]
+    V["Vicon"] --> VR["vicon_receiver"]
+    VR --> B["Mocap bridge<br/>Frame conversion"]
+    B -->|VehicleOdometry| X["ROS 2<br/>DDS Agent"]
+    X <-->|serial| P["PX4"]
     C["Controller"] <--> X
 ```
 
-**Vicon** is the motion-capture system supplying the aircraft pose. The bridge converts ROS east-north-up (ENU) world coordinates and forward-left-up (FLU) body orientation to PX4 north-east-down (NED) and forward-right-down (FRD). It normalizes the quaternion and publishes pose through `VehicleOdometry`. The input contains pose only: velocity, angular velocity, and variance fields are marked unavailable with NaN. Sample time uses a valid source header when configured, otherwise publication time. See the [conversion source](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_mocap_bridge/src/conversion.cpp).
+**Vicon** supplies the aircraft's measured pose. The bridge converts ROS
+east-north-up (ENU) world coordinates and forward-left-up (FLU) body
+orientation to PX4 north-east-down (NED) and forward-right-down (FRD).
+It normalizes the quaternion and publishes `VehicleOdometry`. The input
+contains pose only: velocity, angular velocity, and variance fields are
+marked unavailable with NaN. Sample time uses a valid source header when
+configured, otherwise publication time. See the
+[conversion source](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_mocap_bridge/src/conversion.cpp).
+
+<!-- Preserve existing section links. -->
+<span id="start-checklist"></span>
+<span id="runtime-configuration"></span>
+
+## Configure
+
+Use [config/runtime/hardware.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/hardware.env)
+for the actual serial device and baud rate, Vicon server and object topic,
+frame names, world transform, and timestamp behavior. These are site-specific
+settings; the checked-in examples are not universal lab settings. The launcher
+requires `serial` transport when it starts the agent.
+
+Before starting, check that the serial device exists and is accessible, its
+settings match PX4's XRCE client, the Vicon server is reachable, and the
+selected rigid body and coordinate transform describe the intended aircraft.
 
 <!-- Preserve existing section links. -->
 <span id="cli"></span>
+<span id="what-starts"></span>
 
-## What starts
+## Start
 
 From the **companion-computer repository root**:
 
@@ -41,27 +70,25 @@ From the **companion-computer repository root**:
 ./tools/hardware start
 ```
 
-The default session is `px4-hardware`:
+The default `px4-hardware` tmux session contains the following services:
 
-| tmux window | Service |
-|---|---|
-| `mocap` | Vicon reception plus `px4_mocap_bridge`, through `mocap.launch.py` |
-| `xrce-dds` | Serial Micro XRCE-DDS Agent when `START_XRCE_AGENT=true` (current default) |
+- `mocap` — Vicon reception and `px4_mocap_bridge`, via `mocap.launch.py`.
+- `xrce-dds` — serial Micro XRCE-DDS Agent, when `START_XRCE_AGENT=true`
+  (the current default).
 
-Starting again attaches to the existing session. Use **Ctrl-b, then d** to detach. The [launcher](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/hardware) does not start firmware, arm, fly, launch Position-mode scripts or an Offboard controller, or begin recording.
+Starting again attaches to the existing session. Use **Ctrl-b, then d**
+to detach. The [launcher](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/hardware)
+does not start PX4 firmware, arm, launch a flight, launch an Offboard
+controller, or begin recording.
 
-In physical flight, the pilot controls Position mode with a **real RC transmitter or joystick**. The MAVProxy virtual joystick supplies simulated manual input for the SITL examples.
+In aircraft operation, Position mode normally uses the pilot's RC transmitter
+or joystick. MAVProxy's virtual joystick provides simulated input for the
+SITL examples, not a substitute for the aircraft's own pilot controls.
 
 <!-- Preserve existing section links. -->
-<span id="start-checklist"></span>
+<span id="what-status-means"></span>
 
-## Runtime configuration
-
-Use [config/runtime/hardware.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/hardware.env) for the actual serial device/baud, Vicon host, object topic, frame names, world transform, and timestamp behavior. These are site-specific values; the checked-in examples are not universal lab settings. The wrapper currently requires `serial` transport when it starts the agent.
-
-Before starting services, check the device exists and is accessible, the serial settings match PX4's XRCE client, the Vicon server is reachable, and the selected rigid body and coordinate transform describe the aircraft you intend to use.
-
-## What status means
+## Inspect
 
 In a **second companion shell at the repository root**:
 
@@ -71,19 +98,29 @@ source ros2/runtime_env.sh
 ros2 topic list
 ```
 
-Inspect the Vicon pose and converted odometry on the configured topics, then verify PX4's estimator response. A running tmux session or agent is a service check; it is not proof of a flight-ready vehicle.
+Inspect the Vicon pose and converted odometry on the configured topics,
+then verify PX4's estimator response. A running tmux session or agent is
+only a service check, not proof that the aircraft is flight-ready.
 
 <!-- Preserve existing section links. -->
 <span id="next"></span>
+<span id="pre-flight-requirements"></span>
 
-## Pre-flight requirements
+## Before flight
 
-On the actual platform, check estimator/external-vision configuration and frame alignment, sensor health, airframe selection, actuator ordering, vehicle data, controller compatibility, RC and failsafe behavior, and independent emergency actions. Do not correct a wrong motion-capture transform through controller gains.
+On the actual aircraft, check estimator/external-vision configuration and
+frame alignment, sensor health, airframe selection, actuator ordering,
+vehicle data, controller compatibility, RC and failsafe behavior, and
+independent emergency actions. Do not compensate for an incorrect
+motion-capture transform by changing controller gains.
 
-Stop the companion services **only after flight has ended and their removal is appropriate**:
+Stop the companion services **only after flight has ended** and doing so
+will not interrupt required communication:
 
 ```bash
 ./tools/hardware stop
 ```
 
-This command stops companion services; it is not a landing or disarm command. Continue with [controller choices](../controllers/overview.md) and [vehicle requirements](../reference/adding-a-vehicle.md).
+This stops companion services; it is not a landing or disarm command.
+Continue with the [controller overview](../controllers/overview.md) and
+[vehicle requirements](../reference/adding-a-vehicle.md).

@@ -2,7 +2,8 @@
 <span id="configuration-ownership"></span>
 <span id="rule-of-thumb"></span>
 
-# Configuration files
+<span id="configuration-files"></span>
+# Configuration
 
 Use this reference to find where a setting belongs. Physical facts, controller tuning, requested motion, and runtime connectivity have separate files so a change has a clear meaning.
 
@@ -57,8 +58,4 @@ Missing hover calibration or physical propulsion data deliberately limits suppor
 <!-- Preserve existing section links. -->
 <span id="next"></span>
 
-## Documentation media
-
-The homepage currently has two static, clearly labeled 16:9 media slots. Replace their asset references only with approved SITL/lab footage. Short muted WebM/MP4 loops can use `playsinline`, a still poster, conservative preload, and pause/play controls; reduced-motion users must see the still image without automatic movement. No site content should depend on playback. The present slots intentionally have no moving media or playback controls.
-
-Continue with [Troubleshooting](troubleshooting.md) for a setting that is accepted but behaves unexpectedly.
+See [Troubleshooting](troubleshooting.md) when a valid configuration still behaves unexpectedly.

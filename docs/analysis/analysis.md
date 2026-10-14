@@ -1,7 +1,8 @@
 <!-- Preserve existing section links. -->
 <span id="single-run-analysis"></span>
 
-# Analyzing one run
+<span id="analyzing-one-run"></span>
+# Analyze a run
 
 `px4_analyze` loads one finalized rosbag, selects an experiment profile, and writes a textual summary plus available plots. Start with the summary to establish what happened before interpreting a curve.
 
@@ -32,7 +33,7 @@ The summary is written before plotting. A plotting dependency failure can leave 
 
 ## Profile detection
 
-Registered profiles are `position_takeoff_hover`, `offboard_takeoff_handoff`, `offboard_position`, and `se3`. [detect_profile_name](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/__init__.py) prefers `experiment.json`; otherwise it uses the parent directory name. Study metadata is therefore necessary for bags stored under arbitrary step names.
+Registered profiles are `position_takeoff_hover`, `offboard_takeoff_handoff`, `offboard_position`, and `se3`. [`detect_profile_name()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/__init__.py#L38) prefers `experiment.json`; otherwise it uses the parent directory name. Study metadata is therefore necessary for bags stored under arbitrary step names.
 
 For SE(3), recorded `OffboardControlMode` determines the active command level. Simultaneous or changing levels are rejected. Direct-law identity comes from explicit metadata; without it, normalized geometric diagnostics can identify that law, but PX4-rate and physical modes cannot reliably be distinguished from downstream wrench messages alone. `unknown` is a data limitation, not a missing controller label to guess.
 
@@ -52,7 +53,7 @@ Reference signals are interpolated onto measured-signal times over their common 
 
 Check profile, controller identity, bag duration, arming and mode transitions, prestream, handoff timing, and missing signals. Then read tracking and control statistics. Two statistical treatments appear in the code:
 
-- Axis tracking tables in [pipeline/statistics.py](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/pipeline/statistics.py) use sample RMS $\sqrt{\frac1N\sum e_k^2}$ and maximum absolute error after interpolation.
+- Axis tracking tables from [`_aligned_error_stats()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/pipeline/statistics.py#L8) use sample RMS $\sqrt{\frac1N\sum e_k^2}$ and maximum absolute error after interpolation.
 - Common Offboard performance and maneuver metrics use time-weighted RMS from trapezoidal squared-error integration, explained in [comparison](comparison.md#metric-definitions).
 
 Uneven logging rates can make these numbers differ. Read the table's context instead of applying one generic RMS interpretation to every metric.
@@ -65,10 +66,6 @@ Uneven logging rates can make these numbers differ. Read the table's context ins
 
 **Position and velocity:** compare the desired reference to measured NED state. Position error is measured minus desired, in metres; velocity error is in m/s. Look for steady offsets, lag, overshoot, cross-axis coupling, and sudden estimator changes. Upward motion appears as decreasing Z.
 
-<figure class="px4-figure-slot">
-  <img src="../../assets/measured-plot-placeholder.svg" width="760" height="190" alt="Empty axes reserved for position tracking; measured data has not been supplied">
-  <figcaption><strong>Position tracking · figure placeholder.</strong> Desired and measured NED position [m], position error [m], and time from confirmed Offboard entry [s]. An approved flight recording is needed before this figure can show tracking or segment transitions.</figcaption>
-</figure>
 
 **Acceleration:** separate desired kinematic acceleration, commanded acceleration, PX4/estimated signals, and gravity compensation. They are different quantities. Model-based force derivatives and reconstructed physical quantities are not additional sensors.
 
@@ -80,4 +77,4 @@ Uneven logging rates can make these numbers differ. Read the table's context ins
 
 **Missing data:** an absent diagnostic/actuator stream cannot demonstrate absence of saturation or good tracking at that stage. Optional diagnostics differ by mode; the common measured response is the more consistent comparison basis.
 
-Read [SE(3) reporting](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/se3/reporting.py) for output details, then continue with [Comparing controllers](comparison.md).
+[`enrich_summary()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/se3/reporting.py#L500) assembles the SE(3) reporting details. Use [SE(3) Comparison](comparison.md) to compare completed runs.

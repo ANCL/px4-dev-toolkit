@@ -1,22 +1,8 @@
-# Geometric normalized torque
+<span id="geometric-normalized-torque"></span>
 
-This toolkit law uses geometric attitude/rate errors and analytic angular acceleration feedforward to calculate **normalized PX4 torque directly**. PX4 receives thrust and torque and performs allocation. This law does not calculate a physical inertia-based moment.
+# Geometric (Normalized)
 
-```mermaid
----
-config:
-  flowchart:
-    useMaxWidth: false
-    wrappingWidth: 180
-    padding: 10
-    rankSpacing: 22
-    nodeSpacing: 24
----
-flowchart TB
-    I["State + derivatives through snap"] --> C["Toolkit · geometric torque law"]
-    C --> S["Normalized thrust + torque"]
-    S --> P["PX4 · allocation + motors"]
-```
+The toolkit computes **normalized thrust and torque** from geometric attitude/rate errors and analytic feedforward. PX4 performs allocation. This is not a physical inertia-based moment law.
 
 ## Geometric errors
 
@@ -82,5 +68,3 @@ ros2 launch offboard_controllers se3.launch.py \
 Diagnostics separate attitude feedback, rate feedback, and acceleration feedforward. Inspect them beside the final torque, allocator residuals, and motors. Large commands during transients may be infeasible; absence of integral action does not remove saturation. The model and SO(3) limitations in foundations apply.
 
 Read [normalized_torque.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/normalized_torque.cpp), [attitude_geometry.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/attitude_geometry.cpp), and [runtime/control.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/runtime/control.cpp). The [Lee citation](foundations.md#references-and-implementation) supports the error definitions; the normalized law is a toolkit choice.
-
-Continue with [PX4 rate controller](px4-rate.md) for the sample-driven P/I/D alternative.

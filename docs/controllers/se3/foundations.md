@@ -1,6 +1,8 @@
-# Mathematical foundations
+<span id="mathematical-foundations"></span>
 
-This chapter explains the conventions and calculations shared by the six SE(3) configurations. Equations describe the checked-in controller and its ideal rigid-body model. Code inspection establishes implementation correspondence; it does not establish measured flight performance or transfer an ideal stability proof to saturated PX4 interfaces.
+# Math
+
+Frames, equations, and assumptions shared by the six SE(3) configurations. These equations describe the controller and ideal rigid-body dynamics—not measured flight performance or a guarantee under actuator limits.
 
 ## Frames, rotation, and units
 
@@ -49,7 +51,7 @@ J\dot\Omega+\Omega\times(J\Omega)&=M.
 \end{aligned}
 $$
 
-The **hat** operator maps a vector $z$ to the skew matrix $\widehat z$ satisfying $\widehat z\,y=z\times y$. The **vee** operator reverses that map. Define $\operatorname{skew}(B)=(B-B^\top)/2$ for numerical skew extraction.
+The **hat map** $z\mapsto\widehat z$ turns a vector into its cross-product matrix: $\widehat z\,y=z\times y$. Its inverse is the **vee map**: $(\widehat z)^\vee=z$. For a numerical matrix $B$, the code first extracts its skew-symmetric part, $\tfrac12(B-B^\top)$, before applying vee. The superscript $^\vee$ below always means this operation; it is not a transpose or exponent.
 
 These are physical dynamics. A normalized PX4 thrust/torque command is not automatically the physical $f,M$ in these equations; a calibration or adapter connects the two.
 
@@ -187,33 +189,40 @@ Desired attitude angular velocity and acceleration are
 
 $$
 \begin{aligned}
-\Omega_d&=\operatorname{vee}(\operatorname{skew}(R_d^\top\dot R_d)) \\
-\dot\Omega_d&=\operatorname{vee}(\operatorname{skew}(R_d^\top\ddot R_d)).
+\Omega_d &= \bigl(R_d^\top\dot R_d\bigr)^\vee, \\
+\dot\Omega_d &= \left[\tfrac12\bigl(R_d^\top\ddot R_d
+             -\ddot R_d^\top R_d\bigr)\right]^\vee.
 \end{aligned}
 $$
 
-The omitted $\dot R_d^\top\dot R_d$ term is symmetric, so it contributes nothing to vee/skew extraction. $\Omega_d$ is expressed in the **desired** body frame. It is the angular velocity of $R_d$ itself, not a feedback-corrected body-rate command. Attitude-rate/PX4-rate modes need first derivatives; the direct geometric laws also use second derivatives. No finite-difference attitude reference is used.
+The omitted $\dot R_d^\top\dot R_d$ term is symmetric, so it does not contribute to the vee result. $\Omega_d$ is in the desired body frame; it is not a feedback-corrected rate command. Attitude-rate and PX4-rate modes need first derivatives; direct geometric laws also need second derivatives. No finite differences are used.
 
 ## Rotation errors and feedforward
 
-Map desired-body vectors into the current FRD frame with $Q=R^\top R_d$:
+$R$ and $R_d$ rotate current and desired body-frame vectors into NED. Define
+
+$$
+Q=R^\top R_d.
+$$
+
+$Q$ maps a vector expressed in the **desired FRD frame** into the **current FRD frame**. With measured current-body angular velocity $\Omega$ and desired-body rate $\Omega_d$:
 
 $$
 \begin{aligned}
-e_R&=\frac12(R_d^\top R-R^\top R_d)^\vee \\
-e_\Omega&=\Omega-Q\Omega_d.
+e_R &= \tfrac12(R_d^\top R-R^\top R_d)^\vee,\\
+e_\Omega &= \Omega-Q\Omega_d.
 \end{aligned}
 $$
 
-The time derivative of the mapped desired rate is
+The rotation error $e_R$ is a three-vector, not an angle measured in Euler coordinates. The rate error $e_\Omega$ compares both rates **in the same frame**. The time derivative of the mapped desired rate gives
 
 $$
 \alpha_{\mathrm{ff}}=-\Omega\times(Q\Omega_d)+Q\dot\Omega_d.
 $$
 
-It is expressed in the current body frame in rad/s². The geometric torque laws use it; the cascaded attitude-to-rate law instead uses $Q\Omega_d$ plus attitude feedback. See [attitude_geometry.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/attitude_geometry.cpp).
+This is angular acceleration feedforward in the current body frame (rad/s²). The geometric laws use it, while the body-rate handoff uses $Q\Omega_d$ with attitude feedback. The implementation maps desired-to-current vectors in [`attitude_geometry::rotate_desired_to_current_body()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/attitude_geometry.cpp#L27), evaluates [`attitude_geometry::error()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/attitude_geometry.cpp#L11), and assembles the moment in [`physical_moment::compute()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/physical_moment.cpp#L12).
 
-The SO(3) error is smooth but does not uniquely distinguish the desired attitude from every 180° critical orientation. Singular desired bases, estimation errors, sampling, saturation, and mismatched plant/calibration remain real limitations.
+As on SO(3) generally, the geometric attitude error has critical rotations near 180°; the law is not globally free of attitude ambiguities. Actuator limits, estimator error, and propulsion-model mismatch are additional practical limitations.
 
 ## Physical and normalized collective thrust
 

@@ -56,7 +56,7 @@ If a stopped tmux session leaves Gazebo running, use `./tools/sitl stop` **after
 | Vicon tracked pose missing | Server reachability, object/topic, namespace, mocap window logs | Correct the site-specific selection; verify incoming pose |
 | PX4 external vision misaligned | ENU/FLU input convention, NED/FRD conversion, configured world transform | Correct the transform/estimator setup; do not compensate with gains |
 
-Use [Physical hardware](../environments/hardware.md) for service and flight-readiness checks. Companion process status does not prove estimator health, RC/failsafe behavior, or a valid actuator mapping.
+Use [Companion Computer](../environments/hardware.md) for service and flight-readiness checks. Companion process status does not prove estimator health, RC/failsafe behavior, or a valid actuator mapping.
 
 <!-- Preserve existing section links. -->
 <span id="controller-refuses-a-vehiclehandoff-combination"></span>

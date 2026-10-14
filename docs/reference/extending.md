@@ -2,9 +2,10 @@
 <span id="extending-the-toolkit"></span>
 <span id="extension-map"></span>
 
-# Adding to the toolkit
+<span id="adding-to-the-toolkit"></span>
+# Extending the toolkit
 
-Keep vehicle data, trajectories, controller calculations, ROS/PX4 communication, and analysis in their existing components. Begin with the nearest working example and keep each setting in its [canonical configuration file](configuration.md).
+Start with the closest working example. Keep controller logic, vehicle data, trajectories, runtime services, and analysis in their owning components; use the [configuration map](configuration.md) before adding new settings.
 
 ## Add a controller
 
@@ -31,7 +32,7 @@ Create a YAML under `config/sequences/` selecting existing launches and argument
 
 ## Add an analysis profile
 
-Profiles live in [analysis/profiles](https://github.com/ANCL/px4-dev-toolkit/tree/main/analysis/profiles). Define `PROFILE_NAME`, required/optional topics, `analyze`, summary/plot behavior, and registration in `analysis/profiles/__init__.py`. Reuse bag loading and shared signal/statistics helpers. Include meaningful analysis regression tests under `analysis/tests/`.
+Profiles live in [analysis/profiles](https://github.com/ANCL/px4-dev-toolkit/tree/main/analysis/profiles). Define `PROFILE_NAME`, required/optional topics, `analyze`, and reporting; register it in [`PROFILES`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/__init__.py#L14). [`detect_profile_name()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/__init__.py#L38) resolves study metadata or the standalone bag layout. Reuse bag loading and shared signal/statistics helpers. Include meaningful analysis regression tests under `analysis/tests/`.
 
 Comparison support requires an explicit definition of comparable quantities and time origin. `px4_compare` currently accepts SE(3) only; registering a new single-run profile does not automatically create valid comparison semantics.
 

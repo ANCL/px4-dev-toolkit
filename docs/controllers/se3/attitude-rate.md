@@ -1,29 +1,15 @@
-# Attitude rate
+<span id="attitude-rate"></span>
 
-The toolkit calculates geometric attitude feedback and a **commanded body rate**. It publishes `VehicleRatesSetpoint`; PX4 retains the angular-rate feedback loop and allocation. The command is not a physical moment.
+# Body Rate
 
-```mermaid
----
-config:
-  flowchart:
-    useMaxWidth: false
-    wrappingWidth: 180
-    padding: 10
-    rankSpacing: 22
-    nodeSpacing: 24
----
-flowchart TB
-    I["State + trajectory derivatives"] --> T["Toolkit · attitude feedback"]
-    T --> S["FRD body rate + thrust"]
-    S --> P["PX4 · rate feedback, allocation"]
-```
+The toolkit computes an FRD body-rate request and collective thrust. PX4 retains body-rate feedback and allocation; the command is not a physical moment.
 
 ## Desired rate and feedback command
 
 The common force $A$ determines $R_d$. [Analytic force/basis derivatives](foundations.md#analytic-force-derivatives), using desired jerk and yaw rate, determine
 
 $$
-\Omega_d=\operatorname{vee}(\operatorname{skew}(R_d^\top\dot R_d)).
+\Omega_d=\bigl(R_d^\top\dot R_d\bigr)^\vee.
 $$
 
 This is the angular velocity of the desired attitude in the **desired** FRD frame. Map it to current-body axes and add feedback:
@@ -63,5 +49,3 @@ ros2 launch offboard_controllers se3.launch.py \
 Compare desired attitude and its mapped angular velocity to the commanded body rate, then compare commanded to measured rate. The first difference shows attitude feedback; the second shows PX4 rate-loop response. Increasing attitude gain changes requested rate, without increasing actuator capability. Singular force/heading and imperfect model derivatives limit the feedforward.
 
 Read [attitude_control.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/attitude_control.cpp), [attitude_reference.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/attitude_reference.cpp), and [publication.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/runtime/publication.cpp).
-
-Continue with [Geometric normalized torque](geometric-normalized.md) to compute rotational feedback in normalized torque coordinates.

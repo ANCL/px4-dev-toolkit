@@ -1,7 +1,8 @@
 <!-- Preserve existing section links. -->
 <span id="experiment-sequences"></span>
 
-# Running a series of experiments
+<span id="running-a-series-of-experiments"></span>
+# Sequences
 
 `tools/run_sequence` runs ordered ROS launches from YAML. It preserves each launch's output, gives recorded steps deterministic bag paths, and records the study result in a manifest. Environment startup and preparing the aircraft remain separate.
 
@@ -39,7 +40,7 @@ steps:
       record: true
 ```
 
-Names permit letters, numbers, `.`, `_`, and `-`. Argument values must be strings, numbers, or booleans. The runner overrides the named recording argument for recorded steps; it does not change vehicle/gain/trajectory definitions. [tools/sequence/config.py](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/config.py) validates the complete sequence before creating the study directory.
+Names permit letters, numbers, `.`, `_`, and `-`. Argument values must be strings, numbers, or booleans. The runner overrides the named recording argument for recorded steps; it does not change vehicle/gain/trajectory definitions. [`load_sequence()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/config.py#L43) validates the whole definition before creating the study directory. [`run_step()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/execution.py#L50) starts and supervises each launch.
 
 ## Study layout
 
@@ -59,7 +60,7 @@ bags/se3_handoff_comparison/<timestamp>/
     └── ...
 ```
 
-`manifest.json` records running/completed steps, commands, times, exit codes, log paths, and finalized bags. `experiment.json` supplies profile and effective arguments for analysis, including direct-controller selection. It is written only after finalization is detected, including a finalized bag from a failed step; finalization and successful flight are different facts.
+[`write_manifest()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/manifest.py#L9) records progress, commands, times, exits, logs, and finalized bags. [`write_experiment_metadata()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/manifest.py#L21) saves each bag's profile and effective launch arguments, including direct-controller selection. It is written only after finalization is detected, including a finalized bag from a failed step; finalization and successful flight are different facts.
 
 <!-- Preserve existing section links. -->
 <span id="process-ownership"></span>
@@ -68,7 +69,7 @@ bags/se3_handoff_comparison/<timestamp>/
 
 ## Ordering, settling, and interruption
 
-The study runs acceleration, attitude, attitude rate, geometric normalized torque, PX4 rate, and geometric physical moment, each with `gz_f450`, `full_excitation`, diagnostics, and recording. Each SE(3) node returns to Position mode before ending. The runner waits **3 seconds between successful steps**.
+The checked-in study executes acceleration, attitude, body rate, geometric normalized torque, PX4 rate PID, and geometric physical moment **in that YAML order**, each with `gz_f450`, `full_excitation`, diagnostics, and recording. This execution order is independent of the documentation sidebar order. Each SE(3) node returns to Position mode before ending. The runner waits **3 seconds between successful steps**.
 
 That delay is not a vehicle reset, landing, arming action, or a flight-readiness check. Position can drift between steps, and each controller re-anchors. Confirm the required initial condition and watch the study; do not treat it as a guarantee of independent identical starting states.
 

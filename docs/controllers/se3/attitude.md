@@ -1,22 +1,6 @@
 # Attitude
 
-The toolkit calculates the desired rotation and collective thrust, then sends `VehicleAttitudeSetpoint`. PX4 calculates attitude feedback, rate feedback, and motor allocation. Unlike acceleration mode, this mode needs a curated vehicle hover-thrust scale.
-
-```mermaid
----
-config:
-  flowchart:
-    useMaxWidth: false
-    wrappingWidth: 180
-    padding: 10
-    rankSpacing: 22
-    nodeSpacing: 24
----
-flowchart TB
-    I["State + trajectory"] --> T["Toolkit · force → rotation"]
-    T --> S["Quaternion + collective thrust"]
-    S --> P["PX4 · attitude, rate, allocation"]
-```
+The toolkit sends desired attitude and collective thrust to PX4. PX4 retains attitude/rate feedback and allocation. This mode requires a curated hover-thrust scale.
 
 ## Force to rotation
 
@@ -72,5 +56,3 @@ ros2 launch offboard_controllers se3.launch.py \
 Inspect desired versus measured attitude, force command, normalized collective, downstream rate commands, and motor limits. Missing hover data is rejected; do not borrow another vehicle's value to bypass that check. Zero-force/degenerate heading and the model limitations in foundations remain applicable.
 
 Read [attitude_reference.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/attitude_reference.cpp), [wrench.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/px4/wrench.cpp), and [publication.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/runtime/publication.cpp).
-
-Continue with [Attitude rate](attitude-rate.md) to add toolkit attitude feedback.

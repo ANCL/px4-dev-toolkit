@@ -125,7 +125,19 @@
 .md-typeset .arithmatex { max-width: 100%; }
 .md-typeset div.arithmatex { overflow-x: auto; overflow-y: hidden; padding-block: .45rem; }
 .md-typeset mjx-container[display="true"] { margin: .45em auto !important; }
-.md-typeset .mermaid { overflow-x: auto; margin-block: 1.2rem; text-align: center; }
+.md-typeset .mermaid {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin-block: 1.35rem;
+  padding-block: .35rem;
+  text-align: center;
+}
+.md-typeset .mermaid svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+}
 .md-typeset figcaption { font-size: .78rem; line-height: 1.5; font-style: normal; color: var(--md-default-fg-color--light); display: block; max-width: none; margin: .55rem 0 0; text-align: left; }
 .md-typeset .px4-frame-figure { display: block; width: 100%; margin: 1.1rem 0; max-width: none; text-align: left; }
 .px4-frame-figure img { display: block; width: 100%; }
@@ -245,3 +257,9 @@ body:has(.px4-home) .md-footer-meta { background: var(--md-primary-fg-color--dar
 
 /* Larger header title */
 .md-header__title { font-size: 1.2rem; font-weight: 700; }
+
+/* Control-documentation reading rhythm. */
+.md-typeset h2 { margin-bottom: .65em; }
+.md-typeset h3 { margin-top: 1.35em; margin-bottom: .5em; }
+.md-typeset div.arithmatex { margin-block: .4rem; padding-block: .2rem; }
+.md-typeset mjx-container[display="true"] { margin: .3em auto !important; }

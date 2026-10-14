@@ -1,4 +1,6 @@
-# Offboard position control
+<span id="offboard-position-control"></span>
+
+# Offboard Position
 
 This node sends a trajectory reference to PX4. PX4 calculates position feedback and all lower control stages. The external node generates the requested motion and handles the mode/arming sequence; it does not replace PX4's translational feedback with the SE(3) law.
 
@@ -6,17 +8,17 @@ This node sends a trajectory reference to PX4. PX4 calculates position feedback 
 ---
 config:
   flowchart:
-    useMaxWidth: false
+    useMaxWidth: true
     wrappingWidth: 180
     padding: 10
     rankSpacing: 22
     nodeSpacing: 24
 ---
 flowchart TB
-    T["Named NED trajectory"] --> N["Toolkit · reference + feedforward"]
-    N --> S["Trajectory setpoint + heartbeat"]
-    S --> P["PX4 · position, attitude, rate"]
-    P --> A["PX4 · allocation + motors"]
+    T["NED trajectory"] --> N["Reference<br/>+ feedforward"]
+    N --> S["Setpoint<br/>+ heartbeat"]
+    S --> P["PX4 feedback"]
+    P --> A["Allocation<br/>+ motors"]
 ```
 
 ## Reference and messages
@@ -27,7 +29,7 @@ The node runs at **20 Hz**. During prestream, the trajectory stays at time zero 
 
 ## Run
 
-Prepare SITL and verify valid local position/status. This controller **can request arming** when disarmed and PX4 pre-flight checks pass. For an airborne comparison, first prepare the aircraft using the [staging example](position-mode.md#position-mode-staging-helper). A `hover` trajectory holds its entry position; it is not an automatic climb from the ground.
+Prepare SITL and verify valid local position/status. This controller **can request arming** when disarmed and PX4 pre-flight checks pass. For an airborne comparison, first prepare the aircraft using the [Offboard Staging](offboard-staging.md). A `hover` trajectory holds its entry position; it is not an automatic climb from the ground.
 
 In a **separate repository-root shell**, after checking the intended simulated vehicle and ensuring no other Offboard controller is running:
 

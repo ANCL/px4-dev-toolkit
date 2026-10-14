@@ -1,7 +1,8 @@
 <!-- Preserve existing section links. -->
 <span id="architecture"></span>
 
-# Software structure
+<span id="software-structure"></span>
+# Architecture
 
 The toolkit keeps environment services, flight/controller nodes, and recorded-data analysis separate. Starting an environment prepares communication and simulation; it does not execute a controller experiment.
 
@@ -15,7 +16,7 @@ The toolkit keeps environment services, flight/controller nodes, and recorded-da
 ---
 config:
   flowchart:
-    useMaxWidth: false
+    useMaxWidth: true
     wrappingWidth: 140
     padding: 10
     rankSpacing: 22
@@ -27,7 +28,7 @@ flowchart TB
     X <--> R["ROS 2 + recorder"]
     P <--> M["MAVLink<br/>GCS"]
     R --> B["Bag + metadata"]
-    B --> A["Analysis + comparison"]
+    B --> A["Analysis"]
 ```
 
 For physical flight, firmware runs on the aircraft instead of the workstation:
@@ -36,14 +37,14 @@ For physical flight, firmware runs on the aircraft instead of the workstation:
 ---
 config:
   flowchart:
-    useMaxWidth: false
+    useMaxWidth: true
     wrappingWidth: 140
     padding: 10
     rankSpacing: 22
     nodeSpacing: 24
 ---
 flowchart TB
-    V["Vicon receiver"] --> C["Mocap pose conversion"]
+    V["Vicon receiver"] --> C["Pose conversion"]
     C --> R["ROS 2 + recorder"]
     R <--> X["DDS agent · serial"]
     X <--> P["PX4 flight controller"]
@@ -63,9 +64,9 @@ The current simulator estimator uses configured Gazebo/external-vision aiding pl
 | Start services | [tools/sitl](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sitl), [tools/hardware](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/hardware) | Runtime configuration, `tools/runtime/`, ROS service launches |
 | Position-mode reference | [px4_position_mode](https://github.com/ANCL/px4-dev-toolkit/tree/main/ros2/src/px4_position_mode) | Launch, node, state, lifecycle, publication, joystick |
 | External position reference | [offboard_position](https://github.com/ANCL/px4-dev-toolkit/tree/main/ros2/src/offboard_controllers/src/offboard_position) | Node, state, lifecycle, publication |
-| Full SE(3) controller | [se3/node.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/node.cpp) | `runtime/`, pure `control/`, trajectories, rate/physical adapters |
-| Record an experiment | [recording.py](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_control_common/px4_control_common/recording.py) | Package launch and selected topics |
-| Run a study | [tools/run_sequence](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/run_sequence) | `tools/sequence/`, manifest and experiment metadata |
+| Full SE(3) controller | [se3/node.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/node.cpp) | [`Se3::execute_handoff()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/runtime/control.cpp#L23), pure `control/`, trajectories, adapters |
+| Record an experiment | [recording.py](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_control_common/px4_control_common/recording.py) | [`launch_experiment()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_control_common/px4_control_common/recording.py#L69) and topic selection |
+| Run a study | [tools/run_sequence](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/run_sequence) | [`load_sequence()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/config.py#L43), [`run_step()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/execution.py#L50), manifests |
 | Analyze/compare | [analysis](https://github.com/ANCL/px4-dev-toolkit/tree/main/analysis) | Bag loader, signal extraction/statistics, profiles, reporting/plots |
 
 <!-- Preserve existing section links. -->
@@ -95,4 +96,4 @@ Pure controller laws describe the calculation; runtime modules select modes, gat
 
 Controllers/launches execute a run. Rosbag captures messages; manifests preserve experiment identity. `analysis/core.py` reads receive timestamps, `analysis/pipeline/` extracts common PX4 signals/statistics, and `analysis/profiles/` defines experiment-specific meaning. Analysis writes reports beside the data without modifying controller behavior.
 
-Continue with [Configuration files](configuration.md).
+See [Configuration](configuration.md) for the settings owned by each component.

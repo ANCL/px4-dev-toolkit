@@ -25,7 +25,7 @@ s(u)&=126u^5-420u^6+540u^7 \\
 \end{aligned}
 $$
 
-Its first four derivatives vanish at both endpoints. The code differentiates it and the path analytically through **snap** (fourth position derivative). This is not constant-speed motion or interpolation of a recorded path. The implementations are [sampling.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/trajectory/sampling.cpp) and [trajectory.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/trajectory/trajectory.cpp).
+Its first four derivatives vanish at both endpoints. The code differentiates it and the path analytically through **snap** (fourth position derivative). This is not constant-speed motion or interpolation of a recorded path. [`Segment::sample()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/trajectory/sampling.cpp#L237) evaluates a segment; [`Sequence::sample()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/trajectory/trajectory.cpp#L136) selects the active segment and its time origin.
 
 ### Hold
 
@@ -114,4 +114,4 @@ ros2 launch offboard_controllers se3.launch.py \
   vehicle:=gz_f450 trajectory:=line_tracking handoff:=acceleration
 ```
 
-The standard launch loads the installed trajectory configuration; rebuild ROS after editing the source YAML. `px4_compare --trajectory full_excitation` resolves the canonical source YAML for segment windows, so retain the configuration used to record the study. Editing it afterward can mislabel old data. Continue with [A complete SITL experiment](../experiments/complete-example.md).
+The standard launch loads the installed trajectory configuration; rebuild ROS after editing the source YAML. `px4_compare --trajectory full_excitation` resolves the canonical source YAML for segment windows, so retain the configuration used to record the study. Editing it afterward can mislabel old data. Run the [SITL experiment](../experiments/complete-example.md) to record and analyze a trajectory.

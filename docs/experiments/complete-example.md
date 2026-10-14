@@ -1,10 +1,11 @@
-# Complete SITL experiment
+<span id="complete-sitl-experiment"></span>
+# SITL experiment
 
-This guide connects environment startup, a reference flight, an external controller, recording, analysis, and a six-mode study. Use a **native Ubuntu SITL installation**, default F450 configuration, and MAVProxy. Docker users can run the repository-root steps inside the container shells from the [Docker guide](../installation/docker.md).
+Run a PX4 reference flight, an SE(3) Offboard flight, and a recorded six-mode study. The commands assume **native Ubuntu SITL**, F450, and MAVProxy; Docker users run them in the corresponding [container shells](../installation/docker.md).
 
-Check the vehicle state between demonstrations. Each step starts from a specified mode and arming state; completing a command does not establish that the next flight is ready.
+Check mode, arming, and state between flights. A finished controller is not proof the aircraft is landed or ready for another run.
 
-## 1. Start and verify services
+## 1. Start SITL
 
 In **terminal 1 at the repository root**:
 
@@ -22,7 +23,7 @@ source ros2/runtime_env.sh
 
 Stop the rate display with Ctrl-C. Verify valid position/status and the intended simulated vehicle using the [first simulation checks](../getting-started/first-simulation.md#2-check-communication-and-state). Keep terminal 1 attached to logs or detach tmux without stopping it.
 
-## 2. Record a PX4 reference flight
+## 2. Record the reference flight
 
 With the aircraft initially landed/disarmed and no competing controller, in **terminal 2**:
 
@@ -32,15 +33,15 @@ ros2 launch px4_position_mode position_takeoff_hover.launch.py record:=true
 
 Wait for takeoff, hover, landing, and confirmed disarm. The recorder exits after the node. Inspect the printed bag path and metadata before moving on. This bag uses the `position_takeoff_hover` analysis profile; it is not a SE(3) comparison bag.
 
-## 3. Prepare a separate Offboard demonstration
+## 3. Run SE(3) Offboard
 
-Check that the reference flight has ended and the simulated vehicle is ready again. If it failed, restore or restart the simulation in a landed/disarmed state before proceeding. In **terminal 2**:
+Check that the reference flight has ended and the simulated vehicle is ready again. If it failed, restore a known landed/disarmed state before proceeding. In **terminal 2**:
 
 ```bash
 ros2 launch px4_position_mode offboard_takeoff_handoff.launch.py
 ```
 
-Wait for the staging hold phase. In **terminal 3 at the repository root**, start one independent controller:
+Wait for the [Offboard Staging](../controllers/offboard-staging.md) hold phase. In **terminal 3 at the repository root**, start one independent controller:
 
 ```bash
 source ros2/runtime_env.sh
@@ -51,7 +52,8 @@ ros2 launch offboard_controllers se3.launch.py \
 
 The staging helper exits after confirmed takeover. SE(3) follows the relative line trajectory and returns to Position mode, then recording shuts down. It does not land/disarm. An Offboard-position demonstration is an alternative controller example, described on its [own page](../controllers/offboard-position.md); do not run both together.
 
-## 4. Inspect and analyze the finalized bag
+<span id="4-inspect-and-analyze-the-finalized-bag"></span>
+## 4. Analyze the bag
 
 In **terminal 3 after launch and recorder have exited**, still at the repository root with ROS sourced:
 
@@ -63,7 +65,7 @@ test -n "$bag_path" && ./tools/px4_analyze "$bag_path"
 
 Check that this is the run just recorded, especially if older bags exist. `analysis/summary.txt` and available PNG plots are written **inside that bag**. Establish confirmed Offboard entry/return and topic completeness first, then inspect reference versus measured position, errors, rates, collective, and motor limits. The [analysis guide](../analysis/analysis.md) provides the interpretation and labeled plot slot.
 
-## 5. Run the six-mode study as a new experiment
+## 5. Run the six-mode study
 
 End the separate demonstration, [land/disarm using the MAVProxy SITL procedure](../environments/sitl.md#land-and-reset-the-simulated-vehicle), and restore the required initial condition. Prepare the aircraft with the staging helper again; only begin the study once it is holding in Position mode. The study needs the full F450 physical data because its final mode uses the four-rotor adapter.
 
@@ -76,7 +78,8 @@ source ros2/runtime_env.sh
 
 The runner executes the six recorded `full_excitation` flights in order, returning to Position mode between steps and waiting 3 s. It does not land, reset, or arm between steps. Monitor state and space for the complete path. Read [Running a series of experiments](../workflows/sequences.md) for interruption and manifests.
 
-## 6. Compare finalized study bags
+<span id="6-compare-finalized-study-bags"></span>
+## 6. Compare the study
 
 In a **repository-root shell after successful study completion**, with ROS sourced:
 
@@ -94,7 +97,7 @@ test "${#study_bags[@]}" -eq 6 && ./tools/px4_compare "${study_bags[@]}" --traje
 
 The command filters finalized bag directories rather than expanding unrelated files. Results go to `$study_path/comparison/summary.txt` and PNG figures. Verify the six metadata identities before interpreting overlays; [comparison](../analysis/comparison.md) aligns time to PX4-confirmed Offboard entry and explains which metrics are meaningful.
 
-## 7. End the flight and stop services
+## 7. Land and stop SITL
 
 A completed study leaves Position mode, not a landed/disarmed aircraft. [Land/disarm the simulated aircraft with MAVProxy and verify PX4 state](../environments/sitl.md#land-and-reset-the-simulated-vehicle), then in a **repository-root shell**:
 

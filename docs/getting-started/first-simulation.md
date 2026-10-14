@@ -58,4 +58,4 @@ The wrapper stops its tmux services and cleans up detached Gazebo processes asso
 
 Confirm the expected phases and final PX4 state on your installation before moving to the Offboard examples.
 
-Continue with [Position mode and switching to Offboard](../controllers/position-mode.md), then [record a flight](../workflows/recording.md) when the basic example works.
+Continue with [Position Mode](../controllers/position-mode.md) for the reference workflow, then [Offboard Staging](../controllers/offboard-staging.md) to prepare for an external controller. See [Recording](../workflows/recording.md) when the basic example works.

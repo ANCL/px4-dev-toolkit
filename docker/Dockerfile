@@ -111,7 +111,8 @@ COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} tools/px4_analyze tools/px4_analyze
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} tools/px4_compare tools/px4_compare
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} tools/tmux_log tools/tmux_log
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} tools/mavproxy_modules/ tools/mavproxy_modules/
-COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} tools/tests/ tools/tests/
+# Installer contract tests run from the full repository, not the SITL image.
+COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} tools/tests/test_tools.py tools/tests/test_tools.py
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} docker/entrypoint.sh docker/entrypoint.sh
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} LICENSE README.md ./
 

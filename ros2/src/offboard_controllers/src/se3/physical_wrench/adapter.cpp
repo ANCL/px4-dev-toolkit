@@ -3,7 +3,7 @@
  *
  * PX4 source of truth:
  *   ANCL/PX4-Autopilot
- *   commit 6d31b14291a8f86e76a2e6074eca6a2c47a080dc
+ *   commit 9af25b30f067c36269e94a96797be7943dd4f8e1
  *
  * Relevant PX4 paths:
  *   src/modules/control_allocator/VehicleActuatorEffectiveness/

@@ -1,7 +1,7 @@
 """Analysis profile for Position-mode staging and Offboard handoff.
 
 Profile flow:
-    PX4 status + manual-control stream
+    PX4 status (optional manual-control observations)
       -> identify Position-mode staging, arming, climb, and centered-stick hold
       -> identify confirmed Offboard takeover
       -> analyze the native PX4 controller pipeline around that lifecycle
@@ -38,11 +38,12 @@ TRAJECTORY_INPUT_TOPIC = TOPICS["IN_TRAJECTORY_SETPOINT"]
 
 REQUIRED_TOPICS = {
     STATUS_TOPIC,
-    MANUAL_CONTROL_TOPIC,
     OFFBOARD_MODE_TOPIC,
     TRAJECTORY_INPUT_TOPIC,
     *CONTROL_PIPELINE_TOPICS,
 }
+
+OPTIONAL_TOPICS = {MANUAL_CONTROL_TOPIC}
 
 
 @dataclass
@@ -109,7 +110,7 @@ def analyze(bag: BagData) -> AnalysisResult:
     """
 
     status = _required(bag, STATUS_TOPIC)
-    manual = _required(bag, MANUAL_CONTROL_TOPIC)
+    manual = bag.samples.get(MANUAL_CONTROL_TOPIC, [])
     offboard_mode = _required(bag, OFFBOARD_MODE_TOPIC)
     trajectory_input = _required(bag, TRAJECTORY_INPUT_TOPIC)
 
@@ -132,28 +133,35 @@ def analyze(bag: BagData) -> AnalysisResult:
     if armed_ns is None:
         raise RuntimeError("Armed state was not recorded")
 
-    climb_ns = _first_throttle_time(
-        manual,
-        lambda value: value > 0.10,
-        not_before_ns=armed_ns,
-    )
+    # For older bags, keep the original joystick phase validation.
+    # Without manual DDS telemetry, use PX4-confirmed state transitions;
+    # do not invent throttle/centered-stick times.
+    climb_ns = None
+    centered_ns = None
 
-    if climb_ns is None:
-        raise RuntimeError("Climb-stick command was not recorded")
+    if manual:
+        climb_ns = _first_throttle_time(
+            manual,
+            lambda value: value > 0.10,
+            not_before_ns=armed_ns,
+        )
 
-    centered_ns = _first_throttle_time(
-        manual,
-        lambda value: abs(value) <= 0.05,
-        not_before_ns=climb_ns,
-    )
+        if climb_ns is None:
+            raise RuntimeError("Climb-stick command was not recorded")
 
-    if centered_ns is None:
-        raise RuntimeError("Centered-stick staging state was not recorded")
+        centered_ns = _first_throttle_time(
+            manual,
+            lambda value: abs(value) <= 0.05,
+            not_before_ns=climb_ns,
+        )
+
+        if centered_ns is None:
+            raise RuntimeError("Centered-stick staging state was not recorded")
 
     offboard_ns = first_nav_state_time(
         status,
         offboard_state,
-        not_before_ns=centered_ns,
+        not_before_ns=centered_ns if centered_ns is not None else armed_ns,
     )
 
     if offboard_ns is None:
@@ -171,13 +179,16 @@ def analyze(bag: BagData) -> AnalysisResult:
         "bag_duration_s": bag.duration_s,
         "position_entry_s": bag.relative_seconds(position_ns),
         "armed_s": bag.relative_seconds(armed_ns),
-        "climb_start_s": bag.relative_seconds(climb_ns),
-        "centered_s": bag.relative_seconds(centered_ns),
         "prestream_start_s": bag.relative_seconds(prestream_ns),
         "offboard_entry_s": bag.relative_seconds(offboard_ns),
-        "centered_to_offboard_s": (offboard_ns - centered_ns) / 1e9,
         "prestream_to_offboard_s": (offboard_ns - prestream_ns) / 1e9,
     }
+    if centered_ns is not None:
+        metrics.update({
+            "climb_start_s": bag.relative_seconds(climb_ns),
+            "centered_s": bag.relative_seconds(centered_ns),
+            "centered_to_offboard_s": (offboard_ns - centered_ns) / 1e9,
+        })
 
     state_names = native_constant_names(status_type, "NAVIGATION_STATE_")
     transitions = mode_transitions(status)
@@ -197,30 +208,38 @@ def analyze(bag: BagData) -> AnalysisResult:
             f"{state_names.get(state, f'STATE_{state}')} ({state})"
         )
 
-    lines.extend(
-        [
-            "",
-            "Position-mode staging and Offboard handoff:",
-            f"  Position-mode entry: {metrics['position_entry_s']:.3f} s",
-            f"  armed: {metrics['armed_s']:.3f} s",
+    lines.extend([
+        "",
+        "Position-mode staging and Offboard handoff:",
+        f"  Position-mode entry: {metrics['position_entry_s']:.3f} s",
+        f"  armed: {metrics['armed_s']:.3f} s",
+    ])
+
+    if centered_ns is not None:
+        lines.extend([
             f"  climb command: {metrics['climb_start_s']:.3f} s",
             f"  sticks centered: {metrics['centered_s']:.3f} s",
-            f"  Offboard prestream start: {metrics['prestream_start_s']:.3f} s",
-            f"  Offboard entry: {metrics['offboard_entry_s']:.3f} s",
             f"  centered -> Offboard: {metrics['centered_to_offboard_s']:.3f} s",
-            f"  prestream -> Offboard: {metrics['prestream_to_offboard_s']:.3f} s",
-            "",
-            *control_pipeline_summary(pipeline),
-        ]
-    )
+        ])
+    else:
+        lines.append("  joystick timing: unavailable (not recorded)")
+
+    lines.extend([
+        f"  Offboard prestream start: {metrics['prestream_start_s']:.3f} s",
+        f"  Offboard entry: {metrics['offboard_entry_s']:.3f} s",
+        f"  prestream -> Offboard: {metrics['prestream_to_offboard_s']:.3f} s",
+        "",
+        *control_pipeline_summary(pipeline),
+    ])
 
     markers = [
         (metrics["position_entry_s"], "POSCTL ENTRY"),
         (metrics["armed_s"], "ARMED"),
-        (metrics["centered_s"], "STICKS CENTERED"),
         (metrics["prestream_start_s"], "OFFBOARD PRESTREAM"),
         (metrics["offboard_entry_s"], "OFFBOARD ENTRY"),
     ]
+    if centered_ns is not None:
+        markers.insert(2, (metrics["centered_s"], "STICKS CENTERED"))
 
     return AnalysisResult(
         summary="\n".join(lines) + "\n",

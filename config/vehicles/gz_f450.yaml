@@ -8,7 +8,7 @@ vehicle:
   type: quadrotor
 
 source:
-  px4_commit: 6d31b14291a8f86e76a2e6074eca6a2c47a080dc
+  px4_commit: 9af25b30f067c36269e94a96797be7943dd4f8e1
   airframe: ROMFS/px4fmu_common/init.d-posix/airframes/4022_gz_f450
   gazebo_model: Tools/simulation/gz/models/f450/model.sdf
 

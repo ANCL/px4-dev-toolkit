@@ -197,6 +197,10 @@ def trajectory_segments(
 
     elapsed = 0.0
     result = []
+    current = [float(v) for v in data["start_position"]]
+    if trajectory_name in trajectories and "start_position" in trajectories[trajectory_name]:
+        current = [float(v) for v in trajectories[trajectory_name]["start_position"]]
+    heading = float(data["default_yaw"])
 
     for index, segment_name in enumerate(
         segment_names,
@@ -223,16 +227,28 @@ def trajectory_segments(
             "end_s": elapsed + duration,
         }
 
-        if "offset" in segment:
-            item["offset"] = [
-                float(value)
-                for value in segment["offset"]
-            ]
-
-        if "yaw_offset" in segment:
-            item["yaw_offset"] = float(
-                segment["yaw_offset"]
-            )
+        if "position" in segment:
+            target = [float(v) for v in segment["position"]]
+            # Backward-compatible metric key: this is a DERIVED signed step
+            # amplitude, not a relative YAML command.
+            item["offset"] = [target[i] - current[i] for i in range(3)]
+            item["position"] = target
+            current = target
+        if "center" in segment:
+            item["center"] = [float(v) for v in segment["center"]]
+        if segment["type"] in {"circle", "helix"}:
+            import math
+            center = item["center"]
+            angle = 2.0 * math.pi * float(segment["turns"])
+            r = float(segment["radius"])
+            current = [center[0] + r * math.cos(angle),
+                       center[1] + r * math.sin(angle),
+                       center[2] + (float(segment["height"]) if segment["type"] == "helix" else 0.0)]
+        if "heading" in segment:
+            new_heading = float(segment["heading"])
+            item["yaw_offset"] = new_heading - heading
+            item["heading"] = new_heading
+            heading = new_heading
 
         result.append(item)
         elapsed += duration

@@ -2,20 +2,18 @@
 
 from pathlib import Path
 
-from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, LogInfo, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
-from px4_control_common.recording import launch_experiment, parse_recording_flag
+from px4_control_common.recording import (
+    controller_configuration_paths, launch_experiment, parse_recording_flag,
+)
 
 
-def make_control_node() -> Node:
+def make_control_node(controller_config: Path) -> Node:
     """Create the Offboard position controller node used by both launch modes."""
-    package_share = Path(
-        get_package_share_directory("offboard_controllers")
-    )
 
     return Node(
         package="offboard_controllers",
@@ -30,12 +28,7 @@ def make_control_node() -> Node:
                 "offboard_trigger":
                     LaunchConfiguration("offboard_trigger"),
                 "trajectory_config":
-                    str(
-                        package_share
-                        / "config"
-                        / "trajectory"
-                        / "trajectories.yaml"
-                    ),
+                    str(controller_config / "trajectory" / "trajectories.yaml"),
             },
         ],
     )
@@ -43,17 +36,22 @@ def make_control_node() -> Node:
 
 def launch_setup(context):
     record = parse_recording_flag(LaunchConfiguration("record").perform(context))
-    return launch_experiment(
-        node=make_control_node(),
-        record=record,
-        launch_file=__file__,
-        package="offboard_controllers",
-        topic_file="recording/offboard_position.txt",
-        bag_name="offboard_position",
-        process_name="offboard_position",
-        complete_message='Offboard position controller complete; stopping recording.',
-        failure_message='Offboard position controller failed; stopping recording.',
-    )
+    controller_config, _, origin = controller_configuration_paths(__file__)
+    return [
+        LogInfo(msg=f"Offboard Position YAML: {origin}; "
+                    f"trajectory={controller_config / 'trajectory/trajectories.yaml'}"),
+        *launch_experiment(
+            node=make_control_node(controller_config),
+            record=record,
+            launch_file=__file__,
+            package="offboard_controllers",
+            topic_file="recording/offboard_position.txt",
+            bag_name="offboard_position",
+            process_name="offboard_position",
+            complete_message='Offboard position controller complete; stopping recording.',
+            failure_message='Offboard position controller failed; stopping recording.',
+        ),
+    ]
 
 
 def generate_launch_description() -> LaunchDescription:

@@ -29,6 +29,34 @@ def find_repo_root(launch_file: str) -> Path:
     raise RuntimeError(f"Could not locate toolkit repository root from {start}")
 
 
+def controller_configuration_paths(launch_file: str) -> tuple[Path, Path, str]:
+    """Load live checkout YAML; allow packaged fallback only without a checkout.
+
+    Returns (controller_config_dir, vehicle_config_dir, origin_description).
+    All controller configuration is read once when a new node is launched.
+    """
+    try:
+        root = find_repo_root(launch_file)
+    except RuntimeError:
+        package_config = Path(get_package_share_directory("offboard_controllers")) / "config"
+        controller_config = package_config
+        vehicle_config = package_config / "vehicles"
+        origin = "packaged (no toolkit checkout found)"
+    else:
+        controller_config = root / "ros2/src/offboard_controllers/config"
+        vehicle_config = root / "config/vehicles"
+        origin = "repository source"
+
+    for file in (controller_config / "se3/controller.yaml",
+                 controller_config / "trajectory/trajectories.yaml"):
+        if not file.is_file():
+            raise RuntimeError(f"Controller configuration missing: {file}")
+    if not vehicle_config.is_dir():
+        raise RuntimeError(f"Vehicle configuration directory missing: {vehicle_config}")
+
+    return controller_config, vehicle_config, origin
+
+
 # Only profiles with allow_direct=True may record non-catalog ROS topics.
 # Otherwise topic names must resolve through the shared PX4 catalog.
 def read_topics(topic_file: Path, catalog_file: Path,

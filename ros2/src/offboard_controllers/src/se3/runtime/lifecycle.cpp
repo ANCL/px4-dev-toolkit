@@ -71,12 +71,7 @@ void Se3::update_vehicle_status(const px4_msgs::msg::VehicleStatus& msg) {
     px4_rate_setpoint_valid_ = false;
 
     trajectory_origin_ = trajectory::stationary_reference(
-        {
-            vehicle_state_.state().position.x,
-            vehicle_state_.state().position.y,
-            vehicle_state_.state().position.z,
-        },
-        trajectory_entry_yaw());
+        configured_trajectory_->start_position, configured_trajectory_->yaw);
 
     trajectory_start_time_ = get_clock()->now();
 
@@ -181,10 +176,6 @@ bool Se3::state_ready_for_offboard() const {
 }
 
 double Se3::trajectory_entry_yaw() const {
-  if (trajectory_name_ == "hover") {
-    const auto& forward = vehicle_state_.state().attitude.b1;
-    return std::atan2(forward.y, forward.x);
-  }
   return configured_trajectory_->yaw;
 }
 
@@ -193,12 +184,7 @@ trajectory::Reference Se3::current_trajectory_reference() {
   // Once Offboard is confirmed, trajectory time advances on the ROS clock.
   if (!offboard_active_) {
     trajectory_origin_ = trajectory::stationary_reference(
-        {
-            vehicle_state_.state().position.x,
-            vehicle_state_.state().position.y,
-            vehicle_state_.state().position.z,
-        },
-        trajectory_entry_yaw());
+        configured_trajectory_->start_position, trajectory_entry_yaw());
 
     return configured_trajectory_->sequence.sample(0.0, trajectory_origin_);
   }

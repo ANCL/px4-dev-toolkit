@@ -3,8 +3,11 @@
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
-from px4_control_common.recording import parse_recording_flag, read_topics
+from px4_control_common.recording import (
+    controller_configuration_paths, parse_recording_flag, read_topics,
+)
 
 
 class RecordingTests(unittest.TestCase):
@@ -30,6 +33,38 @@ class RecordingTests(unittest.TestCase):
         for value in ("0", "false", "no", "off", "", "invalid"):
             with self.subTest(value=value):
                 self.assertFalse(parse_recording_flag(value))
+
+    def test_checkout_yaml_is_authoritative(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "config/vehicles").mkdir(parents=True)
+            (root / "config/px4_topics.def").touch()
+            source = root / "ros2/src/offboard_controllers/config"
+            (source / "se3").mkdir(parents=True)
+            (source / "trajectory").mkdir(parents=True)
+            (source / "se3/controller.yaml").touch()
+            (source / "trajectory/trajectories.yaml").touch()
+            launch = root / "ros2/install/offboard_controllers/share/launch/se3.launch.py"
+            launch.parent.mkdir(parents=True)
+            launch.touch()
+
+            actual = controller_configuration_paths(str(launch))
+            self.assertEqual(actual, (source, root / "config/vehicles", "repository source"))
+
+    def test_standalone_install_uses_explicitly_reported_package_yaml(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            packaged = root / "share/offboard_controllers/config"
+            (packaged / "se3").mkdir(parents=True)
+            (packaged / "trajectory").mkdir(parents=True)
+            (packaged / "vehicles").mkdir()
+            (packaged / "se3/controller.yaml").touch()
+            (packaged / "trajectory/trajectories.yaml").touch()
+            with patch("px4_control_common.recording.get_package_share_directory",
+                       return_value=str(packaged.parent)):
+                actual = controller_configuration_paths(str(root / "isolated/launch.py"))
+            self.assertEqual(actual, (packaged, packaged / "vehicles",
+                                      "packaged (no toolkit checkout found)"))
 
 
 if __name__ == "__main__":

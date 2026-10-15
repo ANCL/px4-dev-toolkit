@@ -144,8 +144,7 @@ void OffboardPosition::run()
         // ROS clock so simulation time and the generated reference advance
         // on the same clock used by the ROS/PX4 experiment.
         trajectory_origin_ = trajectory::stationary_reference(
-          local_position_, trajectory_name_ == "hover" ? local_heading_
-                                                     : configured_trajectory_->yaw);
+          configured_trajectory_->start_position, configured_trajectory_->yaw);
         trajectory_start_time_ = get_clock()->now();
 
         RCLCPP_INFO(

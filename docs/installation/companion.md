@@ -36,6 +36,16 @@ ros2 pkg list
 
 A successful build and test run verifies the installed software, not the serial connection, Vicon tracking, PX4 estimator, or aircraft readiness.
 
+## Runtime YAML editing
+
+Controller gains and trajectory YAML in the toolkit source checkout are
+**authoritative at the next controller launch**. Restart the controller after
+a YAML edit; a rebuild is not required. ROS code or launch-file edits still
+require `./ros2/build.sh hardware` with the default copied installation.
+The launch logs the selected controller, trajectory and vehicle configuration
+paths. A standalone package without the checkout explicitly falls back to its
+installed YAML copies.
+
 ## Configure connections
 
 Edit [config/runtime/hardware.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/hardware.env) for your actual setup. Check the serial device and baud rate against the PX4 uXRCE-DDS client, and configure the Vicon server, rigid-body topic, frames, mapping transform, and timestamp behavior.

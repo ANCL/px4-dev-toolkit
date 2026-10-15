@@ -1,168 +1,107 @@
-# Trajectory references use PX4 local NED coordinates.
-# Each trajectory is anchored to the vehicle position when Offboard starts.
-#
-# Units:
-#   duration: seconds
-#   offset/radius/height/amplitude: metres
-#   yaw/yaw_offset: radians
-#   turns: revolutions
-#
-# At an exact segment boundary, the segment that is ending owns that sample;
-# the following segment begins immediately afterward. A step therefore changes
-# reference immediately after its start boundary.
-#
-# After the final segment, the terminal position/yaw is held indefinitely.
-
+# Fixed PX4 local NED setpoints (metres); independent of Offboard entry position.
+# Z is positive downward. All paths are defined around [0, 0, -0.75].
+# Step is instantaneous; line and yaw are smooth. Restart the controller after edits.
+frame: px4_local_ned
+start_position: [0.0, 0.0, -0.75]
 default_yaw: 0.0
 
 segments:
   hold_1s:
     type: hold
     duration: 1.0
-
   hold_2s:
     type: hold
     duration: 2.0
-
   hold_10s:
     type: hold
     duration: 10.0
 
-  step_x_1m:
+  step_x:
     type: step
     duration: 4.0
-    offset: [1.0, 0.0, 0.0]
-
-  step_y_1m:
+    position: [1.0, 0.0, -0.75]
+  step_y:
     type: step
     duration: 4.0
-    offset: [0.0, 1.0, 0.0]
-
-  step_z_1m:
+    position: [0.0, 1.0, -0.75]
+  step_z:
     type: step
     duration: 4.0
-    offset: [0.0, 0.0, -1.0]
+    position: [0.0, 0.0, -1.0]
 
-  line_x_2m:
+  line_x:
     type: line
     duration: 4.0
-    offset: [2.0, 0.0, 0.0]
+    position: [1.0, 0.0, -0.75]
+  line_y:
+    type: line
+    duration: 4.0
+    position: [0.0, 1.0, -0.75]
+  line_z:
+    type: line
+    duration: 4.0
+    position: [0.0, 0.0, -1.0]
+  return:
+    type: line
+    duration: 6.0
+    position: [0.0, 0.0, -0.75]
 
-  circle_r1:
+  circle:
     type: circle
     duration: 8.0
+    center: [0.0, 0.0, -0.75]
     radius: 1.0
     turns: 1.0
-
-  helix_r1_h1:
+  helix:
     type: helix
     duration: 10.0
+    center: [0.0, 0.0, -0.75]
     radius: 1.0
     height: -1.0
     turns: 2.0
-
-  north_1m:
-    type: line
-    duration: 4.0
-    offset: [1.0, 0.0, 0.0]
-
-  east_1m:
-    type: line
-    duration: 4.0
-    offset: [0.0, 1.0, 0.0]
-
-  up_1m:
-    type: line
-    duration: 4.0
-    offset: [0.0, 0.0, -1.0]
-
-  yaw_plus_90deg:
-    type: yaw
-    duration: 4.0
-    yaw_offset: 1.5707963267948966
-
-  yaw_minus_90deg:
-    type: yaw
-    duration: 4.0
-    yaw_offset: -1.5707963267948966
-
-  return_to_start:
-    type: line
-    duration: 6.0
-    offset: [-1.0, -1.0, 1.0]
-
-  figure_eight_2x1m:
+  figure_eight:
     type: figure_eight
     duration: 60.0
+    center: [0.0, 0.0, -0.75]
     x_amplitude: 2.0
     y_amplitude: 1.0
     turns: 3.0
 
+  yaw_90:
+    type: yaw
+    duration: 4.0
+    heading: 1.5707963267948966
+  yaw_0:
+    type: yaw
+    duration: 4.0
+    heading: 0.0
 
 trajectories:
   hover:
-    segments:
-      - hold_10s
+    segments: [hold_10s]
 
   step_response:
-    segments:
-      - hold_2s
-      - step_x_1m
-      - hold_2s
+    segments: [hold_2s, step_x, hold_2s, return, hold_2s]
 
   line_tracking:
-    segments:
-      - hold_2s
-      - line_x_2m
-      - hold_2s
+    segments: [hold_2s, line_x, hold_2s, return, hold_2s]
 
   circle_tracking:
-    segments:
-      - hold_2s
-      - circle_r1
-      - hold_2s
+    segments: [hold_2s, line_x, circle, return, hold_2s]
 
   helix_tracking:
-    segments:
-      - hold_2s
-      - line_x_2m
-      - circle_r1
-      - helix_r1_h1
-      - hold_2s
+    segments: [hold_2s, line_x, circle, helix, return, hold_2s]
 
   translation_yaw_sweep:
-    segments:
-      - hold_2s
-      - north_1m
-      - hold_1s
-      - east_1m
-      - hold_1s
-      - up_1m
-      - hold_1s
-      - yaw_plus_90deg
-      - hold_1s
-      - return_to_start
-      - yaw_minus_90deg
-      - hold_2s
+    segments: [hold_2s, line_x, hold_1s, return,
+               line_y, hold_1s, return,
+               line_z, hold_1s, return,
+               yaw_90, hold_1s, yaw_0, hold_2s]
 
   figure_eight_tracking:
-    segments:
-      - hold_2s
-      - figure_eight_2x1m
-      - hold_2s
+    segments: [hold_2s, figure_eight, hold_2s]
 
   full_excitation:
-    segments:
-      - hold_2s
-      - step_x_1m
-      - hold_1s
-      - step_y_1m
-      - hold_1s
-      - step_z_1m
-      - hold_1s
-      - yaw_plus_90deg
-      - hold_1s
-      - figure_eight_2x1m
-      - yaw_minus_90deg
-      - return_to_start
-      - hold_2s
+    segments: [hold_2s, step_x, hold_2s, return,
+               step_y, hold_2s, return,
+               yaw_90, hold_2s, figure_eight, yaw_0, hold_2s]

@@ -22,9 +22,9 @@ Resolve PX4 topic symbols through [config/px4_topics.def](https://github.com/ANC
 
 ## 4. Make mode transitions explicit
 
-Define readiness from the state and validity flags your law needs. Distinguish receipt, finite values, and freshness requirements. Prepare a valid heartbeat/setpoint stream appropriate to the interface, request Offboard, and confirm through PX4 `nav_state` rather than relying solely on command acknowledgement.
+Define readiness from the state and validity flags your law needs. Distinguish receipt, finite values, and freshness requirements. Prepare a valid heartbeat/setpoint stream appropriate to the interface, request Offboard automatically or wait for external selection, and confirm through PX4 `nav_state` rather than relying solely on command acknowledgement.
 
-Define trajectory origin/start time, behavior on mode loss and re-entry, return behavior, and process completion. Offboard position uses steady-clock deadlines and ROS trajectory time; SE(3) is a separate lifecycle with different pre-entry/arming behavior. Copying a launch file does not resolve those design decisions.
+Define trajectory origin/start time, behavior on mode loss and re-entry, return behavior, and process completion. Offboard position uses steady-clock deadlines and ROS trajectory time; SE(3) is a separate lifecycle with different pre-entry and setpoint behavior. Copying a launch file does not resolve those design decisions.
 
 Specify whether the controller can arm and how an interruption affects flight. A process exit or disappearing stream is not a guaranteed landing. Preserve PX4's configured independent flight controls/failsafes.
 

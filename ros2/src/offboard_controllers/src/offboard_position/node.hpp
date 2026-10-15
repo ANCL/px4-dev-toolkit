@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <string>
 
+#include <offboard_controllers/offboard_trigger.hpp>
 #include <offboard_controllers/trajectory/trajectory.hpp>
 #include <px4_msgs/msg/offboard_control_mode.hpp>
 #include <px4_msgs/msg/trajectory_setpoint.hpp>
@@ -49,7 +50,6 @@ private:
   enum class Phase
   {
     WAIT_READY,
-    WAIT_PREFLIGHT,
     WAIT_ARM,
     PRESTREAM,
     WAIT_OFFBOARD,
@@ -58,8 +58,8 @@ private:
     DONE,
   };
 
-  // The controller timer runs at 20 Hz. Thirty valid samples provide a
-  // 1.5-second Offboard heartbeat/setpoint prestream before the mode request.
+  // At 20 Hz, 30 prestream samples prepare automatic entry. External
+  // activation keeps streaming while awaiting PX4-confirmed takeover.
   static constexpr std::uint32_t kOffboardWarmupSamples = 30;
 
   static constexpr float kCustomModeEnabled = 1.0F;
@@ -98,7 +98,7 @@ private:
       trajectory_origin_ =
         trajectory::stationary_reference(
         local_position_,
-        configured_trajectory_->yaw);
+        trajectory_name_ == "hover" ? local_heading_ : configured_trajectory_->yaw);
 
       return configured_trajectory_->sequence.sample(
         0.0,
@@ -115,9 +115,6 @@ private:
 
 
   void publish_offboard_stream();
-
-
-  void publish_arm_command();
 
 
   void publish_offboard_mode_command();
@@ -158,7 +155,10 @@ private:
 
   trajectory::Reference trajectory_origin_{};
   trajectory::Vector3 local_position_{};
+  double local_heading_{0.0};
 
+  offboard_controllers::OffboardTrigger offboard_trigger_{
+    offboard_controllers::OffboardTrigger::AUTOMATIC};
   std::string trajectory_name_;
 
   rclcpp::Time trajectory_start_time_{0, 0, RCL_ROS_TIME};

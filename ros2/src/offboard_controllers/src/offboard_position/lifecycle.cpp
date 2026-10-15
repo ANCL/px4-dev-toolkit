@@ -97,54 +97,16 @@ void OffboardPosition::run()
         return;
       }
 
-      if (pre_flight_checks_pass_) {
-        publish_arm_command();
-        set_phase(Phase::WAIT_ARM);
-        return;
-      }
-
-      RCLCPP_INFO(
-        get_logger(),
-        "Vehicle is disarmed; waiting for PX4 pre-flight checks.");
-
-      set_phase(Phase::WAIT_PREFLIGHT);
-      return;
-
-
-    case Phase::WAIT_PREFLIGHT:
-      if (arming_state_ == VehicleStatus::ARMING_STATE_ARMED) {
-        RCLCPP_INFO(
-          get_logger(),
-          "Vehicle armed externally; proceeding to Offboard prestream.");
-
-        start_prestream();
-        return;
-      }
-
-      if (pre_flight_checks_pass_) {
-        publish_arm_command();
-        set_phase(Phase::WAIT_ARM);
-        return;
-      }
-
-      if (phase_elapsed_seconds() > 10.0) {
-        fail("PX4 pre-flight checks did not pass.");
-      }
-
+      RCLCPP_INFO(get_logger(), "Waiting for pilot/staging to arm the vehicle.");
+      set_phase(Phase::WAIT_ARM);
       return;
 
 
     case Phase::WAIT_ARM:
       if (arming_state_ == VehicleStatus::ARMING_STATE_ARMED) {
-        RCLCPP_INFO(get_logger(), "Vehicle armed.");
+        RCLCPP_INFO(get_logger(), "Vehicle armed externally.");
         start_prestream();
-        return;
       }
-
-      if (phase_elapsed_seconds() > 5.0) {
-        fail("PX4 did not arm.");
-      }
-
       return;
 
 
@@ -158,7 +120,11 @@ void OffboardPosition::run()
       ++offboard_samples_published_;
 
       if (offboard_samples_published_ >= kOffboardWarmupSamples) {
-        publish_offboard_mode_command();
+        if (offboard_controllers::requests_offboard(offboard_trigger_)) {
+          publish_offboard_mode_command();
+        } else {
+          RCLCPP_INFO(get_logger(), "Offboard ready; waiting for pilot mode switch.");
+        }
         set_phase(Phase::WAIT_OFFBOARD);
       }
 
@@ -177,8 +143,10 @@ void OffboardPosition::run()
         // Unlike phase deadlines, trajectory time intentionally follows the
         // ROS clock so simulation time and the generated reference advance
         // on the same clock used by the ROS/PX4 experiment.
-        trajectory_start_time_ =
-          get_clock()->now();
+        trajectory_origin_ = trajectory::stationary_reference(
+          local_position_, trajectory_name_ == "hover" ? local_heading_
+                                                     : configured_trajectory_->yaw);
+        trajectory_start_time_ = get_clock()->now();
 
         RCLCPP_INFO(
           get_logger(),
@@ -189,7 +157,8 @@ void OffboardPosition::run()
         return;
       }
 
-      if (phase_elapsed_seconds() > 5.0) {
+      if (offboard_controllers::requests_offboard(offboard_trigger_) &&
+          phase_elapsed_seconds() > 5.0) {
         fail("PX4 did not enter Offboard mode.");
       }
 

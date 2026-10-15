@@ -42,6 +42,8 @@ def make_control_node() -> Node:
                     LaunchConfiguration("trajectory"),
                 "handoff":
                     LaunchConfiguration("handoff"),
+                "offboard_trigger":
+                    LaunchConfiguration("offboard_trigger"),
                 "direct_controller":
                     LaunchConfiguration(
                         "direct_controller"
@@ -106,6 +108,11 @@ def generate_launch_description() -> LaunchDescription:
                     "PX4 Offboard handoff: acceleration, attitude, attitude_rate, or "
                     "thrust_and_torque."
                 ),
+            ),
+            DeclareLaunchArgument(
+                "offboard_trigger",
+                default_value="automatic",
+                description="Offboard entry: automatic or external (pilot mode switch).",
             ),
             DeclareLaunchArgument(
                 "direct_controller",

@@ -10,6 +10,9 @@ OffboardPosition::OffboardPosition()
     "trajectory",
     "hover");
 
+  offboard_trigger_ = offboard_controllers::parse_offboard_trigger(
+    declare_parameter<std::string>("offboard_trigger", "automatic"));
+
   const std::string trajectory_config =
     declare_parameter<std::string>(
     "trajectory_config",
@@ -80,8 +83,10 @@ OffboardPosition::OffboardPosition()
 
   RCLCPP_INFO(
     get_logger(),
-    "Configured Offboard trajectory: %s",
-    trajectory_name_.c_str());
+    "Configured Offboard trajectory: %s (trigger: %s)",
+    trajectory_name_.c_str(),
+    offboard_trigger_ == offboard_controllers::OffboardTrigger::AUTOMATIC
+      ? "automatic" : "external");
 
   RCLCPP_INFO(
     get_logger(),

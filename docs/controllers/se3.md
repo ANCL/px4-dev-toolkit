@@ -51,17 +51,29 @@ ros2 launch offboard_controllers se3.launch.py \
   publish_diagnostics:=true
 ```
 
-`hover` holds the entry position for two seconds. Choose another
+`hover` holds the entry position for 10 seconds. Choose another
 [trajectory](trajectories.md) for motion; add `record:=true` for a bag.
 Each mode page shows its exact launch arguments.
 
 <span id="when-the-controller-starts-and-stops"></span>
 
+## Activation
+
+`offboard_trigger:=automatic` (default) keeps the existing SITL mode-request
+workflow; `offboard_trigger:=external` publishes its readiness heartbeat and
+waits for PX4 to confirm the pilot's Offboard mode change. Neither mode arms
+the vehicle. Both start the trajectory on confirmed Offboard entry and request
+Position mode at trajectory completion. The `hover` trajectory captures the
+current position and heading at entry. **The SE(3) handoff setpoint is not
+prestreamed before Offboard**: higher-level/low-level handoff transitions
+require separate SITL verification before physical flight.
+
 ## Lifecycle
 
 1. Wait for valid state; publish the Offboard heartbeat and a diagnostic
-   trajectory reference. The configured warmup is 1.5 s, with mode-request
-   retries every 1 s (100 Hz outer loop by default).
+   trajectory reference. The warmup is 1.5 s (100 Hz outer loop by default). Automatic
+   activation retries mode requests every 1 s; external activation waits
+   for PX4-confirmed Offboard entry.
 2. **Start control output only after PX4 confirms Offboard** through
    `VehicleStatus.nav_state`. Unlike Offboard Position, SE(3) does not
    prestream its selected acceleration, attitude, rate, or wrench setpoint.

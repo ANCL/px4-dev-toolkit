@@ -2,7 +2,7 @@
 
 # Offboard Position
 
-This node sends a trajectory reference to PX4. PX4 calculates position feedback and all lower control stages. The external node generates the requested motion and handles the mode/arming sequence; it does not replace PX4's translational feedback with the SE(3) law.
+This node sends a trajectory reference to PX4. PX4 calculates position feedback and all lower control stages. The external node generates the requested motion and handles the mode sequence; it does not replace PX4's translational feedback with the SE(3) law.
 
 ```mermaid
 ---
@@ -29,7 +29,7 @@ The node runs at **20 Hz**. During prestream, the trajectory stays at time zero 
 
 ## Run
 
-Prepare SITL and verify valid local position/status. This controller **can request arming** when disarmed and PX4 pre-flight checks pass. For an airborne comparison, first prepare the aircraft using the [Offboard Staging](offboard-staging.md). A `hover` trajectory holds its entry position; it is not an automatic climb from the ground.
+Prepare SITL and verify valid local position/status. This controller never requests arming; the pilot or SITL staging helper must arm first. For an airborne comparison, first prepare the aircraft using the [Offboard Staging](offboard-staging.md). A `hover` trajectory holds its entry position; it is not an automatic climb from the ground.
 
 In a **separate repository-root shell**, after checking the intended simulated vehicle and ensuring no other Offboard controller is running:
 
@@ -39,11 +39,31 @@ ros2 launch offboard_controllers offboard_position.launch.py \
   trajectory:=line_tracking
 ```
 
+## Activation
+
+`offboard_trigger:=automatic` (default) requests Offboard after readiness and
+prestreaming. `offboard_trigger:=external` never arms or requests Offboard:
+it waits for the pilot's RC/joystick mode change and PX4-confirmed Offboard.
+Neither setting arms the aircraft: prepare and arm through the pilot or SITL
+staging first. Both modes start the trajectory clock on confirmed entry and
+request Position mode at trajectory completion. For `hover`, the reference
+captures the entry position and heading, then holds for 10 seconds.
+
+For an external-trigger example:
+
+```bash
+ros2 launch offboard_controllers offboard_position.launch.py \
+  trajectory:=hover offboard_trigger:=external
+```
+
+On physical hardware, validate the external mode switch, estimator, Offboard
+loss response and pilot Position-mode recovery without propellers before flight.
+
 ## Readiness, timing, and return
 
-The [lifecycle](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/offboard_position/lifecycle.cpp) waits for status and valid position, then arming/pre-flight checks. It sends **30 heartbeat/setpoint samples** (about 1.5 s at 20 Hz), requests Offboard, and waits for `nav_state` confirmation.
+The [lifecycle](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/offboard_position/lifecycle.cpp) waits for status and valid position, then waits for the aircraft to be armed. It sends **30 heartbeat/setpoint samples** (about 1.5 s at 20 Hz), requests Offboard only in automatic mode, and waits for `nav_state` confirmation.
 
-At trajectory completion it requests Position mode while continuing a valid stream. Only confirmed Position-mode return completes the experiment. Unexpected disarm, invalid position, lost Offboard, or a phase timeout exits with failure. Readiness can time out after 20 s; pre-flight waiting after 10 s; arm, takeover, and return waits after 5 s. These deadlines use a steady clock; trajectory time uses the ROS clock.
+At trajectory completion it requests Position mode while continuing a valid stream. Only confirmed Position-mode return completes the experiment. Unexpected disarm, invalid position, lost Offboard, or a phase timeout exits with failure. Initial state readiness can time out after 20 s; automatic takeover and return waits after 5 s. Waiting for pilot arming and external mode selection has no short timeout. These deadlines use a steady clock; trajectory time uses the ROS clock.
 
 Failure/interrupt exit does not issue a guaranteed landing command. After return, land and disarm the simulated vehicle through the prepared flight controls before stopping SITL.
 

@@ -107,6 +107,8 @@ Se3::Se3() : Node("se3") {
   handoff_ = declare_parameter<std::string>("handoff", "");
 
   direct_controller_ = declare_parameter<std::string>("direct_controller", "geometric_normalized");
+  offboard_trigger_ = parse_offboard_trigger(
+      declare_parameter<std::string>("offboard_trigger", "automatic"));
 
   publish_diagnostics_ = declare_parameter<bool>("publish_diagnostics", false);
 

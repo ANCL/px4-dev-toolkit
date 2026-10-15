@@ -37,6 +37,7 @@ public:
 
   const State& state() const { return state_; }
   bool armed() const { return armed_; }
+  bool attitude_valid() const { return attitude_valid_; }
   bool rotary_wing() const { return rotary_wing_; }
   bool landed_or_maybe_landed() const { return landed_ || maybe_landed_; }
 

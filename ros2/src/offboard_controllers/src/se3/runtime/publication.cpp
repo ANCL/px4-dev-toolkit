@@ -14,8 +14,8 @@ float Se3::finite_or_zero(double value) {
 }
 
 // The selected PX4 handoff has exactly one active Offboard control
-// ownership flag. The heartbeat is sent even while state is unavailable
-// so readiness and PX4 ownership remain separate concerns.
+// ownership flag. The lifecycle publishes this heartbeat only after
+// PX4 reports armed state and the required valid vehicle state.
 void Se3::publish_offboard_control_mode() {
   px4_msgs::msg::OffboardControlMode msg{};
 

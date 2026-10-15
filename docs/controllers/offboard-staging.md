@@ -31,9 +31,9 @@ concurrently.
 
 **Offboard** means PX4 accepts an external controller's chosen command type.
 A ROS `OffboardControlMode` heartbeat identifies the active command level.
-The controller requests the mode change and verifies
-`VehicleStatus.nav_state`; a command acknowledgement alone does not
-establish controller takeover.
+With automatic activation, the controller requests Offboard. With external
+activation, the pilot or another source selects it. Both paths confirm
+`VehicleStatus.nav_state`; a command acknowledgement alone is insufficient.
 
 ```mermaid
 ---
@@ -47,7 +47,7 @@ config:
 ---
 flowchart TB
     P["Position mode"] --> S["Prepare<br/>Offboard stream"]
-    S --> Q["Request<br/>Offboard mode"]
+    S --> Q["Controller or pilot<br/>selects Offboard"]
     Q --> C["PX4 confirms<br/>Offboard entry"]
     C --> T["Run trajectory"]
     T --> R["Request<br/>Position mode"]
@@ -55,7 +55,7 @@ flowchart TB
 ```
 
 [Offboard Position](offboard-position.md) streams a heartbeat and actual
-trajectory setpoints before requesting takeover.
+trajectory setpoints before takeover; only automatic activation requests Offboard.
 [SE(3) Control](se3.md#when-the-controller-starts-and-stops) warms up its
 heartbeat and diagnostic trajectory reference, then begins the selected
 control output after confirmed Offboard entry. The two controllers differ

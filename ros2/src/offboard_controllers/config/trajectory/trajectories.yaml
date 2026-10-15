@@ -24,6 +24,10 @@ segments:
     type: hold
     duration: 2.0
 
+  hold_10s:
+    type: hold
+    duration: 10.0
+
   step_x_1m:
     type: step
     duration: 4.0
@@ -98,7 +102,7 @@ segments:
 trajectories:
   hover:
     segments:
-      - hold_2s
+      - hold_10s
 
   step_response:
     segments:

@@ -31,7 +31,9 @@ void OffboardPosition::handle_local_position(
     msg.z_valid &&
     std::isfinite(msg.x) &&
     std::isfinite(msg.y) &&
-    std::isfinite(msg.z);
+    std::isfinite(msg.z) &&
+    (trajectory_name_ != "hover" ||
+      (msg.heading_good_for_control && std::isfinite(msg.heading)));
 
   if (valid) {
     local_position_ = {
@@ -39,6 +41,9 @@ void OffboardPosition::handle_local_position(
       static_cast<double>(msg.y),
       static_cast<double>(msg.z),
     };
+    if (std::isfinite(msg.heading)) {
+      local_heading_ = static_cast<double>(msg.heading);
+    }
   }
 
   if (valid && !local_position_valid_) {
@@ -67,8 +72,7 @@ void OffboardPosition::handle_command_ack(
   using VehicleCommandAck = px4_msgs::msg::VehicleCommandAck;
 
   if (
-    msg.command != VehicleCommand::VEHICLE_CMD_DO_SET_MODE &&
-    msg.command != VehicleCommand::VEHICLE_CMD_COMPONENT_ARM_DISARM)
+    msg.command != VehicleCommand::VEHICLE_CMD_DO_SET_MODE)
   {
     return;
   }

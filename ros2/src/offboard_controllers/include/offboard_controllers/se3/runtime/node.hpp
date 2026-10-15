@@ -33,6 +33,7 @@
 
 #include <offboard_controllers/math/operations.hpp>
 #include <offboard_controllers/offboard_lifecycle.hpp>
+#include <offboard_controllers/offboard_trigger.hpp>
 #include <offboard_controllers/px4/rate_controller.hpp>
 #include <offboard_controllers/px4/wrench.hpp>
 #include <offboard_controllers/runtime_timing.hpp>
@@ -64,6 +65,8 @@ private:
   void request_offboard_mode();
   void request_position_mode();
   trajectory::Reference current_trajectory_reference();
+  bool state_ready_for_offboard() const;
+  double trajectory_entry_yaw() const;
   void update();
 
   // Handoff-specific control computation
@@ -120,6 +123,9 @@ private:
 
   // These flags mirror PX4-confirmed ownership and the pending Position
   // return. A sent mode command does not itself set offboard_active_.
+  OffboardTrigger offboard_trigger_{OffboardTrigger::AUTOMATIC};
+  bool vehicle_status_received_{false};
+  bool vehicle_armed_{false};
   bool offboard_active_{false};
   bool position_mode_active_{false};
   bool return_to_position_requested_{false};

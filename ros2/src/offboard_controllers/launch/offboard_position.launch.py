@@ -27,6 +27,8 @@ def make_control_node() -> Node:
             {
                 "trajectory":
                     LaunchConfiguration("trajectory"),
+                "offboard_trigger":
+                    LaunchConfiguration("offboard_trigger"),
                 "trajectory_config":
                     str(
                         package_share
@@ -63,6 +65,11 @@ def generate_launch_description() -> LaunchDescription:
                 description=(
                     "Named trajectory from the shared trajectory configuration."
                 ),
+            ),
+            DeclareLaunchArgument(
+                "offboard_trigger",
+                default_value="automatic",
+                description="Offboard entry: automatic or external (pilot mode switch).",
             ),
             DeclareLaunchArgument(
                 "record",

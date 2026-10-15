@@ -78,25 +78,6 @@ void OffboardPosition::publish_offboard_stream()
 }
 
 
-void OffboardPosition::publish_arm_command()
-{
-  px4_msgs::msg::VehicleCommand msg{};
-
-  msg.param1 =
-    static_cast<float>(
-    px4_msgs::msg::VehicleCommand::ARMING_ACTION_ARM);
-
-  msg.command =
-    px4_msgs::msg::VehicleCommand::
-    VEHICLE_CMD_COMPONENT_ARM_DISARM;
-
-  fill_command_metadata(msg);
-  vehicle_command_pub_->publish(msg);
-
-  RCLCPP_INFO(get_logger(), "Arm command sent.");
-}
-
-
 void OffboardPosition::publish_offboard_mode_command()
 {
   px4_msgs::msg::VehicleCommand msg{};

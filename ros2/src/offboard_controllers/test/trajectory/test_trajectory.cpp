@@ -220,6 +220,11 @@ void test_sequence() {
   require_stationary(final_reference);
 }
 
+void test_hover_configuration() {
+  const auto configured = trajectory::load_trajectory(TRAJECTORY_CONFIG_PATH, "hover");
+  require_near(configured.sequence.duration_s(), 10.0, "hover duration");
+}
+
 void test_step_configuration() {
   const auto configured = trajectory::load_trajectory(TRAJECTORY_CONFIG_PATH, "step_response");
 
@@ -356,6 +361,7 @@ void test_full_excitation_configuration() {
 int main() {
   test_full_excitation_configuration();
   test_step_response();
+  test_hover_configuration();
   test_step_configuration();
   test_hold();
   test_line();

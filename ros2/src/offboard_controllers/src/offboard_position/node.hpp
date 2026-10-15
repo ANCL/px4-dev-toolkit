@@ -142,8 +142,9 @@ private:
   void fail(const char * reason);
 
 
-  // Only confirmed Position-mode return completes the experiment. Unexpected
-  // state changes, disarm, and phase timeouts terminate with failure.
+  // Only confirmed Position-mode return completes the experiment.
+  // Automatic return has a timeout; external return waits for the pilot.
+  // Unexpected state changes and disarm terminate with failure.
   void run();
 
 

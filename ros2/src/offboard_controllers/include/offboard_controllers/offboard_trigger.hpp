@@ -1,4 +1,4 @@
-// Shared Offboard activation policy; the controller always observes PX4 mode.
+// Shared Offboard mode-change policy; PX4 mode confirmation is authoritative.
 #pragma once
 
 #include <stdexcept>
@@ -15,6 +15,12 @@ inline OffboardTrigger parse_offboard_trigger(const std::string& value) {
 }
 
 inline bool requests_offboard(OffboardTrigger trigger) {
+  return trigger == OffboardTrigger::AUTOMATIC;
+}
+
+// Automatic entry also requests Position mode when the trajectory ends.
+// External entry leaves both mode changes to the pilot.
+inline bool requests_position_return(OffboardTrigger trigger) {
   return trigger == OffboardTrigger::AUTOMATIC;
 }
 

@@ -45,9 +45,10 @@ ros2 launch offboard_controllers offboard_position.launch.py \
 prestreaming. `offboard_trigger:=external` never arms or requests Offboard:
 it waits for the pilot's RC/joystick mode change and PX4-confirmed Offboard.
 Neither setting arms the aircraft: prepare and arm through the pilot or SITL
-staging first. Both modes start the trajectory clock on confirmed entry and
-request Position mode at trajectory completion. For `hover`, the reference
-captures the entry position and heading, then holds for 10 seconds.
+staging first. Both start the trajectory clock on confirmed entry. Automatic
+mode requests Position at trajectory completion; external mode holds the final
+setpoint and heartbeat until the pilot selects Position mode. For `hover`,
+the reference captures the entry position and heading, then holds for 10 seconds.
 
 For an external-trigger example:
 
@@ -63,7 +64,7 @@ loss response and pilot Position-mode recovery without propellers before flight.
 
 The [lifecycle](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/offboard_position/lifecycle.cpp) waits for status and valid position, then waits for the aircraft to be armed. It sends **30 heartbeat/setpoint samples** (about 1.5 s at 20 Hz), requests Offboard only in automatic mode, and waits for `nav_state` confirmation.
 
-At trajectory completion it requests Position mode while continuing a valid stream. Only confirmed Position-mode return completes the experiment. Unexpected disarm, invalid position, lost Offboard, or a phase timeout exits with failure. Initial state readiness can time out after 20 s; automatic takeover and return waits after 5 s. Waiting for pilot arming and external mode selection has no short timeout. These deadlines use a steady clock; trajectory time uses the ROS clock.
+At trajectory completion, automatic mode requests Position while continuing a valid stream; external mode holds the final reference and waits for a pilot-selected Position mode without a fixed handback deadline. Only confirmed Position-mode return completes the experiment. Unexpected disarm, invalid position, or another unrequested mode transition fails the experiment. Initial state readiness can time out after 20 s; automatic takeover and return waits after 5 s. Waiting for pilot arming and external mode selection has no short timeout. These deadlines use a steady clock; trajectory time uses the ROS clock.
 
 Failure/interrupt exit does not issue a guaranteed landing command. After return, land and disarm the simulated vehicle through the prepared flight controls before stopping SITL.
 

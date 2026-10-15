@@ -121,8 +121,9 @@ private:
   bool px4_rate_setpoint_valid_{false};
   bool publish_diagnostics_{false};
 
-  // These flags mirror PX4-confirmed ownership and the pending Position
-  // return. A sent mode command does not itself set offboard_active_.
+  // These flags mirror PX4-confirmed ownership and pending handback.
+  // External handback waits for a pilot-selected Position mode; a sent
+  // mode command never sets offboard_active_ on its own.
   OffboardTrigger offboard_trigger_{OffboardTrigger::AUTOMATIC};
   bool vehicle_status_received_{false};
   bool vehicle_armed_{false};

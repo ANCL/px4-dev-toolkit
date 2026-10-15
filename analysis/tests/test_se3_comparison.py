@@ -41,11 +41,14 @@ class TrajectorySegmentTests(unittest.TestCase):
         """A reusable segment may be selected directly, not only by trajectory."""
 
         configuration = """
+frame: px4_local_ned
+start_position: [0.0, 0.0, -1.5]
+default_yaw: 0.0
 segments:
   primitive:
     type: line
     duration: 2.5
-    offset: [1.0, 0.0, 0.0]
+    position: [1.0, 0.0, -1.5]
 
 trajectories:
   wrapped:

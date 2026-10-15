@@ -5,22 +5,18 @@ recording_output places study-managed bags; standalone recording uses bags/se3.
 
 from pathlib import Path
 
-from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, LogInfo, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
-from px4_control_common.recording import launch_experiment, parse_recording_flag
+from px4_control_common.recording import (
+    controller_configuration_paths, launch_experiment, parse_recording_flag,
+)
 
 
-def make_control_node() -> Node:
+def make_control_node(controller_config: Path, vehicle_config: Path) -> Node:
     """Create the configured SE(3) node used by recorded and unrecorded runs."""
-    package_share = Path(
-        get_package_share_directory(
-            "offboard_controllers"
-        )
-    )
 
     return Node(
         package="offboard_controllers",
@@ -29,12 +25,7 @@ def make_control_node() -> Node:
         output="screen",
         emulate_tty=True,
         parameters=[
-            str(
-                package_share
-                / "config"
-                / "se3"
-                / "controller.yaml"
-            ),
+            str(controller_config / "se3" / "controller.yaml"),
             {
                 "vehicle":
                     LaunchConfiguration("vehicle"),
@@ -53,18 +44,9 @@ def make_control_node() -> Node:
                         "publish_diagnostics"
                     ),
                 "vehicle_config_dir":
-                    str(
-                        package_share
-                        / "config"
-                        / "vehicles"
-                    ),
+                    str(vehicle_config),
                 "trajectory_config":
-                    str(
-                        package_share
-                        / "config"
-                        / "trajectory"
-                        / "trajectories.yaml"
-                    ),
+                    str(controller_config / "trajectory" / "trajectories.yaml"),
             },
         ],
     )
@@ -73,19 +55,25 @@ def make_control_node() -> Node:
 def launch_setup(context):
     record = parse_recording_flag(LaunchConfiguration("record").perform(context))
     recording_output = LaunchConfiguration("recording_output").perform(context).strip()
-    return launch_experiment(
-        node=make_control_node(),
-        record=record,
-        launch_file=__file__,
-        package="offboard_controllers",
-        topic_file="recording/se3.txt",
-        bag_name="se3",
-        process_name="se3",
-        complete_message='SE3 controller complete; stopping recording.',
-        failure_message='SE3 controller failed; stopping recording.',
-        recording_output=recording_output,
-        allow_direct_topics=True,
-    )
+    controller_config, vehicle_config, origin = controller_configuration_paths(__file__)
+    return [
+        LogInfo(msg=f"SE3 YAML: {origin}; controller={controller_config / 'se3/controller.yaml'}; "
+                    f"trajectory={controller_config / 'trajectory/trajectories.yaml'}; "
+                    f"vehicles={vehicle_config}"),
+        *launch_experiment(
+            node=make_control_node(controller_config, vehicle_config),
+            record=record,
+            launch_file=__file__,
+            package="offboard_controllers",
+            topic_file="recording/se3.txt",
+            bag_name="se3",
+            process_name="se3",
+            complete_message='SE3 controller complete; stopping recording.',
+            failure_message='SE3 controller failed; stopping recording.',
+            recording_output=recording_output,
+            allow_direct_topics=True,
+        ),
+    ]
 
 
 def generate_launch_description() -> LaunchDescription:

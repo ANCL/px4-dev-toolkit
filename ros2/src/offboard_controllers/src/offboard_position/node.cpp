@@ -81,6 +81,12 @@ OffboardPosition::OffboardPosition()
       run();
     });
 
+  RCLCPP_INFO(get_logger(),
+              "Fixed PX4 local NED start: [%.3f, %.3f, %.3f], yaw=%.3f rad",
+              configured_trajectory_->start_position[0],
+              configured_trajectory_->start_position[1],
+              configured_trajectory_->start_position[2], configured_trajectory_->yaw);
+
   RCLCPP_INFO(
     get_logger(),
     "Configured Offboard trajectory: %s (trigger: %s)",

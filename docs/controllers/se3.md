@@ -64,8 +64,7 @@ workflow; `offboard_trigger:=external` publishes its readiness heartbeat and
 waits for PX4 to confirm the pilot's Offboard mode change. Neither mode arms
 the vehicle. Both start the trajectory on confirmed Offboard entry. Automatic
 mode requests Position on completion; external mode holds the final setpoint
-until the pilot selects Position mode. The `hover` trajectory captures the
-current position and heading at entry. **The SE(3) handoff setpoint is not
+until the pilot selects Position mode. The `hover` trajectory holds the configured absolute NED start position and heading; it does not use the measured entry pose. **The SE(3) handoff setpoint is not
 prestreamed before Offboard**: higher-level/low-level handoff transitions
 require separate SITL verification before physical flight.
 
@@ -111,6 +110,15 @@ settings to another airframe.
 <span id="read-the-mathematics"></span>
 
 ## Configuration and data
+
+When launched inside a toolkit checkout, SE(3) reads controller gains,
+trajectory definitions, and vehicle YAML directly from that checkout at process
+startup. Editing these files requires restarting the controller, **not**
+rebuilding ROS 2. The exact source paths are logged at launch. Packaged YAML is
+used only for a standalone installation without the checkout and is reported.
+Keep a copy or hash of experiment YAML alongside each flight recording: changing
+trajectory segment definitions after a flight changes comparison boundaries.
+
 
 Controller gains and timing: [controller.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/config/se3/controller.yaml).
 Vehicle parameters belong in vehicle files. Diagnostics report calculated

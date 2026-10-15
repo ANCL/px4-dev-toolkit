@@ -128,8 +128,9 @@ struct ConfiguredTrajectory
 {
   Sequence sequence;
 
-  // Initial heading [rad] used to anchor the trajectory.
+  // Fixed PX4 local NED start pose, independent of Offboard entry position.
   double yaw;
+  Vector3 start_position;
 };
 
 

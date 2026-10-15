@@ -95,10 +95,8 @@ private:
       phase_ != Phase::RUN &&
       phase_ != Phase::WAIT_POSITION)
     {
-      trajectory_origin_ =
-        trajectory::stationary_reference(
-        local_position_,
-        trajectory_name_ == "hover" ? local_heading_ : configured_trajectory_->yaw);
+      trajectory_origin_ = trajectory::stationary_reference(
+        configured_trajectory_->start_position, configured_trajectory_->yaw);
 
       return configured_trajectory_->sequence.sample(
         0.0,

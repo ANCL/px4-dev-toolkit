@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 #include <offboard_controllers/trajectory/trajectory.hpp>
+#include <yaml-cpp/yaml.h>
 
 namespace trajectory = offboard_controllers::trajectory;
 
@@ -220,33 +221,69 @@ void test_sequence() {
   require_stationary(final_reference);
 }
 
-void test_hover_configuration() {
-  const auto configured = trajectory::load_trajectory(TRAJECTORY_CONFIG_PATH, "hover");
-  require_near(configured.sequence.duration_s(), 10.0, "hover duration");
-}
+// Editable experiment YAML is not a fixed numeric reference trajectory.
+// Verify every configured segment and sequence can load and sample safely.
+void test_editable_configuration() {
+  const YAML::Node yaml = YAML::LoadFile(TRAJECTORY_CONFIG_PATH);
+  const YAML::Node segments = yaml["segments"];
+  const YAML::Node trajectories = yaml["trajectories"];
+  if (!segments.IsMap() || segments.size() == 0 ||
+      !trajectories.IsMap() || trajectories.size() == 0) {
+    throw std::runtime_error("Trajectory YAML must define segments and trajectories.");
+  }
 
-void test_step_configuration() {
-  const auto configured = trajectory::load_trajectory(TRAJECTORY_CONFIG_PATH, "step_response");
+  const auto assert_finite = [](const trajectory::Reference& r) {
+    for (const auto& vector : {r.position, r.velocity, r.acceleration, r.jerk, r.snap}) {
+      for (double component : vector) {
+        if (!std::isfinite(component)) {
+          throw std::runtime_error("Configured trajectory produced nonfinite vector data.");
+        }
+      }
+    }
+    if (!std::isfinite(r.yaw) || !std::isfinite(r.yaw_rate) ||
+        !std::isfinite(r.yaw_acceleration)) {
+      throw std::runtime_error("Configured trajectory produced nonfinite yaw data.");
+    }
+  };
+  const auto check = [&](const YAML::Node& definitions) {
+    for (const auto& item : definitions) {
+      const auto name = item.first.as<std::string>();
+      const auto configured = trajectory::load_trajectory(TRAJECTORY_CONFIG_PATH, name);
+      const double duration = configured.sequence.duration_s();
+      if (!std::isfinite(duration) || duration <= 0 || !std::isfinite(configured.yaw)) {
+        throw std::runtime_error("Invalid configured trajectory duration or heading: " + name);
+      }
+      const auto start = trajectory::stationary_reference(
+          configured.start_position, configured.yaw);
+      assert_finite(configured.sequence.sample(0.0, start));
+      assert_finite(configured.sequence.sample(duration / 2.0, start));
+      assert_finite(configured.sequence.sample(duration, start));
+    }
+  };
+  check(segments);
+  check(trajectories);
 
-  require_near(configured.sequence.duration_s(), 8.0, "step response duration");
-}
+  // Verify each configured step/line ends at its YAML NED target.
+  // Expected values come from editable YAML, not hard-coded flight scenarios.
+  for (const auto& item : trajectories) {
+    const auto configured = trajectory::load_trajectory(
+        TRAJECTORY_CONFIG_PATH, item.first.as<std::string>());
+    const auto origin = trajectory::stationary_reference(
+        configured.start_position, configured.yaw);
+    double end_s = 0.0;
+    for (const auto& name_node : item.second["segments"]) {
+      const auto definition = segments[name_node.as<std::string>()];
+      end_s += definition["duration"].as<double>();
+      if (definition["position"]) {
+        const auto position = definition["position"];
+        const trajectory::Vector3 expected{
+            position[0].as<double>(), position[1].as<double>(), position[2].as<double>()};
+        require_vector(configured.sequence.sample(end_s, origin).position,
+                       expected, "absolute commanded NED position");
+      }
+    }
+  }
 
-void test_configuration() {
-  const auto configured =
-      trajectory::load_trajectory(TRAJECTORY_CONFIG_PATH, "translation_yaw_sweep");
-
-  require_near(configured.sequence.duration_s(), 34.0, "configured sequence duration");
-
-  require_near(configured.yaw, 0.0, "configured sequence yaw");
-
-  const auto figure_eight =
-      trajectory::load_trajectory(TRAJECTORY_CONFIG_PATH, "figure_eight_tracking");
-
-  require_near(figure_eight.sequence.duration_s(), 64.0, "figure-eight configured duration");
-
-  const auto primitive = trajectory::load_trajectory(TRAJECTORY_CONFIG_PATH, "circle_r1");
-
-  require_near(primitive.sequence.duration_s(), 8.0, "direct trajectory duration");
 }
 
 void test_analytic_segment_derivatives() {
@@ -344,25 +381,9 @@ void test_invalid_trajectory_inputs() {
 
 } // namespace
 
-void test_full_excitation_configuration() {
-  const auto configured = trajectory::load_trajectory(TRAJECTORY_CONFIG_PATH, "full_excitation");
-
-  require_near(configured.sequence.duration_s(), 94.0, "full excitation duration");
-
-  const auto origin = trajectory::stationary_reference({0.0, 0.0, -2.0}, 0.0);
-
-  const auto final = configured.sequence.sample(configured.sequence.duration_s(), origin);
-
-  require_vector(final.position, {0.0, 0.0, -2.0}, "full excitation final position");
-
-  require_near(final.yaw, 0.0, "full excitation final yaw");
-}
-
 int main() {
-  test_full_excitation_configuration();
+  test_editable_configuration();
   test_step_response();
-  test_hover_configuration();
-  test_step_configuration();
   test_hold();
   test_line();
   test_circle();
@@ -370,7 +391,6 @@ int main() {
   test_yaw_sweep();
   test_figure_eight();
   test_sequence();
-  test_configuration();
   test_analytic_segment_derivatives();
   test_exact_segment_boundary();
   test_invalid_trajectory_inputs();

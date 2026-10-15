@@ -25,7 +25,7 @@ flowchart TB
 
 `TrajectorySetpoint` carries NED position [m], velocity [m/s], acceleration [m/s²], jerk [m/s³], yaw [rad], and yaw rate [rad/s]. Position is the active feedback level (`OffboardControlMode.position=true`); velocity and acceleration provide translational feedforward. Jerk is carried in the message, but the pinned PX4 position controller does not consume it. Both messages share each publication timestamp. See [publication.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/offboard_position/publication.cpp).
 
-The node runs at **20 Hz**. During prestream, the trajectory stays at time zero and its origin follows the latest local position. The last pre-entry origin is retained for the run; the trajectory clock starts when PX4 confirms Offboard. Desired yaw comes from trajectory configuration. Read [Trajectories](trajectories.md) for relative offsets and segment definitions.
+The node runs at **20 Hz**. During prestream, the trajectory stays at time zero at the configured absolute NED start position, independent of the measured vehicle position; the trajectory clock starts when PX4 confirms Offboard. Desired yaw comes from trajectory configuration. Read [Trajectories](trajectories.md) for relative offsets and segment definitions.
 
 ## Run
 
@@ -47,8 +47,7 @@ it waits for the pilot's RC/joystick mode change and PX4-confirmed Offboard.
 Neither setting arms the aircraft: prepare and arm through the pilot or SITL
 staging first. Both start the trajectory clock on confirmed entry. Automatic
 mode requests Position at trajectory completion; external mode holds the final
-setpoint and heartbeat until the pilot selects Position mode. For `hover`,
-the reference captures the entry position and heading, then holds for 10 seconds.
+setpoint and heartbeat until the pilot selects Position mode. For `hover`, the reference holds the configured fixed NED start position and heading for 10 seconds.
 
 For an external-trigger example:
 
@@ -67,6 +66,15 @@ The [lifecycle](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offbo
 At trajectory completion, automatic mode requests Position while continuing a valid stream; external mode holds the final reference and waits for a pilot-selected Position mode without a fixed handback deadline. Only confirmed Position-mode return completes the experiment. Unexpected disarm, invalid position, or another unrequested mode transition fails the experiment. Initial state readiness can time out after 20 s; automatic takeover and return waits after 5 s. Waiting for pilot arming and external mode selection has no short timeout. These deadlines use a steady clock; trajectory time uses the ROS clock.
 
 Failure/interrupt exit does not issue a guaranteed landing command. After return, land and disarm the simulated vehicle through the prepared flight controls before stopping SITL.
+
+## Configuration source
+
+In a toolkit checkout, the launch reads the working source
+`ros2/src/offboard_controllers/config/trajectory/trajectories.yaml` at each
+controller startup, not the installed copy. A YAML-only edit needs a fresh
+controller process, **not** a ROS rebuild. The launch logs the selected path.
+For a standalone ROS install without the toolkit checkout, packaged YAML is
+used and explicitly reported.
 
 ## Recording and interpretation
 

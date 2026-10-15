@@ -62,8 +62,9 @@ Each mode page shows its exact launch arguments.
 `offboard_trigger:=automatic` (default) keeps the existing SITL mode-request
 workflow; `offboard_trigger:=external` publishes its readiness heartbeat and
 waits for PX4 to confirm the pilot's Offboard mode change. Neither mode arms
-the vehicle. Both start the trajectory on confirmed Offboard entry and request
-Position mode at trajectory completion. The `hover` trajectory captures the
+the vehicle. Both start the trajectory on confirmed Offboard entry. Automatic
+mode requests Position on completion; external mode holds the final setpoint
+until the pilot selects Position mode. The `hover` trajectory captures the
 current position and heading at entry. **The SE(3) handoff setpoint is not
 prestreamed before Offboard**: higher-level/low-level handoff transitions
 require separate SITL verification before physical flight.
@@ -77,8 +78,9 @@ require separate SITL verification before physical flight.
 2. **Start control output only after PX4 confirms Offboard** through
    `VehicleStatus.nav_state`. Unlike Offboard Position, SE(3) does not
    prestream its selected acceleration, attitude, rate, or wrench setpoint.
-3. At trajectory completion, request Position mode while maintaining the
-   stream. Finish only when PX4 confirms the return.
+3. At trajectory completion, automatically request Position mode or hold the
+   final setpoint for pilot-selected handback, depending on `offboard_trigger`.
+   Finish only when PX4 confirms Position mode.
 
 Offboard loss or invalid state can interrupt control. A subsequent confirmed
 Offboard entry re-anchors and restarts the trajectory; PX4-rate internal state

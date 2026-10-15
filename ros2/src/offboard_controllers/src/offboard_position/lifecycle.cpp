@@ -182,14 +182,21 @@ void OffboardPosition::run()
       {
         publish_offboard_stream();
 
-        RCLCPP_INFO(
-          get_logger(),
-          "Trajectory '%s' complete after %.2f s; "
-          "requesting PX4 Position mode.",
-          trajectory_name_.c_str(),
-          configured_trajectory_->sequence.duration_s());
-
-        publish_position_mode_command();
+        if (offboard_controllers::requests_position_return(offboard_trigger_)) {
+          RCLCPP_INFO(
+            get_logger(),
+            "Trajectory '%s' complete after %.2f s; requesting PX4 Position mode.",
+            trajectory_name_.c_str(),
+            configured_trajectory_->sequence.duration_s());
+          publish_position_mode_command();
+        } else {
+          RCLCPP_INFO(
+            get_logger(),
+            "Trajectory '%s' complete after %.2f s; holding final "
+            "setpoint until pilot selects Position mode.",
+            trajectory_name_.c_str(),
+            configured_trajectory_->sequence.duration_s());
+        }
         set_phase(Phase::WAIT_POSITION);
         return;
       }
@@ -204,21 +211,23 @@ void OffboardPosition::run()
         return;
       }
 
-      // Continue a valid Offboard stream until PX4 confirms Position mode.
-      // This makes the explicit mode command, rather than heartbeat loss, the
-      // reason PX4 relinquishes Offboard control.
-      publish_offboard_stream();
-
       if (nav_state_ == VehicleStatus::NAVIGATION_STATE_POSCTL) {
-        RCLCPP_INFO(
-          get_logger(),
-          "PX4 Position mode active.");
-
+        RCLCPP_INFO(get_logger(), "PX4 Position mode active.");
         complete();
         return;
       }
 
-      if (phase_elapsed_seconds() > 5.0) {
+      if (nav_state_ != VehicleStatus::NAVIGATION_STATE_OFFBOARD) {
+        fail("PX4 left Offboard without confirmed Position mode.");
+        return;
+      }
+
+      // Keep the final trajectory reference and heartbeat active while
+      // waiting for confirmed handback. External handback has no timer.
+      publish_offboard_stream();
+
+      if (offboard_controllers::requests_position_return(offboard_trigger_) &&
+          phase_elapsed_seconds() > 5.0) {
         fail("PX4 did not return to Position mode.");
       }
 

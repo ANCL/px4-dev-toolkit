@@ -48,11 +48,18 @@ int main()
   using offboard_controllers::OffboardTrigger;
   using offboard_controllers::parse_offboard_trigger;
   using offboard_controllers::requests_offboard;
+  using offboard_controllers::requests_position_return;
   using offboard_controllers::offboard_ready;
 
   if (!requests_offboard(parse_offboard_trigger("automatic")) ||
       requests_offboard(parse_offboard_trigger("external"))) {
     std::cerr << "Incorrect Offboard activation policy.\n";
+    return EXIT_FAILURE;
+  }
+
+  if (!requests_position_return(OffboardTrigger::AUTOMATIC) ||
+      requests_position_return(OffboardTrigger::EXTERNAL)) {
+    std::cerr << "Incorrect Position return policy.\n";
     return EXIT_FAILURE;
   }
 

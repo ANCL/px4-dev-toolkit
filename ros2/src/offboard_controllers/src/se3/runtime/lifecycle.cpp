@@ -91,7 +91,7 @@ void Se3::update_vehicle_status(const px4_msgs::msg::VehicleStatus& msg) {
     px4_rate_setpoint_valid_ = false;
 
     if (return_to_position_requested_) {
-      RCLCPP_INFO(get_logger(), "PX4 left Offboard after the Position-mode return request; "
+      RCLCPP_INFO(get_logger(), "PX4 left Offboard after trajectory completion; "
                                 "waiting for Position-mode confirmation.");
     } else {
       RCLCPP_WARN(get_logger(), "PX4 left Offboard before trajectory completion; "
@@ -268,13 +268,19 @@ void Se3::update() {
 
   if (!return_to_position_requested_ &&
       trajectory_elapsed_s >= configured_trajectory_->sequence.duration_s()) {
-    request_position_mode();
+    if (requests_position_return(offboard_trigger_)) {
+      request_position_mode();
+    } else {
+      // Keep the final setpoint and heartbeat until the pilot hands back.
+      return_to_position_requested_ = true;
+      RCLCPP_INFO(get_logger(), "Trajectory complete; holding final setpoint "
+                                "until pilot selects Position mode.");
+    }
 
-  } else if (return_to_position_requested_ &&
+  } else if (requests_position_return(offboard_trigger_) &&
+             return_to_position_requested_ &&
              (get_clock()->now() - position_return_last_request_at_).seconds() >= 1.0) {
-    // Keep explicitly requesting Position mode while the Offboard stream
-    // remains valid. PX4 should leave Offboard because it accepts the mode
-    // request, not because the heartbeat disappears.
+    // Keep automatic mode requests active until PX4 changes modes.
     request_position_mode();
   }
 }

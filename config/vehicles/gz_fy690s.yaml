@@ -8,7 +8,7 @@ vehicle:
   type: hexarotor
 
 source:
-  px4_commit: f5083ca2c5b919350880e8667e636ef70715db17
+  px4_commit: 6d31b14291a8f86e76a2e6074eca6a2c47a080dc
   airframe: ROMFS/px4fmu_common/init.d-posix/airframes/6001_gz_fy690s
   gazebo_model: Tools/simulation/gz/models/fy690s/model.sdf
 

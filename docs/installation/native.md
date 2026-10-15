@@ -29,7 +29,7 @@ The installer installs host dependencies through `sudo`, fetches the **SITL** pi
 
 ## Pinned external sources
 
-The complete simulation source manifest is [config/sources/sitl.repos](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/sources/sitl.repos). Its PX4 pin is `f5083ca2c5b919350880e8667e636ef70715db17`.
+The complete simulation source manifest is [config/sources/sitl.repos](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/sources/sitl.repos). Its PX4 pin is `6d31b14291a8f86e76a2e6074eca6a2c47a080dc`.
 
 `setup/fetch_sources.sh sitl` preserves existing full source sets rather than resetting them. If only part of a pinned source set exists, fetching stops rather than mixing revisions. Resolve partial checkouts deliberately; see [Installation troubleshooting](../reference/troubleshooting.md#installation).
 

@@ -131,7 +131,7 @@ $$
 
 Its first three coordinates are normalized torque; the fourth is normalized body-Z thrust. The roll and pitch scales share the larger normalized inverse-column norm; yaw and thrust use the corresponding mixer-column rules. [`allocator_normalization_scale()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/physical_wrench/matrices.cpp#L213) implements those rules, and [`adapt()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/physical_wrench/adapter.cpp#L182) assembles the final command.
 
-The intention is that the pinned PX4 allocator's corresponding normalized inverse mixer reconstructs the same modeled $u$. This correspondence depends on the **pinned PX4 allocation algorithm, coefficients, geometry, and rotor order**; it does not prove that the motors deliver the modeled thrust. See [PX4's pinned `ControlAllocationPseudoInverse.cpp`](https://github.com/ANCL/PX4-Autopilot/blob/6d31b14291a8f86e76a2e6074eca6a2c47a080dc/src/lib/control_allocation/control_allocation/ControlAllocationPseudoInverse.cpp).
+The intention is that the pinned PX4 allocator's corresponding normalized inverse mixer reconstructs the same modeled $u$. This correspondence depends on the **pinned PX4 allocation algorithm, coefficients, geometry, and rotor order**; it does not prove that the motors deliver the modeled thrust. See [PX4's pinned `ControlAllocationPseudoInverse.cpp`](https://github.com/ANCL/PX4-Autopilot/blob/9af25b30f067c36269e94a96797be7943dd4f8e1/src/lib/control_allocation/control_allocation/ControlAllocationPseudoInverse.cpp).
 
 <span id="parameters-timing-and-messages"></span>
 

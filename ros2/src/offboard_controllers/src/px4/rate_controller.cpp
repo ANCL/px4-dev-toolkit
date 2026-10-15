@@ -3,7 +3,7 @@
  *
  * Source of truth:
  *   ANCL/PX4-Autopilot
- *   commit 6d31b14291a8f86e76a2e6074eca6a2c47a080dc
+ *   commit 9af25b30f067c36269e94a96797be7943dd4f8e1
  *
  *   src/lib/rate_control/rate_control.cpp
  *   src/modules/mc_rate_control/MulticopterRateControl.cpp

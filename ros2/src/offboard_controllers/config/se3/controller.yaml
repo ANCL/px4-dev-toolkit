@@ -13,7 +13,7 @@ se3:
     attitude_gain: [6.5, 6.5, 2.8]
 
     # PX4 multicopter rate-controller parameters reproduced from
-    # 6d31b14291a8f86e76a2e6074eca6a2c47a080dc. These are controller tuning
+    # 9af25b30f067c36269e94a96797be7943dd4f8e1. These are controller tuning
     # values, not physical vehicle properties.
     px4_rate_p: [0.15, 0.15, 0.20]
     px4_rate_i: [0.20, 0.20, 0.10]

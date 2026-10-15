@@ -37,6 +37,21 @@ Registered profiles are `position_takeoff_hover`, `offboard_takeoff_handoff`, `o
 
 For SE(3), recorded `OffboardControlMode` determines the active command level. Simultaneous or changing levels are rejected. Direct-law identity comes from explicit metadata; without it, normalized geometric diagnostics can identify that law, but PX4-rate and physical modes cannot reliably be distinguished from downstream wrench messages alone. `unknown` is a data limitation, not a missing controller label to guess.
 
+## Reduced DDS telemetry on F450 hardware
+
+The ANCL hardware firmware intentionally omits `/fmu/out/sensor_combined`,
+`/fmu/out/battery_status`, and `/fmu/out/manual_control_setpoint` to preserve
+serial bandwidth. The vehicle still handles its battery and pilot controls
+internally. Recorder topic lists therefore omit those unavailable ROS topics.
+
+For historical `position_takeoff_hover` and `offboard_takeoff_handoff` bags,
+manual-control samples remain an optional analysis input. When present, their
+joystick-phase timing is analyzed as before. When absent, the profiles retain
+PX4-confirmed arming/mode events and control-pipeline analysis but mark
+joystick-dependent timing (and centered-stick hover drift) unavailable; they
+must not infer stick movements from the vehicle's motion. Native PX4 logs are
+needed for any later reconstruction of those discarded observations.
+
 ## Time alignment
 
 [analysis/core.py](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/core.py) uses **rosbag receive timestamps** as the common cross-topic clock. It does not mix PX4 boot/sample timestamps with host/ROS time. Each topic is independently sampled.

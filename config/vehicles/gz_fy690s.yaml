@@ -61,9 +61,9 @@ px4_allocator:
   airframe_type: 0
   rotor_count: 6
 
-  # The pinned FY690S airframe does not define MPC_THR_HOVER. Do not invent
-  # a normalized hover-thrust value here. Until one is experimentally
-  # validated, this vehicle supports the SE3 acceleration handoff only.
+  # Calibrated in FY690S SITL using PX4's hover thrust estimator.
+  # HTE: 0.38898 (valid); steady thrust command: -0.38877.
+  hover_thrust: 0.39
 
   rotors:
     - index: 0

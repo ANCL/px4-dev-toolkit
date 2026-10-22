@@ -17,11 +17,11 @@ source ros2/runtime_env.sh
 ./tools/run_sequence config/sequences/se3/handoff_comparison.yaml
 ```
 
-The runner accepts one positional YAML path. It validates the sequence and prints the actual study directory before launching steps. It stops on a failed step or a successful recorded step whose expected bag lacks `metadata.yaml`.
+The runner accepts one positional YAML path. First prepare and arm the SITL aircraft using the Offboard staging helper; the runner itself does not arm or take off. It validates the sequence and prints the actual study directory before launching steps. It stops on a failed step or a successful recorded step whose expected bag lacks `metadata.yaml`.
 
 ## Sequence schema
 
-The [checked-in study](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/sequences/se3/handoff_comparison.yaml) defines six steps. This **fragment** shows its shared fields and first step; it omits the other five:
+The [checked-in study](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/sequences/se3/handoff_comparison.yaml) defines six recorded steps: Offboard Position and five nonphysical SE(3) handoffs. The study-level `profile: se3` remains the default, but the first step specifies `profile: offboard_position`. This **fragment** shows its first step:
 
 ```{ .yaml .no-copy }
 name: se3_handoff_comparison
@@ -29,14 +29,12 @@ profile: se3
 recording_output_argument: recording_output
 settle_seconds: 3.0
 steps:
-  - name: acceleration
+  - name: position
+    profile: offboard_position
     package: offboard_controllers
-    launch: se3.launch.py
+    launch: offboard_position.launch.py
     arguments:
-      vehicle: gz_f450
       trajectory: full_excitation
-      handoff: acceleration
-      publish_diagnostics: true
       record: true
 ```
 
@@ -50,10 +48,10 @@ Example directory structure, with timestamp chosen at runtime:
 bags/se3_handoff_comparison/<timestamp>/
 ├── manifest.json
 ├── logs/
-│   ├── 01-acceleration.log
+│   ├── 01-position.log
 │   └── ...
 └── bags/
-    ├── 01-acceleration/
+    ├── 01-position/
     │   ├── metadata.yaml
     │   ├── experiment.json
     │   └── <storage files>
@@ -69,7 +67,7 @@ bags/se3_handoff_comparison/<timestamp>/
 
 ## Ordering, settling, and interruption
 
-The checked-in study executes acceleration, attitude, body rate, geometric normalized torque, PX4 rate PID, and geometric physical moment **in that YAML order**, each with `gz_f450`, `full_excitation`, diagnostics, and recording. This execution order is independent of the documentation sidebar order. Each SE(3) node returns to Position mode before ending. The runner waits **3 seconds between successful steps**.
+The checked-in study executes **Offboard Position first**, then SE(3) acceleration, attitude, body rate, geometric normalized torque, and PX4 rate PID, all using `full_excitation`. The five SE(3) steps select `gz_f450` with diagnostics enabled. The physical-wrench adapter is excluded. Each step returns to native PX4 Position mode before ending, and the runner waits **3 seconds between successful steps**. The manifest records each step's analysis profile.
 
 That delay is not a vehicle reset, landing, arming action, or a flight-readiness check. Position can drift between steps, and each controller restarts its fixed absolute NED reference. Confirm the required initial condition and watch the study; do not treat it as a guarantee of independent identical starting states.
 
@@ -80,4 +78,4 @@ Each launch has a process group. Ctrl-C stops the launch tree and preserves per-
 
 ## Compare the completed study
 
-Use the **actual directory printed by the runner**, check all expected steps and metadata, and follow [Comparing SE(3) controllers](../analysis/comparison.md). Output defaults to the study's `comparison/` directory when its finalized bags share the expected parent and manifest. The [complete example](../experiments/complete-example.md) shows how to find the completed study directory.
+Analyze each bag with `px4_analyze`, then compare the compatible recorded Offboard flights together using `px4_compare`. Use the **actual directory printed by the runner**, check all expected steps and metadata, and follow [Comparing SE(3) controllers](../analysis/comparison.md). Output defaults to the study's `comparison/` directory when its finalized bags share the expected parent and manifest. The [complete example](../experiments/complete-example.md) shows how to find the completed study directory.

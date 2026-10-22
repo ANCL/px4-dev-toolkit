@@ -9,10 +9,10 @@
 #include <utility>
 #include <vector>
 
-#include <offboard_controllers/trajectory/trajectory.hpp>
+#include <trajectory_generator/yaml.hpp>
 #include <yaml-cpp/yaml.h>
 
-namespace offboard_controllers::trajectory {
+namespace trajectory_generator {
 namespace {
 
 Vector3 vector3(const YAML::Node& node, const std::string& label) {
@@ -212,4 +212,4 @@ ConfiguredTrajectory load_trajectory(const std::string& path, const std::string&
   return {Sequence(std::move(output)), yaw, start};
 }
 
-} // namespace offboard_controllers::trajectory
+} // namespace trajectory_generator

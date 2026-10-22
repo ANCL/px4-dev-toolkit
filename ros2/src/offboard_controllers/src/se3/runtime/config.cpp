@@ -1,6 +1,7 @@
 // Load and validate SE(3) runtime settings and vehicle parameters.
 
 #include <offboard_controllers/se3/runtime/node.hpp>
+#include <trajectory_generator/yaml.hpp>
 #include <yaml-cpp/yaml.h>
 
 namespace offboard_controllers {

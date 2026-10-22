@@ -128,9 +128,15 @@ def load_sequence(path: Path) -> dict[str, object]:
             for key, value in arguments.items()
         }
 
+        step_profile = validate_name(
+            raw_step.get("profile", profile),
+            f"Step {index} profile",
+        )
+
         steps.append(
             {
                 "name": step_name,
+                "profile": step_profile,
                 "package": package,
                 "launch": launch,
                 "arguments": normalized_arguments,

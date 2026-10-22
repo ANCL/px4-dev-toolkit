@@ -8,9 +8,9 @@
 #include <cmath>
 #include <stdexcept>
 
-#include <offboard_controllers/trajectory/trajectory.hpp>
+#include <trajectory_generator/trajectory.hpp>
 
-namespace offboard_controllers::trajectory {
+namespace trajectory_generator {
 
 namespace {
 
@@ -266,4 +266,4 @@ Reference Segment::sample(double time_s, const Reference& origin) const {
   return sample_circle(origin, radius_m_, type_ == Type::Helix ? height_m_ : 0.0, turns_, q);
 }
 
-} // namespace offboard_controllers::trajectory
+} // namespace trajectory_generator

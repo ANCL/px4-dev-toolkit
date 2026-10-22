@@ -190,6 +190,7 @@ def main() -> int:
             record = {
                 "index": index,
                 "name": step["name"],
+                "profile": step["profile"],
                 "command": command,
                 "log": str(log_path.relative_to(run_dir)),
                 "started_at": utc_now(),
@@ -229,7 +230,7 @@ def main() -> int:
                     # advertise the bag as finalized in the study manifest.
                     write_experiment_metadata(
                         recording_output,
-                        str(sequence["profile"]),
+                        str(step["profile"]),
                         str(sequence["name"]),
                         step,
                     )

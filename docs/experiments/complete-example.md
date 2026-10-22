@@ -1,7 +1,7 @@
 <span id="complete-sitl-experiment"></span>
 # SITL experiment
 
-Run a PX4 reference flight, an SE(3) Offboard flight, and a recorded six-mode study. The commands assume **native Ubuntu SITL**, F450, and MAVProxy; Docker users run them in the corresponding [container shells](../installation/docker.md).
+Run a PX4 reference flight, an SE(3) Offboard flight, and a recorded six-step handoff study. The commands assume **native Ubuntu SITL**, F450, and MAVProxy; Docker users run them in the corresponding [container shells](../installation/docker.md).
 
 Check mode, arming, and state between flights. A finished controller is not proof the aircraft is landed or ready for another run.
 
@@ -65,9 +65,9 @@ test -n "$bag_path" && ./tools/px4_analyze "$bag_path"
 
 Check that this is the run just recorded, especially if older bags exist. `analysis/summary.txt` and available PNG plots are written **inside that bag**. Establish confirmed Offboard entry/return and topic completeness first, then inspect reference versus measured position, errors, rates, collective, and motor limits. The [analysis guide](../analysis/analysis.md) provides the interpretation and labeled plot slot.
 
-## 5. Run the six-mode study
+## 5. Run the six-step handoff study
 
-End the separate demonstration, [land/disarm using the MAVProxy SITL procedure](../environments/sitl.md#land-and-reset-the-simulated-vehicle), and restore the required initial condition. Prepare the aircraft with the staging helper again; only begin the study once it is holding in Position mode. The study needs the full F450 physical data because its final mode uses the four-rotor adapter.
+End the separate demonstration, [land/disarm using the MAVProxy SITL procedure](../environments/sitl.md#land-and-reset-the-simulated-vehicle), and restore the required initial condition. Prepare the aircraft with the staging helper again; only begin the study once it is holding in Position mode. The study uses the configured F450 vehicle but does not execute the four-rotor physical-wrench adapter.
 
 In a **separate repository-root shell**:
 
@@ -76,7 +76,7 @@ source ros2/runtime_env.sh
 ./tools/run_sequence config/sequences/se3/handoff_comparison.yaml
 ```
 
-The runner executes the six recorded `full_excitation` flights in order, returning to Position mode between steps and waiting 3 s. It does not land, reset, or arm between steps. Monitor state and space for the complete path. Read [Running a series of experiments](../workflows/sequences.md) for interruption and manifests.
+The runner records Offboard Position followed by the five nonphysical SE(3) `full_excitation` flights, returning to native Position mode between steps and waiting 3 s. It does not land, reset, or arm between steps. Monitor state and space for the complete path. Read [Running a series of experiments](../workflows/sequences.md) for interruption and manifests.
 
 <span id="6-compare-finalized-study-bags"></span>
 ## 6. Compare the study
@@ -95,7 +95,7 @@ mapfile -t study_bags < <(find "$study_path/bags" -mindepth 2 -maxdepth 2 -name 
 test "${#study_bags[@]}" -eq 6 && ./tools/px4_compare "${study_bags[@]}"
 ```
 
-The command filters finalized bag directories rather than expanding unrelated files. Results go to `$study_path/comparison/summary.txt` and PNG figures. Verify the six metadata identities before interpreting overlays; [comparison](../analysis/comparison.md) aligns time to PX4-confirmed Offboard entry and explains which metrics are meaningful.
+The command filters finalized bag directories rather than expanding unrelated files. The six comparable Offboard bags produce `$study_path/comparison/summary.txt` and PNG figures. Verify the six metadata identities before interpreting overlays; [comparison](../analysis/comparison.md) aligns time to PX4-confirmed Offboard entry and explains which metrics are meaningful.
 
 ## 7. Land and stop SITL
 

@@ -5,8 +5,8 @@ se3:
     #   kv = mass * kv_over_mass
     #
     # kx_over_mass has units [1/s^2]; kv_over_mass has units [1/s].
-    kx_over_mass: 16.0
-    kv_over_mass: 5.6
+    kx_over_mass: 6.0
+    kv_over_mass: 5.0
 
     # Cascaded attitude-error -> FRD body-rate gain [1/s], used by the
     # attitude_rate handoff and the outer attitude law of px4_rate.
@@ -36,10 +36,10 @@ se3:
 
     # Geometric-normalized gains produce PX4-normalized torque directly.
     # K_R^n = attitude_gain * K_Omega^n component-wise.
-    normalized_attitude_gain: [0.975, 0.975, 0.56]
+    normalized_attitude_gain: [0.4, 0.4, 0.56]
 
     # Angular-velocity error [rad/s] -> normalized torque.
-    normalized_angular_velocity_gain: [0.15, 0.15, 0.20]
+    normalized_angular_velocity_gain: [0.075, 0.075, 0.20]
 
     # Desired angular acceleration [rad/s^2] -> normalized torque
     # feed-forward; this is not PX4 rate-controller D feedback.

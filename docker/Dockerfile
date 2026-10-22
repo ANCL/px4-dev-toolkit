@@ -87,6 +87,8 @@ RUN ./px4/build_sitl.sh
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} config/runtime/common.env config/runtime/common.env
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} config/px4_topics.def config/px4_topics.def
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} config/vehicles/ config/vehicles/
+COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} config/trajectories.yaml config/trajectories.yaml
+COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} trajectory_generator/ trajectory_generator/
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} ros2/build.sh ros2/build.sh
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} ros2/runtime_env.sh ros2/runtime_env.sh
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} ros2/src/offboard_controllers/ ros2/src/offboard_controllers/

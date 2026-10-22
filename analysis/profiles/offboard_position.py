@@ -10,6 +10,7 @@ Profile flow:
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from pathlib import Path
 
 from analysis.core import (
@@ -21,6 +22,7 @@ from analysis.core import (
 )
 from analysis.pipeline import (
     CONTROL_PIPELINE_TOPICS,
+    _series3,
     analyze_control_pipeline,
     control_pipeline_summary,
     write_control_pipeline_plots,
@@ -172,6 +174,54 @@ def analyze(bag: BagData) -> AnalysisResult:
                 (bag.relative_seconds(timestamp_ns), state)
                 for timestamp_ns, state in transitions
             ],
+        },
+    )
+
+
+def comparison_input(result: AnalysisResult, bag: BagData):
+    """Adapt a Position flight into the shared comparison representation.
+
+    Keep single-run pipeline analysis unchanged. Compare only the PX4-confirmed
+    Offboard interval and use the actual incoming position reference.
+    """
+    from analysis.comparison import ComparisonInput
+
+    status = _required(bag, STATUS_TOPIC)
+    status_type = type(status[0].message)
+    offboard_ns = first_nav_state_time(
+        status, int(status_type.NAVIGATION_STATE_OFFBOARD),
+    )
+    if offboard_ns is None:
+        raise RuntimeError("Offboard entry was not recorded")
+    return_ns = first_nav_state_time(
+        status, int(status_type.NAVIGATION_STATE_POSCTL),
+        not_before_ns=offboard_ns,
+    )
+    if return_ns is None or return_ns <= offboard_ns:
+        raise RuntimeError("Confirmed Position-mode return was not recorded")
+
+    reference = {
+        "position": _series3(bag, TRAJECTORY_INPUT_TOPIC, lambda msg: msg.position),
+        "velocity": _series3(bag, TRAJECTORY_INPUT_TOPIC, lambda msg: msg.velocity),
+        "yaw": _series3(
+            bag, TRAJECTORY_INPUT_TOPIC,
+            lambda msg: (0.0, 0.0, msg.yaw), scale=180.0 / math.pi,
+        ),
+    }
+    if any(not reference[key]["times_s"] for key in ("position", "velocity", "yaw")):
+        raise RuntimeError("Missing finite Position trajectory reference for comparison")
+
+    return ComparisonInput(
+        label="Position",
+        metrics={
+            "handoff": "position",
+            "direct_controller": "n/a",
+            "offboard_entry_s": bag.relative_seconds(offboard_ns),
+            "offboard_duration_s": (return_ns - offboard_ns) / 1e9,
+        },
+        plot_data={
+            "layers": {"reference": reference},
+            "pipeline": result.plot_data["pipeline"],
         },
     )
 

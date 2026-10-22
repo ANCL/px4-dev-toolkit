@@ -17,7 +17,7 @@ Follow [Developing a controller](developing-a-controller.md) for package/node in
 
 ## Add a trajectory
 
-Prefer composing existing named segments in [trajectories.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/config/trajectory/trajectories.yaml). A new segment type also needs sampler/parser support and verification of derivatives, units, endpoints, and boundary behavior. Keep the [documented NED and time conventions](../controllers/trajectories.md).
+Prefer composing existing named segments in [trajectories.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/trajectories.yaml). A new segment type requires both a sampler in toolkit-level `trajectory_generator/src/analytic/` and YAML parser support in `trajectory_generator/src/config/yaml.cpp`, plus verification of derivatives, units, endpoints, and boundary behavior. Keep the [documented NED and time conventions](../controllers/trajectories.md).
 
 ## Add recording topics
 
@@ -25,7 +25,7 @@ Use the package's recording list and symbolic [PX4 topic catalog](https://github
 
 ## Add a sequence
 
-Create a YAML under `config/sequences/` selecting existing launches and arguments. Use the [six-mode study](../workflows/sequences.md) for recording paths, manifests, and settle semantics. Do not duplicate controller gains or vehicle physics in the sequence.
+Create a YAML under `config/sequences/` selecting existing launches and arguments. Use the [six-step handoff study](../workflows/sequences.md) for recording paths, manifests, and settle semantics. Do not duplicate controller gains or vehicle physics in the sequence.
 
 <!-- Preserve existing section links. -->
 <span id="extend-comparison-analysis"></span>

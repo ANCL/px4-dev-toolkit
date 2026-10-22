@@ -79,3 +79,25 @@ from .plotting import (
     _vector_components,
     write_plots,
 )
+
+
+def comparison_input(result: AnalysisResult, _bag):
+    """Adapt an SE(3) flight without changing its controller diagnostics."""
+    from analysis.comparison import ComparisonInput
+
+    handoff = str(result.metrics["handoff"])
+    controller = str(result.metrics["direct_controller"])
+    identity = controller if handoff == "thrust_and_torque" else handoff
+    names = {
+        "acceleration": "Acceleration",
+        "attitude": "Attitude",
+        "attitude_rate": "Rate",
+        "geometric_normalized": "Geometric",
+        "px4_rate": "PX4 rate",
+        "geometric_physical": "Geometric physical",
+    }
+    return ComparisonInput(
+        label=names.get(identity, identity),
+        metrics=result.metrics,
+        plot_data=result.plot_data,
+    )

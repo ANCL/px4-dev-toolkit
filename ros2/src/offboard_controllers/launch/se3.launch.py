@@ -12,7 +12,7 @@ from launch_ros.actions import Node
 
 from px4_control_common.recording import (
     controller_configuration_paths, launch_experiment, parse_recording_flag,
-    ros_parameters, trajectory_configuration, vehicle_configuration,
+    ros_parameters, trajectory_configuration, trajectory_configuration_path, vehicle_configuration,
 )
 
 
@@ -47,7 +47,7 @@ def make_control_node(controller_config: Path, vehicle_config: Path) -> Node:
                 "vehicle_config_dir":
                     str(vehicle_config),
                 "trajectory_config":
-                    str(controller_config / "trajectory" / "trajectories.yaml"),
+                    str(trajectory_configuration_path(controller_config, __file__)),
             },
         ],
     )
@@ -64,7 +64,7 @@ def launch_setup(context):
             "publish_diagnostics",
         )}
         controller_file = controller_config / "se3/controller.yaml"
-        trajectory_file = controller_config / "trajectory/trajectories.yaml"
+        trajectory_file = trajectory_configuration_path(controller_config, __file__)
         experiment = {
             "profile": "se3",
             "vehicle": args["vehicle"],
@@ -82,7 +82,7 @@ def launch_setup(context):
             experiment["direct_controller"] = args["direct_controller"]
     return [
         LogInfo(msg=f"SE3 YAML: {origin}; controller={controller_config / 'se3/controller.yaml'}; "
-                    f"trajectory={controller_config / 'trajectory/trajectories.yaml'}; "
+                    f"trajectory={trajectory_configuration_path(controller_config, __file__)}; "
                     f"vehicles={vehicle_config}"),
         *launch_experiment(
             node=make_control_node(controller_config, vehicle_config),

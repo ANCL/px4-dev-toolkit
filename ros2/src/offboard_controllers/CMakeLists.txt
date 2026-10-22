@@ -1,9 +1,8 @@
 cmake_minimum_required(VERSION 3.8)
 project(offboard_controllers)
 
-# Build reusable trajectory, physical-model, and control-law libraries apart
-# from ROS node executables. The SE(3) node selects handoffs; the library
-# targets implement model/math operations without owning ROS process lifecycle.
+# Build reusable control laws and ROS nodes separately.
+# Trajectory mathematics is a toolkit-level library independent of ROS.
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -18,6 +17,15 @@ find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(px4_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
+
+get_filename_component(
+  PX4_ENV_ROOT
+  "${CMAKE_CURRENT_SOURCE_DIR}/../../.."
+  ABSOLUTE
+)
+
+set(TRAJECTORY_GENERATOR_WITH_YAML ON)
+add_subdirectory("${PX4_ENV_ROOT}/trajectory_generator" "${CMAKE_CURRENT_BINARY_DIR}/trajectory_generator")
 
 add_executable(offboard_position
   src/offboard_position/node.cpp
@@ -39,12 +47,6 @@ add_library(se3_control
 
 add_library(se3_vehicle_state
   src/se3/runtime/vehicle_state.cpp
-)
-
-add_library(trajectory
-  src/trajectory/trajectory.cpp
-  src/trajectory/sampling.cpp
-  src/trajectory/config.cpp
 )
 
 add_library(px4_wrench
@@ -74,12 +76,6 @@ add_executable(se3
   src/se3/runtime/publication.cpp
 )
 
-get_filename_component(
-  PX4_ENV_ROOT
-  "${CMAKE_CURRENT_SOURCE_DIR}/../../.."
-  ABSOLUTE
-)
-
 target_include_directories(offboard_position PRIVATE
   "${PX4_ENV_ROOT}/config"
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
@@ -94,10 +90,6 @@ target_include_directories(se3_vehicle_state PUBLIC
 )
 
 ament_target_dependencies(se3_vehicle_state px4_msgs)
-
-target_include_directories(trajectory PUBLIC
-  "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
 
 target_include_directories(px4_wrench PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
@@ -122,12 +114,8 @@ target_link_libraries(vehicle_config PUBLIC
   yaml-cpp
 )
 
-target_link_libraries(trajectory PUBLIC
-  yaml-cpp
-)
-
 target_link_libraries(offboard_position
-  trajectory
+  trajectory_generator_yaml
 )
 
 target_include_directories(se3 PRIVATE
@@ -150,7 +138,7 @@ ament_target_dependencies(se3
 target_link_libraries(se3
   se3_control
   se3_vehicle_state
-  trajectory
+  trajectory_generator_yaml
   px4_rate
   px4_wrench
   physical_wrench_adapter
@@ -169,7 +157,8 @@ install(
   TARGETS
     se3_control
     se3_vehicle_state
-    trajectory
+    trajectory_generator
+    trajectory_generator_yaml
     px4_wrench
     px4_rate
     physical_wrench_adapter
@@ -185,6 +174,12 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
+# Keep packaged, non-checkout launches compatible with existing paths.
+install(
+  FILES "${PX4_ENV_ROOT}/config/trajectories.yaml"
+  DESTINATION share/${PROJECT_NAME}/config/trajectory
+)
+
 install(
   DIRECTORY "${PX4_ENV_ROOT}/config/vehicles/"
   DESTINATION share/${PROJECT_NAME}/config/vehicles
@@ -192,6 +187,11 @@ install(
 
 install(
   DIRECTORY include/
+  DESTINATION include
+)
+
+install(
+  DIRECTORY "${PX4_ENV_ROOT}/trajectory_generator/include/"
   DESTINATION include
 )
 

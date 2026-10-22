@@ -2,9 +2,9 @@
 <span id="se3-comparison"></span>
 
 <span id="comparing-se3-controllers"></span>
-# SE(3) comparison
+# Controller comparison
 
-A useful comparison holds the vehicle, trajectory, tuning context, and test conditions consistent, then examines both tracking and actuation. The current `px4_compare` CLI supports **two or more SE(3) bags**; other experiment profiles are not interchangeable with these metrics.
+`px4_compare` compares two or more flights using equivalent physical quantities. Each analysis profile supplies the reference, PX4 measurements and confirmed flight interval; different controllers or gains do not prevent comparison. The tool requires the same recorded trajectory configuration and reports unavailable signals rather than inventing measurements.
 
 <!-- Preserve existing section links. -->
 <span id="basic-usage"></span>
@@ -14,7 +14,7 @@ A useful comparison holds the vehicle, trajectory, tuning context, and test cond
 
 ## Compare a completed study
 
-Use the actual finalized six-mode study from the [complete example](../experiments/complete-example.md#6-compare-finalized-study-bags). In its **repository-root shell**, with ROS sourced and `study_bags` already checked:
+Use the actual finalized six-step study from the [complete example](../experiments/complete-example.md#6-compare-finalized-study-bags). In its **repository-root shell**, with ROS sourced and `study_bags` already checked:
 
 ```bash
 ./tools/px4_compare "${study_bags[@]}"

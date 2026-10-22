@@ -10,7 +10,7 @@
 #include <string>
 
 #include <offboard_controllers/offboard_trigger.hpp>
-#include <offboard_controllers/trajectory/trajectory.hpp>
+#include <trajectory_generator/trajectory.hpp>
 #include <px4_msgs/msg/offboard_control_mode.hpp>
 #include <px4_msgs/msg/trajectory_setpoint.hpp>
 #include <px4_msgs/msg/vehicle_command.hpp>
@@ -29,7 +29,7 @@ namespace px4_topics
 
 }  // namespace px4_topics
 
-namespace trajectory = offboard_controllers::trajectory;
+namespace trajectory = ::trajectory_generator;
 
 
 // Supplies trajectory references and lifecycle commands; PX4 owns the

@@ -2,28 +2,14 @@
 
 #pragma once
 
-#include <array>
-#include <string>
 #include <vector>
 
-namespace offboard_controllers::trajectory
+#include <trajectory_generator/reference.hpp>
+
+namespace trajectory_generator
 {
 
-using Vector3 = std::array<double, 3>;
 
-// Local NED reference through snap; yaw derivatives use rad/s and rad/s^2.
-struct Reference
-{
-  Vector3 position{};
-  Vector3 velocity{};
-  Vector3 acceleration{};
-  Vector3 jerk{};
-  Vector3 snap{};
-
-  double yaw{0.0};
-  double yaw_rate{0.0};
-  double yaw_acceleration{0.0};
-};
 
 Reference stationary_reference(
   const Vector3 & position,
@@ -133,11 +119,4 @@ struct ConfiguredTrajectory
   Vector3 start_position;
 };
 
-
-// Load a named trajectory or reusable segment from YAML. Invalid definitions
-// and unknown names raise std::invalid_argument.
-ConfiguredTrajectory load_trajectory(
-  const std::string & path,
-  const std::string & name);
-
-}  // namespace offboard_controllers::trajectory
+}  // namespace trajectory_generator

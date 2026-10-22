@@ -4,6 +4,14 @@ recording_output_argument: recording_output
 settle_seconds: 3.0
 
 steps:
+  - name: position
+    profile: offboard_position
+    package: offboard_controllers
+    launch: offboard_position.launch.py
+    arguments:
+      trajectory: full_excitation
+      record: true
+
   - name: acceleration
     package: offboard_controllers
     launch: se3.launch.py
@@ -53,16 +61,5 @@ steps:
       trajectory: full_excitation
       handoff: thrust_and_torque
       direct_controller: px4_rate
-      publish_diagnostics: true
-      record: true
-
-  - name: thrust_and_torque_geometric_physical
-    package: offboard_controllers
-    launch: se3.launch.py
-    arguments:
-      vehicle: gz_f450
-      trajectory: full_excitation
-      handoff: thrust_and_torque
-      direct_controller: geometric_physical
       publish_diagnostics: true
       record: true

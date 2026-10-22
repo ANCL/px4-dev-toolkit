@@ -1,6 +1,7 @@
 // ROS subscriptions, publishers, and timer setup for Offboard position.
 
 #include "node.hpp"
+#include <trajectory_generator/yaml.hpp>
 
 OffboardPosition::OffboardPosition()
 : Node("offboard_position")

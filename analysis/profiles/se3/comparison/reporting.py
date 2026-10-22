@@ -484,8 +484,8 @@ def comparison_summary(
     }
 
     lines = [
-        "SE3 Controller Comparison",
-        "=========================",
+        "Controller Comparison",
+        "=====================",
         "",
         f"runs: {len(runs)}",
         "alignment: PX4 Offboard entry = 0 s",

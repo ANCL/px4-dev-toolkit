@@ -9,7 +9,7 @@ from launch_ros.actions import Node
 
 from px4_control_common.recording import (
     controller_configuration_paths, launch_experiment, parse_recording_flag,
-    trajectory_configuration,
+    trajectory_configuration, trajectory_configuration_path,
 )
 
 
@@ -29,7 +29,7 @@ def make_control_node(controller_config: Path) -> Node:
                 "offboard_trigger":
                     LaunchConfiguration("offboard_trigger"),
                 "trajectory_config":
-                    str(controller_config / "trajectory" / "trajectories.yaml"),
+                    str(trajectory_configuration_path(controller_config, __file__)),
             },
         ],
     )
@@ -47,13 +47,13 @@ def launch_setup(context):
             "offboard_trigger": LaunchConfiguration("offboard_trigger").perform(context),
             "config": {
                 "trajectory": trajectory_configuration(
-                    controller_config / "trajectory/trajectories.yaml", trajectory
+                    trajectory_configuration_path(controller_config, __file__), trajectory
                 ),
             },
         }
     return [
         LogInfo(msg=f"Offboard Position YAML: {origin}; "
-                    f"trajectory={controller_config / 'trajectory/trajectories.yaml'}"),
+                    f"trajectory={trajectory_configuration_path(controller_config, __file__)}"),
         *launch_experiment(
             node=make_control_node(controller_config),
             record=record,
@@ -62,6 +62,7 @@ def launch_setup(context):
             topic_file="recording/offboard_position.txt",
             bag_name="offboard_position",
             process_name="offboard_position",
+            recording_output=LaunchConfiguration("recording_output").perform(context).strip(),
             complete_message='Offboard position controller complete; stopping recording.',
             failure_message='Offboard position controller failed; stopping recording.',
             experiment=experiment,
@@ -90,6 +91,11 @@ def generate_launch_description() -> LaunchDescription:
                 description=(
                     "Record the Offboard position controller run."
                 ),
+            ),
+            DeclareLaunchArgument(
+                "recording_output",
+                default_value="",
+                description="Optional explicit rosbag output directory.",
             ),
             OpaqueFunction(function=launch_setup),
         ]

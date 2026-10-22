@@ -11,9 +11,9 @@
 #include <string>
 #include <utility>
 
-#include <offboard_controllers/trajectory/trajectory.hpp>
+#include <trajectory_generator/trajectory.hpp>
 
-namespace offboard_controllers::trajectory {
+namespace trajectory_generator {
 
 namespace {
 
@@ -157,4 +157,4 @@ Reference Sequence::sample(double time_s, const Reference& origin) const {
   return stationary_reference(segment_origin.position, segment_origin.yaw);
 }
 
-} // namespace offboard_controllers::trajectory
+} // namespace trajectory_generator

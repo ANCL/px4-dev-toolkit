@@ -1,17 +1,17 @@
 #!/usr/bin/python3 -s
 
-"""Compare two or more recorded SE(3) experiment bags.
+"""Compare recorded controller performance from compatible experiment bags.
 
 Flow:
-    bags from one analysis profile
+    bags with a common recorded trajectory
       -> analyze each bag independently
       -> align runs to confirmed PX4 Offboard entry
       -> build common physical comparison views
       -> resolve maneuver boundaries from recorded experiment metadata
       -> write comparison summary and overlay figures
 
-Only the SE(3) profile is accepted because controller-comparison semantics are
-defined explicitly for that experiment family.
+Each profile provides its own comparable reference and interval. The tool
+does not select controller architectures or redefine PX4 topics.
 """
 
 from __future__ import annotations
@@ -48,10 +48,7 @@ sys.path.insert(
     str(ROOT),
 )
 
-from analysis.comparison import (  # noqa: E402
-    unique_labels,
-    validate_profile_names,
-)
+from analysis.comparison import unique_labels  # noqa: E402
 from analysis.core import read_bag  # noqa: E402
 from analysis.profiles import (  # noqa: E402
     detect_profile_name,
@@ -156,96 +153,30 @@ def main() -> int:
         detect_profile_name(path)
         for path in bag_paths
     ]
-    profile_name = (
-        validate_profile_names(
-            profile_names
-        )
-    )
+    views = []
 
-    if profile_name != "se3":
-        raise ValueError(
-            "px4_compare currently supports the "
-            f"se3 profile only; got {profile_name}"
-        )
-
-    profile = get_profile(
-        profile_name
-    )
-    analyzed = []
-
-    for path in bag_paths:
+    for path, profile_name in zip(bag_paths, profile_names):
+        profile = get_profile(profile_name)
+        adapter = getattr(profile, "comparison_input", None)
+        if not callable(adapter):
+            raise ValueError(
+                f"Profile {profile_name!r} does not provide a common "
+                "flight comparison view."
+            )
         bag = read_bag(
             path,
             profile.REQUIRED_TOPICS,
-            getattr(
-                profile,
-                "OPTIONAL_TOPICS",
-                (),
-            ),
+            getattr(profile, "OPTIONAL_TOPICS", ()),
         )
-        analyzed.append(
-            profile.analyze(bag)
-        )
+        views.append(adapter(profile.analyze(bag), bag))
 
-    label_names = {
-        "acceleration":
-            "Acceleration",
-        "attitude":
-            "Attitude",
-        "attitude_rate":
-            "Rate",
-        "geometric_normalized":
-            "Geometric",
-        "px4_rate":
-            "PX4 rate",
-        "geometric_physical":
-            "Geometric physical",
-    }
-
-    base_labels = []
-
-    for result in analyzed:
-        handoff = str(
-            result.metrics["handoff"]
-        )
-
-        direct_controller = str(
-            result.metrics[
-                "direct_controller"
-            ]
-        )
-
-        if handoff == "thrust_and_torque":
-            base_labels.append(
-                label_names.get(
-                    direct_controller,
-                    direct_controller,
-                )
-            )
-        else:
-            base_labels.append(
-                label_names.get(
-                    handoff,
-                    handoff,
-                )
-            )
     labels = unique_labels(
-        base_labels,
+        [view.label for view in views],
         bag_paths,
     )
-
     runs = [
-        build_run(
-            result,
-            path,
-            label,
-        )
-        for result, path, label
-        in zip(
-            analyzed,
-            bag_paths,
-            labels,
-        )
+        build_run(view, path, label)
+        for view, path, label in zip(views, bag_paths, labels)
     ]
 
     experiments = [read_experiment(path) for path in bag_paths]

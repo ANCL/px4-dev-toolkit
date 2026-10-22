@@ -6,7 +6,7 @@
 The toolkit tracks an SE(3) trajectory and hands control to PX4 at one of
 four levels: acceleration, attitude, body rate, or thrust/torque. **The handoff
 level determines what the toolkit calculates and what PX4 still controls.**
-PX4 performs actuator allocation in every mode.
+PX4 performs actuator allocation in every mode. The current geometric reference assumes an **underactuated multirotor** with a single collective thrust axis; it is not an independent six-degree-of-freedom position/attitude controller. The physical-wrench adapter is still restricted to four rotors.
 
 <!-- Preserve existing section links. -->
 <span id="runtime-flow"></span>

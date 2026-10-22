@@ -70,7 +70,7 @@ Failure/interrupt exit does not issue a guaranteed landing command. After return
 ## Configuration source
 
 In a toolkit checkout, the launch reads the working source
-`ros2/src/offboard_controllers/config/trajectory/trajectories.yaml` at each
+`config/trajectories.yaml` at each
 controller startup, not the installed copy. A YAML-only edit needs a fresh
 controller process, **not** a ROS rebuild. The launch logs the selected path.
 For a standalone ROS install without the toolkit checkout, packaged YAML is
@@ -78,4 +78,4 @@ used and explicitly reported.
 
 ## Recording and interpretation
 
-Add `record:=true` for a standalone bag under `bags/offboard_position/`. Compare measured position to the desired trajectory and inspect PX4 mode transitions before interpreting error. A downstream attitude/rate setpoint is calculated by PX4, so it should not be described as the external controller's law. Continue with [SE(3) control](se3.md) to move the command level farther down the stack.
+Add `record:=true` for a standalone bag under `bags/offboard_position/`. The `recording_output` argument lets a sequence write that bag inside its study directory. Compare measured position to the desired trajectory and inspect PX4 mode transitions before interpreting error. A downstream attitude/rate setpoint is calculated by PX4, so it should not be described as the external controller's law. Continue with [SE(3) control](se3.md) to move the command level farther down the stack.

@@ -13,9 +13,19 @@ which physical quantities and experiment windows are comparable.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+
+
+@dataclass(frozen=True)
+class ComparisonInput:
+    """Profile-normalized reference, measurements, and flight interval."""
+
+    label: str
+    metrics: dict[str, object]
+    plot_data: dict[str, object]
 
 
 def validate_profile_names(names: list[str]) -> str:

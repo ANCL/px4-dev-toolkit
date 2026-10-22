@@ -72,6 +72,16 @@ def find_repo_root(launch_file: str) -> Path:
     raise RuntimeError(f"Could not locate toolkit repository root from {start}")
 
 
+
+def trajectory_configuration_path(controller_config: Path, launch_file: str) -> Path:
+    """Resolve the toolkit-owned trajectory YAML or packaged fallback."""
+    try:
+        root = find_repo_root(launch_file)
+    except RuntimeError:
+        return controller_config / "trajectory/trajectories.yaml"
+    return root / "config/trajectories.yaml"
+
+
 def controller_configuration_paths(launch_file: str) -> tuple[Path, Path, str]:
     """Load live checkout YAML; allow packaged fallback only without a checkout.
 
@@ -91,7 +101,7 @@ def controller_configuration_paths(launch_file: str) -> tuple[Path, Path, str]:
         origin = "repository source"
 
     for file in (controller_config / "se3/controller.yaml",
-                 controller_config / "trajectory/trajectories.yaml"):
+                 trajectory_configuration_path(controller_config, launch_file)):
         if not file.is_file():
             raise RuntimeError(f"Controller configuration missing: {file}")
     if not vehicle_config.is_dir():

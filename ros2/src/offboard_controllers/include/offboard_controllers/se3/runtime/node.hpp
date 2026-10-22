@@ -40,9 +40,11 @@
 #include <offboard_controllers/se3/physical_wrench_adapter.hpp>
 #include <offboard_controllers/se3/runtime/vehicle_state.hpp>
 #include <offboard_controllers/se3/vehicle_config.hpp>
-#include <offboard_controllers/trajectory/trajectory.hpp>
+#include <trajectory_generator/trajectory.hpp>
 
 namespace offboard_controllers {
+
+namespace trajectory = ::trajectory_generator;
 
 // ROS coordinator for the six existing SE(3) handoff paths.
 // PX4 nav_state owns Offboard transitions. The outer control timer and

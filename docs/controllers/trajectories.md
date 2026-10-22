@@ -1,6 +1,6 @@
 # Trajectories: absolute PX4 local NED targets
 
-The YAML `ros2/src/offboard_controllers/config/trajectory/trajectories.yaml`
+The YAML `config/trajectories.yaml`
 uses `frame: px4_local_ned` and a fixed `start_position` and `default_yaw`.
 **These coordinates never shift when the aircraft enters Offboard.** PX4's
 local frame is estimator-relative and can reset: validate the frame and start
@@ -41,6 +41,8 @@ trajectories:
 The first position is fixed even if the vehicle begins Offboard elsewhere.
 **Do not use flight excitation until the pilot verifies the aircraft's
 PX4 local origin, safe maneuver volume, and the launch's selected YAML file.**
+
+The analytic sampler lives in toolkit-level `trajectory_generator/`, independent of ROS and PX4. The existing YAML loader remains in `trajectory_generator/src/config/yaml.cpp`; controller timing and PX4 message publication still belong to their respective ROS nodes.
 
 Mathematics: smooth lines, yaw, and periodic paths use ninth-order time
 scaling with analytic derivatives through snap; steps are discontinuous.

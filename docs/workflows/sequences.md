@@ -21,7 +21,7 @@ The runner accepts one positional YAML path. First prepare and arm the SITL airc
 
 ## Sequence schema
 
-The [checked-in study](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/sequences/se3/handoff_comparison.yaml) defines six recorded steps: Offboard Position and five nonphysical SE(3) handoffs. The study-level `profile: se3` remains the default, but the first step specifies `profile: offboard_position`. This **fragment** shows its first step:
+The [checked-in study](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/sequences/se3/handoff_comparison.yaml) defines six recorded steps: Offboard Position and five SE(3) controller configurations. The study-level `profile: se3` remains the default, but the first step specifies `profile: offboard_position`. This **fragment** shows its first step:
 
 ```{ .yaml .no-copy }
 name: se3_handoff_comparison
@@ -67,7 +67,7 @@ bags/se3_handoff_comparison/<timestamp>/
 
 ## Ordering, settling, and interruption
 
-The checked-in study executes **Offboard Position first**, then SE(3) acceleration, attitude, body rate, geometric normalized torque, and PX4 rate PID, all using `full_excitation`. The five SE(3) steps select `gz_f450` with diagnostics enabled. The physical-wrench adapter is excluded. Each step returns to native PX4 Position mode before ending, and the runner waits **3 seconds between successful steps**. The manifest records each step's analysis profile.
+The checked-in study executes **Offboard Position first**, then SE(3) acceleration, attitude, body rate, geometric normalized torque, and PX4 rate PID, all using `full_excitation`. The five SE(3) steps select `gz_f450` with diagnostics enabled. Each step returns to native PX4 Position mode before ending, and the runner waits **3 seconds between successful steps**. The manifest records each step's analysis profile.
 
 That delay is not a vehicle reset, landing, arming action, or a flight-readiness check. Position can drift between steps, and each controller restarts its fixed absolute NED reference. Confirm the required initial condition and watch the study; do not treat it as a guarantee of independent identical starting states.
 

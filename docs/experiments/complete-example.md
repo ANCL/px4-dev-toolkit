@@ -67,7 +67,7 @@ Check that this is the run just recorded, especially if older bags exist. `analy
 
 ## 5. Run the six-step handoff study
 
-End the separate demonstration, [land/disarm using the MAVProxy SITL procedure](../environments/sitl.md#land-and-reset-the-simulated-vehicle), and restore the required initial condition. Prepare the aircraft with the staging helper again; only begin the study once it is holding in Position mode. The study uses the configured F450 vehicle but does not execute the four-rotor physical-wrench adapter.
+End the separate demonstration, [land/disarm using the MAVProxy SITL procedure](../environments/sitl.md#land-and-reset-the-simulated-vehicle), and restore the required initial condition. Prepare the aircraft with the staging helper again; only begin the study once it is holding in Position mode. The study uses the configured F450 vehicle.
 
 In a **separate repository-root shell**:
 
@@ -76,7 +76,7 @@ source ros2/runtime_env.sh
 ./tools/run_sequence config/sequences/se3/handoff_comparison.yaml
 ```
 
-The runner records Offboard Position followed by the five nonphysical SE(3) `full_excitation` flights, returning to native Position mode between steps and waiting 3 s. It does not land, reset, or arm between steps. Monitor state and space for the complete path. Read [Running a series of experiments](../workflows/sequences.md) for interruption and manifests.
+The runner records Offboard Position followed by the five SE(3) `full_excitation` flights, returning to native Position mode between steps and waiting 3 s. It does not land, reset, or arm between steps. Monitor state and space for the complete path. Read [Running a series of experiments](../workflows/sequences.md) for interruption and manifests.
 
 <span id="6-compare-finalized-study-bags"></span>
 ## 6. Compare the study

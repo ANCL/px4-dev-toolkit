@@ -35,7 +35,7 @@ The summary is written before plotting. A plotting dependency failure can leave 
 
 Registered profiles are `position_takeoff_hover`, `offboard_takeoff_handoff`, `offboard_position`, and `se3`. `experiment.json` identifies every recorded profile, whether standalone or part of a study. Analysis requires that file instead of guessing from directory names.
 
-For SE(3), recorded `OffboardControlMode` determines the active command level. Simultaneous or changing levels are rejected. Direct-law identity comes from explicit metadata; without it, normalized geometric diagnostics can identify that law, but PX4-rate and physical modes cannot reliably be distinguished from downstream wrench messages alone. `unknown` is a data limitation, not a missing controller label to guess.
+For SE(3), recorded `OffboardControlMode` determines the active command level. Simultaneous or changing levels are rejected. Direct-law identity comes from explicit metadata. Without it, downstream thrust/torque messages alone cannot reliably distinguish geometric-normalized and PX4-rate control; diagnostic topics may provide supporting evidence. `unknown` is a data limitation, not a missing controller label to guess.
 
 ## Reduced DDS telemetry on F450 hardware
 
@@ -82,7 +82,7 @@ Uneven logging rates can make these numbers differ. Read the table's context ins
 
 **Mode transitions:** inspect pre-entry and return timing before judging startup transients. ROS launch time is not trajectory zero. A failed or repeated takeover can invalidate a simple single-interval comparison.
 
-**Thrust, torque, and motors:** normalized setpoints are requested control coordinates, not measured thrust [N] or torque [N·m]. Look for clipping, allocation residuals, motor limits, and chatter. Physical-mode “applied moment” is the adapter's modeled $\lambda M$, not a measured moment. PX4-rate diagnostics separate old/new integrator state and filtered torque.
+**Thrust, torque, and motors:** normalized setpoints are requested control coordinates, not measured thrust [N] or torque [N·m]. Look for clipping, allocation residuals, motor limits, and chatter. PX4-rate diagnostics separate old/new integrator state and filtered torque.
 
 **Missing data:** an absent diagnostic/actuator stream cannot demonstrate absence of saturation or good tracking at that stage. Optional diagnostics differ by mode; the common measured response is the more consistent comparison basis.
 

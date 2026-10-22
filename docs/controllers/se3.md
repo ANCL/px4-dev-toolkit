@@ -6,7 +6,7 @@
 The toolkit tracks an SE(3) trajectory and hands control to PX4 at one of
 four levels: acceleration, attitude, body rate, or thrust/torque. **The handoff
 level determines what the toolkit calculates and what PX4 still controls.**
-PX4 performs actuator allocation in every mode. The current geometric reference assumes an **underactuated multirotor** with a single collective thrust axis; it is not an independent six-degree-of-freedom position/attitude controller. The physical-wrench adapter is still restricted to four rotors.
+PX4 performs actuator allocation in every mode. The current geometric reference assumes an **underactuated multirotor** with a single collective thrust axis; it is not an independent six-degree-of-freedom position/attitude controller.
 
 <!-- Preserve existing section links. -->
 <span id="runtime-flow"></span>
@@ -20,17 +20,15 @@ PX4 performs actuator allocation in every mode. The current geometric reference 
 | **Acceleration + yaw** | Attitude/thrust conversion, rate control, allocation | [Acceleration](se3/acceleration.md) |
 | **Attitude + thrust** | Attitude/rate control, allocation | [Attitude](se3/attitude.md) |
 | **Body rate + thrust** | Rate control, allocation | [Body Rate](se3/attitude-rate.md) |
-| **Thrust + torque** | Allocation | Three laws below |
+| **Thrust + torque** | Allocation | Two laws below |
 
-The **Thrust & Torque** interface has three distinct implementations:
+The **Thrust & Torque** interface has two documented controllers:
 
 - **[Geometric (Normalized)](se3/geometric-normalized.md)** — computes dimensionless PX4 torque from geometric attitude/rate errors.
-- **[Geometric (Physical)](se3/geometric-physical.md)** — computes a body moment in N·m and converts it through a vehicle-specific adapter.
 - **[PX4 Rate PID](se3/px4-rate.md)** — reproduces the pinned PX4 rate-controller behavior inside the toolkit.
 
-These laws all publish normalized PX4 thrust/torque setpoints; a physical body
-moment is **not** sent directly to PX4. Read the [Math](se3/foundations.md)
-page for frames, equations, and assumptions.
+Both laws publish normalized PX4 thrust/torque setpoints. The [Math](se3/foundations.md)
+page distinguishes normalized torque from a physical body moment.
 
 <!-- Preserve existing section links. -->
 <span id="launch"></span>
@@ -92,11 +90,9 @@ These readiness checks are not a complete flight failsafe.
 
 ## Vehicle support
 
-- **`gz_f450`:** all six configurations, including the four-rotor physical adapter.
-- **`gz_x500`, `gz_px4vision`:** acceleration, attitude, body rate, normalized geometric torque, and PX4 Rate PID; no curated physical propulsion mapping.
-- **`gz_fy690s`:** acceleration only with current curated data. Its six rotors are not supported by the four-rotor physical adapter.
+- **`gz_f450`, `gz_x500`, `gz_px4vision`:** all five documented SE(3) configurations, with the corresponding vehicle mass and hover-thrust data.
+- **`gz_fy690s`:** acceleration only with its current curated vehicle data.
 
-Physical moment control uses a propulsion model rather than `MPC_THR_HOVER`.
 See [Adding a Vehicle](../reference/adding-a-vehicle.md) before transferring
 settings to another airframe.
 

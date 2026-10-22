@@ -46,7 +46,7 @@ hide:
     <nav class="px4-home-directory" aria-label="Documentation sections">
       <a href="installation/" class="px4-home-doc-link"><span class="px4-home-doc-title">Getting started <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Installation and first simulation</span></a>
       <a href="environments/sitl/" class="px4-home-doc-link"><span class="px4-home-doc-title">Running the toolkit <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Simulation and physical hardware</span></a>
-      <a href="controllers/overview/" class="px4-home-doc-link"><span class="px4-home-doc-title">Controllers <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Position, Offboard, and six SE(3) configurations</span></a>
+      <a href="controllers/overview/" class="px4-home-doc-link"><span class="px4-home-doc-title">Controllers <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Position, Offboard, and five SE(3) configurations</span></a>
       <a href="experiments/complete-example/" class="px4-home-doc-link"><span class="px4-home-doc-title">Experiments and analysis <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Recording and interpreting flight data</span></a>
       <a href="reference/extending/" class="px4-home-doc-link"><span class="px4-home-doc-title">Extending the toolkit <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Vehicles, controllers, and trajectories</span></a>
       <a href="reference/architecture/" class="px4-home-doc-link"><span class="px4-home-doc-title">Technical reference <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Software structure and configuration</span></a>

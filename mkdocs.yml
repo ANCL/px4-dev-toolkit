@@ -83,7 +83,6 @@ nav:
           - Body Rate: controllers/se3/attitude-rate.md
           - Thrust & Torque:
               - Geometric (Normalized): controllers/se3/geometric-normalized.md
-              - Geometric (Physical): controllers/se3/geometric-physical.md
               - PX4 Rate PID: controllers/se3/px4-rate.md
       - Trajectories: controllers/trajectories.md
   - Experiments:

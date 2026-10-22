@@ -54,7 +54,7 @@ Stop the rate display with Ctrl-C. Starting SITL does **not** arm or fly the veh
 
 ## Controllers and experiments
 
-The toolkit includes a PX4 Position-mode reference flight, a separate Offboard staging helper, Offboard position control, and an SE(3) controller with **six configurations**: acceleration, attitude, attitude rate, geometric normalized torque, geometric physical moment, and a PX4 rate-loop reproduction. Each configuration delegates different stages of control to PX4; PX4 retains actuator allocation.
+The toolkit includes a PX4 Position-mode reference flight, a separate Offboard staging helper, Offboard position control, and an SE(3) controller with **five documented configurations**: acceleration, attitude, attitude rate, geometric normalized torque, and a PX4 rate-loop reproduction. Each configuration delegates different stages of control to PX4; PX4 retains actuator allocation.
 
 Use the [controller overview](https://ancl.github.io/px4-dev-toolkit/controllers/overview/) to choose an interface and the [SE(3) documentation](https://ancl.github.io/px4-dev-toolkit/controllers/se3/) for mathematics, implementation, and vehicle requirements. The [trajectory guide](https://ancl.github.io/px4-dev-toolkit/controllers/trajectories/) describes shared reference motions.
 

@@ -2,7 +2,7 @@
 
 # Math
 
-Frames, equations, and assumptions shared by the six SE(3) configurations. These equations describe the controller and ideal rigid-body dynamics—not measured flight performance or a guarantee under actuator limits.
+Frames, equations, and assumptions shared by the five documented SE(3) configurations. These equations describe the controller and ideal rigid-body dynamics—not measured flight performance or a guarantee under actuator limits.
 
 ## Frames, rotation, and units
 
@@ -150,7 +150,7 @@ $$
 \ddot A=ms_d-k_x e_a-k_v e_j.
 $$
 
-These expressions follow [force_dynamics.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/force_dynamics.cpp). They use the unconstrained projected thrust model, not measured motor thrust or the adapter's limited output. Their accuracy depends on that model and the state estimate.
+These expressions follow [force_dynamics.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/force_dynamics.cpp). They use an unconstrained projected thrust model, not measured motor thrust or actuator-saturated output. Their accuracy depends on that model and the state estimate.
 
 ## Differentiate the desired basis
 
@@ -195,7 +195,7 @@ $$
 \end{aligned}
 $$
 
-The omitted $\dot R_d^\top\dot R_d$ term is symmetric, so it does not contribute to the vee result. $\Omega_d$ is in the desired body frame; it is not a feedback-corrected rate command. Attitude-rate and PX4-rate modes need first derivatives; direct geometric laws also need second derivatives. No finite differences are used.
+The omitted $\dot R_d^\top\dot R_d$ term is symmetric, so it does not contribute to the vee result. $\Omega_d$ is in the desired body frame; it is not a feedback-corrected rate command. Attitude-rate and PX4-rate modes need first derivatives; geometric-normalized control also needs second derivatives. No finite differences are used.
 
 ## Rotation errors and feedforward
 
@@ -220,11 +220,21 @@ $$
 \alpha_{\mathrm{ff}}=-\Omega\times(Q\Omega_d)+Q\dot\Omega_d.
 $$
 
-This is angular acceleration feedforward in the current body frame (rad/s²). The geometric laws use it, while the body-rate handoff uses $Q\Omega_d$ with attitude feedback. The implementation maps desired-to-current vectors in [`attitude_geometry::rotate_desired_to_current_body()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/attitude_geometry.cpp#L27), evaluates [`attitude_geometry::error()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/attitude_geometry.cpp#L11), and assembles the moment in [`physical_moment::compute()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/physical_moment.cpp#L12).
+This is angular acceleration feedforward in the current body frame (rad/s²). The normalized geometric law and the classical moment law below use it; the body-rate handoff uses $Q\Omega_d$ with attitude feedback. The implementation maps desired-to-current vectors in [`attitude_geometry::rotate_desired_to_current_body()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/attitude_geometry.cpp#L27), evaluates [`attitude_geometry::error()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/attitude_geometry.cpp#L11).
+
+## Classical geometric moment law
+
+For the rigid-body model above, the Lee et al. (2010) geometric tracking law is
+
+$$
+M=-K_R e_R-K_\Omega e_\Omega+\Omega\times(J\Omega)+J\alpha_{\mathrm{ff}}.
+$$
+
+Here $J$ is the vehicle inertia about its center of mass in FRD, and $K_R$ and $K_\Omega$ are physical attitude and angular-rate feedback gains. The result $M$ is a body moment in N·m. The gyroscopic term compensates rotational coupling, and the final term supplies desired angular-acceleration feedforward. This classical moment equation is mathematical background; **it is not the normalized-torque command** used by the documented Geometric (Normalized) controller.
 
 As on SO(3) generally, the geometric attitude error has critical rotations near 180°; the law is not globally free of attitude ambiguities. Actuator limits, estimator error, and propulsion-model mismatch are additional practical limitations.
 
-## Physical and normalized collective thrust
+## Collective thrust and normalization
 
 The Lee-style projection uses the **current** attitude:
 
@@ -241,12 +251,12 @@ u_T&=\operatorname{clip}_{[0,1]}\left(h\frac{f}{mg}\right) \\
 \end{aligned}
 $$
 
-At level hover, $u_T=h$. Projection is not $\|A\|$ unless thrust axes align; clipping discards impossible negative/over-range collective requests. The negative body-Z sign is correct in FRD. Physical mode uses its [propulsion/allocator adapter](geometric-physical.md), rather than this hover scale. Normalized torque cannot be interpreted as N·m without the relevant vehicle mapping.
+At level hover, $u_T=h$. Projection is not $\|A\|$ unless thrust axes align; clipping discards impossible negative/over-range collective requests. The negative body-Z sign is correct in FRD. Normalized torque cannot be interpreted as N·m without the relevant vehicle mapping.
 
 ## References and implementation
 
 Taeyoung Lee, Melvin Leok, and N. Harris McClamroch, **“Geometric tracking control of a quadrotor UAV on SE(3)”**, CDC 2010, pp. 5420–5425, [DOI: 10.1109/CDC.2010.5717652](https://doi.org/10.1109/CDC.2010.5717652), provides the geometric error definitions (Eqs. 10–11) and physical moment law (Eq. 13). The toolkit's NED/FRD signs must be read with the equations above.
 
-The code also identifies [FDCL geometric-control commit f5fcb51](https://github.com/fdcl-gwu/uav_geometric_control/tree/f5fcb51c3b962152a4895a9d2e86e4a184655741) for analytic basis/force derivatives. The toolkit's normalized law and physical-to-PX4 adapter are separate implementation choices; the original paper does not define those interfaces.
+The code also identifies [FDCL geometric-control commit f5fcb51](https://github.com/fdcl-gwu/uav_geometric_control/tree/f5fcb51c3b962152a4895a9d2e86e4a184655741) for analytic basis/force derivatives. The toolkit's normalized torque law is a separate implementation choice; the original paper does not define PX4's normalized interface.
 
 Continue with [Acceleration](acceleration.md), or select a mode in the [SE(3) introduction](../se3.md).

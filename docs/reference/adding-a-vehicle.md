@@ -57,11 +57,10 @@ The [physical adapter](../controllers/se3/geometric-physical.md) is fixed at fou
 
 ## 4. Build, select, and check
 
-Vehicle files are installed into the controller package by CMake. In a **native repository-root development shell**, rebuild after changing source data:
+With a toolkit checkout, vehicle YAML is read on controller launch; restart the controller after edits. Rebuild in a **native repository-root development shell** when changing controller code:
 
 ```bash
 ./ros2/build.sh sitl
-./ros2/test.sh sitl
 ```
 
 For a **prepared matching SITL aircraft**, select the existing FY690S acceleration-capable file in a **separate repository-root runtime shell**:

@@ -33,7 +33,7 @@ The summary is written before plotting. A plotting dependency failure can leave 
 
 ## Profile detection
 
-Registered profiles are `position_takeoff_hover`, `offboard_takeoff_handoff`, `offboard_position`, and `se3`. [`detect_profile_name()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/__init__.py#L38) prefers `experiment.json`; otherwise it uses the parent directory name. Study metadata is therefore necessary for bags stored under arbitrary step names.
+Registered profiles are `position_takeoff_hover`, `offboard_takeoff_handoff`, `offboard_position`, and `se3`. `experiment.json` identifies every recorded profile, whether standalone or part of a study. Analysis requires that file instead of guessing from directory names.
 
 For SE(3), recorded `OffboardControlMode` determines the active command level. Simultaneous or changing levels are rejected. Direct-law identity comes from explicit metadata; without it, normalized geometric diagnostics can identify that law, but PX4-rate and physical modes cannot reliably be distinguished from downstream wrench messages alone. `unknown` is a data limitation, not a missing controller label to guess.
 
@@ -44,13 +44,7 @@ The ANCL hardware firmware intentionally omits `/fmu/out/sensor_combined`,
 serial bandwidth. The vehicle still handles its battery and pilot controls
 internally. Recorder topic lists therefore omit those unavailable ROS topics.
 
-For historical `position_takeoff_hover` and `offboard_takeoff_handoff` bags,
-manual-control samples remain an optional analysis input. When present, their
-joystick-phase timing is analyzed as before. When absent, the profiles retain
-PX4-confirmed arming/mode events and control-pipeline analysis but mark
-joystick-dependent timing (and centered-stick hover drift) unavailable; they
-must not infer stick movements from the vehicle's motion. Native PX4 logs are
-needed for any later reconstruction of those discarded observations.
+The Position-mode and staging profiles use PX4-confirmed arming and mode transitions. Joystick timing and centered-stick drift are not measured by the DDS recording contract.
 
 ## Time alignment
 

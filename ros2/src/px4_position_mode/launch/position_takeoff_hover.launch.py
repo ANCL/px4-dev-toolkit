@@ -34,6 +34,7 @@ def launch_setup(context):
         process_name="position_takeoff_hover",
         complete_message='Position-mode flight complete; stopping recording.',
         failure_message='Position-mode flight failed; stopping recording.',
+        experiment={"profile": "position_takeoff_hover", "config": {}} if record else None,
     )
 
 

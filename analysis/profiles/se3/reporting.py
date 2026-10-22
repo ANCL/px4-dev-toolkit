@@ -7,9 +7,7 @@ bypassed channels are not substituted with calculated setpoints.
 
 from __future__ import annotations
 
-import json
 import math
-from pathlib import Path
 from analysis.core import BagData
 from analysis.pipeline import _aligned_error_stats
 
@@ -543,63 +541,13 @@ def enrich_summary(
         label,
     )
 
-    segments = None
+    from analysis.profiles import read_experiment
 
-    experiment_path = (
-        bag.path
-        / "experiment.json"
-    )
-
-    if experiment_path.is_file():
-        experiment = json.loads(
-            experiment_path.read_text()
-        )
-
-        arguments = experiment.get(
-            "arguments",
-            {},
-        )
-
-        trajectory_name = (
-            arguments.get(
-                "trajectory"
-            )
-            if isinstance(
-                arguments,
-                dict,
-            )
-            else None
-        )
-
-        if (
-            isinstance(
-                trajectory_name,
-                str,
-            )
-            and trajectory_name
-        ):
-            root = (
-                Path(__file__)
-                .resolve()
-                .parents[3]
-            )
-
-            trajectory_path = (
-                root
-                / "ros2"
-                / "src"
-                / "offboard_controllers"
-                / "config"
-                / "trajectory"
-                / "trajectories.yaml"
-            )
-
-            segments = (
-                trajectory_segments(
-                    trajectory_path,
-                    trajectory_name,
-                )
-            )
+    experiment = read_experiment(bag.path)
+    config = experiment["config"].get("trajectory")
+    if not isinstance(config, dict):
+        raise RuntimeError("SE3 bag lacks recorded trajectory configuration")
+    segments = trajectory_segments(config)
 
     performance = (
         single_run_summary(

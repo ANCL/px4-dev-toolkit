@@ -7,7 +7,7 @@ Flow:
       -> analyze each bag independently
       -> align runs to confirmed PX4 Offboard entry
       -> build common physical comparison views
-      -> optionally resolve configured maneuver boundaries
+      -> resolve maneuver boundaries from recorded experiment metadata
       -> write comparison summary and overlay figures
 
 Only the SE(3) profile is accepted because controller-comparison semantics are
@@ -56,6 +56,7 @@ from analysis.core import read_bag  # noqa: E402
 from analysis.profiles import (  # noqa: E402
     detect_profile_name,
     get_profile,
+    read_experiment,
 )
 from analysis.profiles.se3.comparison import (  # noqa: E402
     build_run,
@@ -132,14 +133,6 @@ def main() -> int:
             "default to <study>/comparison."
         ),
     )
-    parser.add_argument(
-        "--trajectory",
-        help=(
-            "Optional SE3 trajectory name for "
-            "segment-aware metrics."
-        ),
-    )
-
     args = parser.parse_args()
 
     bag_paths = [
@@ -255,22 +248,13 @@ def main() -> int:
         )
     ]
 
-    segments = None
-
-    if args.trajectory:
-        config_path = (
-            ROOT
-            / "ros2"
-            / "src"
-            / "offboard_controllers"
-            / "config"
-            / "trajectory"
-            / "trajectories.yaml"
-        )
-        segments = trajectory_segments(
-            config_path,
-            args.trajectory,
-        )
+    experiments = [read_experiment(path) for path in bag_paths]
+    trajectory_configs = [run["config"].get("trajectory") for run in experiments]
+    if any(not isinstance(config, dict) for config in trajectory_configs):
+        raise ValueError("Comparison requires embedded trajectory configuration in every bag")
+    if any(config != trajectory_configs[0] for config in trajectory_configs[1:]):
+        raise ValueError("Recorded trajectories differ; comparisons require the same path")
+    segments = trajectory_segments(trajectory_configs[0])
 
     if args.output is None:
         output_dir = (

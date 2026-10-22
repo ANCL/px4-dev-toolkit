@@ -8,7 +8,9 @@ from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
-from px4_control_common.recording import launch_experiment, parse_recording_flag
+from px4_control_common.recording import (
+    launch_experiment, parse_recording_flag, ros_parameters,
+)
 
 
 def make_control_node() -> Node:
@@ -45,6 +47,15 @@ def launch_setup(context):
         process_name="offboard_takeoff_handoff",
         complete_message='Offboard takeoff handoff complete; stopping recording.',
         failure_message='Offboard takeoff handoff failed; stopping recording.',
+        experiment={
+            "profile": "offboard_takeoff_handoff",
+            "config": {
+                "staging": ros_parameters(
+                    Path(get_package_share_directory("px4_position_mode")) / "config/offboard.yaml",
+                    "/**",
+                ),
+            },
+        } if record else None,
     )
 
 

@@ -35,36 +35,22 @@ def get_profile(name: str):
         ) from exc
 
 
-def detect_profile_name(
-    bag_path: Path,
-) -> str:
-    """Return explicit bag profile, falling back to its parent directory."""
-    metadata_path = (
-        bag_path / "experiment.json"
-    )
+def read_experiment(bag_path: Path) -> dict[str, object]:
+    """Read a recorded run's required experiment configuration."""
+    path = bag_path / "experiment.json"
+    if not path.is_file():
+        raise RuntimeError(f"Missing experiment.json in bag: {bag_path}")
+    try:
+        data = json.loads(path.read_text())
+    except (json.JSONDecodeError, UnicodeError) as exc:
+        raise RuntimeError(f"Invalid experiment.json: {path}") from exc
+    if not isinstance(data, dict) or not isinstance(data.get("profile"), str):
+        raise RuntimeError(f"Invalid experiment.json profile: {path}")
+    if not isinstance(data.get("config"), dict):
+        raise RuntimeError(f"Invalid experiment.json config: {path}")
+    return data
 
-    if metadata_path.is_file():
-        try:
-            data = json.loads(
-                metadata_path.read_text()
-            )
-        except json.JSONDecodeError as exc:
-            raise RuntimeError(
-                "Invalid experiment metadata JSON: "
-                f"{metadata_path}"
-            ) from exc
 
-        profile = data.get("profile")
-
-        if (
-            isinstance(profile, str)
-            and profile
-        ):
-            return profile
-
-        raise RuntimeError(
-            "Invalid analysis profile metadata: "
-            f"{metadata_path}"
-        )
-
-    return bag_path.parent.name
+def detect_profile_name(bag_path: Path) -> str:
+    """Use the required run metadata, never the bag directory name."""
+    return str(read_experiment(bag_path)["profile"])

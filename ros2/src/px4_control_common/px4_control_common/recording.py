@@ -1,7 +1,10 @@
 """Recording and exit handling shared by finite PX4 ROS 2 experiments."""
 
 from datetime import datetime
+import json
 from pathlib import Path
+
+import yaml
 
 from ament_index_python.packages import get_package_share_directory
 from launch.actions import (
@@ -18,6 +21,46 @@ RECORDER_STARTUP_SECONDS = 1.0
 def parse_recording_flag(value: str) -> bool:
     """Apply the launch files' existing case-insensitive recording convention."""
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def ros_parameters(path: Path, node: str) -> dict[str, object]:
+    """Read the exact ROS parameter values supplied by a launch YAML file."""
+    data = yaml.safe_load(path.read_text())
+    return dict(data[node]["ros__parameters"])
+
+
+def vehicle_configuration(path: Path) -> dict[str, object]:
+    """Retain physical/allocator data, not the YAML source provenance."""
+    data = yaml.safe_load(path.read_text())
+    return {key: data[key] for key in ("plant", "propulsion", "px4_allocator") if key in data}
+
+
+def trajectory_configuration(path: Path, name: str) -> dict[str, object]:
+    """Resolve the selected absolute-NED path without copying unused maneuvers."""
+    data = yaml.safe_load(path.read_text())
+    available = data["segments"]
+    named = data["trajectories"]
+    start = list(data["start_position"])
+    if name in named:
+        selected = named[name]
+        names = selected["segments"]
+        start = list(selected.get("start_position", start))
+    elif name in available:
+        names = [name]
+        primitive = available[name]
+        if primitive["type"] == "figure_eight":
+            start = list(primitive["center"])
+        elif primitive["type"] in ("circle", "helix"):
+            start = list(primitive["center"])
+            start[0] += primitive["radius"]
+    else:
+        raise ValueError(f"Unknown trajectory or segment: {name}")
+    return {
+        "frame": data["frame"],
+        "start_position": start,
+        "default_yaw": data["default_yaw"],
+        "segments": [{"name": segment, **available[segment]} for segment in names],
+    }
 
 
 def find_repo_root(launch_file: str) -> Path:
@@ -98,6 +141,7 @@ def launch_experiment(*, node, record: bool, launch_file: str,
                       package: str, topic_file: str, bag_name: str,
                       process_name: str, complete_message: str,
                       failure_message: str, recording_output: str = "",
+                      experiment: dict[str, object] | None = None,
                       allow_direct_topics: bool = False):
     """Run the node directly, or stop/finalize rosbag when it exits.
 
@@ -111,6 +155,9 @@ def launch_experiment(*, node, record: bool, launch_file: str,
             return [EmitEvent(event=Shutdown(reason=f"{process_name} completed."))]
         return [node, RegisterEventHandler(OnProcessExit(
             target_action=node, on_exit=on_node_exit))]
+
+    if experiment is None or not experiment.get("profile"):
+        raise ValueError("Recorded experiments require profile and configuration metadata")
 
     root = find_repo_root(launch_file)
     share = Path(get_package_share_directory(package))
@@ -139,6 +186,10 @@ def launch_experiment(*, node, record: bool, launch_file: str,
             process_matcher=matches_action(recorder)))]
 
     def on_recorder_exit(_event, _context):
+        if (bag_path / "metadata.yaml").is_file():
+            (bag_path / "experiment.json").write_text(
+                json.dumps(experiment, indent=2) + "\n"
+            )
         actions = [LogInfo(msg=["Bag output: ", str(bag_path)])]
         if node_exit_code["value"] is None:
             return actions + [_failure(f"{process_name} recorder exited before the node.")]

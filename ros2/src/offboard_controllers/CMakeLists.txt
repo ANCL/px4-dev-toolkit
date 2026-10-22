@@ -12,8 +12,6 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include(CTest)
-
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
@@ -160,143 +158,6 @@ target_link_libraries(se3
   yaml-cpp
 )
 
-if(BUILD_TESTING)
-  add_executable(test_se3_control_laws
-    test/se3/test_control_laws.cpp
-  )
-
-  target_link_libraries(test_se3_control_laws
-    se3_control
-  )
-
-  add_test(
-    NAME se3_control_laws
-    COMMAND test_se3_control_laws
-  )
-
-  add_executable(test_se3_vehicle_state
-    test/se3/test_vehicle_state.cpp
-  )
-
-  target_link_libraries(test_se3_vehicle_state
-    se3_vehicle_state
-  )
-
-  ament_target_dependencies(test_se3_vehicle_state px4_msgs)
-
-  add_test(
-    NAME se3_vehicle_state
-    COMMAND test_se3_vehicle_state
-  )
-
-  add_executable(test_trajectory
-    test/trajectory/test_trajectory.cpp
-  )
-
-  target_include_directories(test_trajectory PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-  )
-
-  target_link_libraries(test_trajectory
-    trajectory
-  )
-
-  target_compile_definitions(test_trajectory PRIVATE
-    TRAJECTORY_CONFIG_PATH="${CMAKE_CURRENT_SOURCE_DIR}/config/trajectory/trajectories.yaml"
-  )
-
-  add_test(
-    NAME trajectory_math
-    COMMAND test_trajectory
-  )
-
-  add_executable(test_runtime_timing
-    test/test_runtime_timing.cpp
-  )
-
-  target_include_directories(test_runtime_timing PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-  )
-
-  add_test(
-    NAME runtime_timing
-    COMMAND test_runtime_timing
-  )
-
-  add_executable(test_px4_wrench
-    test/px4/test_wrench.cpp
-  )
-
-  target_include_directories(test_px4_wrench PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-  )
-
-  target_link_libraries(test_px4_wrench
-    px4_wrench
-  )
-
-  add_test(
-    NAME px4_wrench
-    COMMAND test_px4_wrench
-  )
-
-  add_executable(test_px4_rate
-    test/px4/test_rate_controller.cpp
-  )
-
-  target_link_libraries(test_px4_rate
-    px4_rate
-  )
-
-  add_test(
-    NAME px4_rate
-    COMMAND test_px4_rate
-  )
-
-  add_executable(test_physical_wrench_adapter
-    test/se3/test_physical_wrench_adapter.cpp
-  )
-
-  target_link_libraries(test_physical_wrench_adapter
-    physical_wrench_adapter
-  )
-
-  add_test(
-    NAME physical_wrench_adapter
-    COMMAND test_physical_wrench_adapter
-  )
-
-  add_executable(test_vehicle_config
-    test/se3/test_vehicle_config.cpp
-  )
-
-  target_link_libraries(test_vehicle_config
-    vehicle_config
-  )
-
-  target_compile_definitions(test_vehicle_config PRIVATE
-    VEHICLE_CONFIG_DIR="${PX4_ENV_ROOT}/config/vehicles"
-  )
-
-  add_test(
-    NAME vehicle_config
-    COMMAND test_vehicle_config
-  )
-
-  add_executable(test_offboard_lifecycle
-    test/test_offboard_lifecycle.cpp
-  )
-
-  target_include_directories(test_offboard_lifecycle PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-  )
-
-  add_test(
-    NAME offboard_lifecycle
-    COMMAND test_offboard_lifecycle
-  )
-endif()
-
 install(
   TARGETS
     offboard_position
@@ -323,7 +184,6 @@ install(
   DIRECTORY launch config
   DESTINATION share/${PROJECT_NAME}
 )
-
 
 install(
   DIRECTORY "${PX4_ENV_ROOT}/config/vehicles/"

@@ -18,13 +18,12 @@ This installs the lean ROS 2 Base environment and required build tools, fetches 
 
 `setup/fetch_sources.sh hardware` preserves complete existing source checkouts and refuses partially populated sets. See [installation troubleshooting](../reference/troubleshooting.md#installation) if fetching stops.
 
-## Build, test, and source ROS 2
+## Build and source ROS 2
 
 The installer already performs the initial build. After editing a maintained package, from the companion repository root:
 
 ```bash
 ./ros2/build.sh hardware
-./ros2/test.sh hardware
 ```
 
 Source the runtime in **each terminal** used for manual ROS 2 commands:
@@ -34,7 +33,7 @@ source ros2/runtime_env.sh
 ros2 pkg list
 ```
 
-A successful build and test run verifies the installed software, not the serial connection, Vicon tracking, PX4 estimator, or aircraft readiness.
+A successful build confirms compilation, not the serial connection, Vicon tracking, PX4 estimator, or aircraft readiness.
 
 ## Runtime YAML editing
 
@@ -62,4 +61,4 @@ First inspect the configuration and the environment without arming a vehicle:
 
 A stopped session is normal before startup. Once the wiring, Vicon configuration, and PX4-side connection have been checked, use the [Hardware runtime guide](../environments/hardware.md) to start the companion services, inspect Vicon and converted odometry, and verify the PX4 estimator and safety setup.
 
-Starting the companion services does **not** start firmware, arm, launch a flight controller, or make the vehicle flight-ready. Hardware testing requires real-device and pre-flight checks beyond the build tests above.
+Starting the companion services does **not** start firmware, arm, launch a flight controller, or make the vehicle flight-ready. Hardware operation requires real-device and pre-flight checks beyond a successful build.

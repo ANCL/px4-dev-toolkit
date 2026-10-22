@@ -71,11 +71,12 @@ Example directory structure (storage files depend on the installed rosbag backen
 ```{ .text .no-copy }
 bags/se3/<timestamp>/
 ├── metadata.yaml
+├── experiment.json
 ├── <rosbag storage files>
 └── analysis/                 # created later by px4_analyze
 ```
 
-The sequence runner requires `metadata.yaml` before reporting a finalized bag. It writes `experiment.json` inside finalized study bags with the profile, step, and effective launch arguments. Standalone launches do not write this experiment identity file; retain the launch arguments yourself. Direct-controller identity may otherwise be `unknown` in analysis.
+Every finalized recording contains `experiment.json` with the profile, selected configuration, and controller arguments. Study runs additionally include the study and step identity. Both analysis commands use this saved configuration instead of the live YAML.
 
 In a **repository-root shell with ROS sourced**, find the most recent finalized standalone SE(3) bag and inspect it:
 

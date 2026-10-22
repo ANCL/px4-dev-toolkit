@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-import yaml
+import math
 from analysis.comparison import (
     shift_motor_series,
     shift_vector_series,
@@ -155,102 +155,49 @@ def build_run(
     )
 
 
-def trajectory_segments(
-    config_path: Path,
-    trajectory_name: str,
-) -> list[dict[str, object]]:
-    """Resolve trajectory segments relative to confirmed Offboard entry.
-
-    Inputs:
-        Trajectory YAML and the same trajectory/segment name passed to runtime.
-
-    Method:
-        Expand a named trajectory into reusable segments. A reusable segment
-        selected directly is treated as a one-segment trajectory, matching
-        trajectory::load_trajectory() runtime behavior.
-
-    Returns:
-        Ordered segment metadata with cumulative start/end times beginning at
-        Offboard-relative t=0.
-    """
-    data = yaml.safe_load(
-        config_path.read_text()
-    )
-    segments = data.get("segments", {})
-    trajectories = data.get(
-        "trajectories",
-        {},
-    )
-
-    if trajectory_name in trajectories:
-        segment_names = trajectories[
-            trajectory_name
-        ]["segments"]
-    elif trajectory_name in segments:
-        segment_names = [
-            trajectory_name
-        ]
-    else:
-        raise ValueError(
-            f"Unknown trajectory or segment: {trajectory_name}"
-        )
+def trajectory_segments(configuration: dict[str, object]) -> list[dict[str, object]]:
+    """Resolve recorded absolute-NED segments relative to Offboard entry."""
+    if configuration.get("frame") != "px4_local_ned":
+        raise ValueError("Recorded trajectory frame must be px4_local_ned")
 
     elapsed = 0.0
-    result = []
-    current = [float(v) for v in data["start_position"]]
-    if trajectory_name in trajectories and "start_position" in trajectories[trajectory_name]:
-        current = [float(v) for v in trajectories[trajectory_name]["start_position"]]
-    heading = float(data["default_yaw"])
+    result: list[dict[str, object]] = []
+    current = [float(v) for v in configuration["start_position"]]
+    heading = float(configuration["default_yaw"])
 
-    for index, segment_name in enumerate(
-        segment_names,
-        start=1,
-    ):
-        if segment_name not in segments:
-            raise ValueError(
-                f"Trajectory {trajectory_name} references "
-                f"unknown segment {segment_name}"
-            )
-
-        segment = segments[segment_name]
-        duration = float(
-            segment["duration"]
-        )
-
+    for index, definition in enumerate(configuration["segments"], start=1):
+        kind = str(definition["type"])
+        duration = float(definition["duration"])
         item: dict[str, object] = {
             "index": index,
-            "name": segment_name,
-            "type": str(
-                segment["type"]
-            ),
+            "name": definition["name"],
+            "type": kind,
             "start_s": elapsed,
             "end_s": elapsed + duration,
         }
-
-        if "position" in segment:
-            target = [float(v) for v in segment["position"]]
-            # Backward-compatible metric key: this is a DERIVED signed step
-            # amplitude, not a relative YAML command.
+        if "position" in definition:
+            target = [float(v) for v in definition["position"]]
+            # Internal step amplitude: YAML positions remain absolute NED.
             item["offset"] = [target[i] - current[i] for i in range(3)]
             item["position"] = target
             current = target
-        if "center" in segment:
-            item["center"] = [float(v) for v in segment["center"]]
-        if segment["type"] in {"circle", "helix"}:
-            import math
-            center = item["center"]
-            angle = 2.0 * math.pi * float(segment["turns"])
-            r = float(segment["radius"])
-            current = [center[0] + r * math.cos(angle),
-                       center[1] + r * math.sin(angle),
-                       center[2] + (float(segment["height"]) if segment["type"] == "helix" else 0.0)]
-        if "heading" in segment:
-            new_heading = float(segment["heading"])
-            item["yaw_offset"] = new_heading - heading
-            item["heading"] = new_heading
-            heading = new_heading
-
+        if "center" in definition:
+            center = [float(v) for v in definition["center"]]
+            item["center"] = center
+            if kind in ("circle", "helix"):
+                angle = 2.0 * math.pi * float(definition["turns"])
+                radius = float(definition["radius"])
+                height = float(definition["height"]) if kind == "helix" else 0.0
+                current = [center[0] + radius * math.cos(angle),
+                           center[1] + radius * math.sin(angle), center[2] + height]
+            elif kind == "figure_eight":
+                angle = 2.0 * math.pi * float(definition["turns"])
+                current = [center[0] + float(definition["x_amplitude"]) * math.sin(angle),
+                           center[1] + float(definition["y_amplitude"]) * math.sin(2 * angle),
+                           center[2]]
+        if "heading" in definition:
+            heading = float(definition["heading"])
+            item["heading"] = heading
         result.append(item)
         elapsed += duration
-
     return result

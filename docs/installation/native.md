@@ -35,7 +35,6 @@ The complete simulation source manifest is [config/sources/sitl.repos](https://g
 
 <!-- Preserve existing section links. -->
 <span id="build"></span>
-<span id="test"></span>
 <span id="runtime-shell"></span>
 
 ## Rebuild and prepare a runtime shell
@@ -44,7 +43,6 @@ The installer already builds ROS 2. After changing a maintained ROS package, fro
 
 ```bash
 ./ros2/build.sh sitl
-./ros2/test.sh sitl
 ```
 
 Source the runtime environment in **each new terminal** used for manual ROS 2 commands:
@@ -54,7 +52,7 @@ source ros2/runtime_env.sh
 ros2 pkg list
 ```
 
-The runtime helper must be sourced, not executed. The ROS build and test commands do not launch the simulator or arm an aircraft.
+The runtime helper must be sourced, not executed. The ROS build command does not launch the simulator or arm an aircraft.
 
 <!-- Preserve existing section links. -->
 <span id="verification"></span>

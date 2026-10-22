@@ -17,7 +17,7 @@ Follow [Developing a controller](developing-a-controller.md) for package/node in
 
 ## Add a trajectory
 
-Prefer composing existing named segments in [trajectories.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/config/trajectory/trajectories.yaml). A new segment type also needs sampler/parser support and tests for derivatives, units, endpoints, and boundary behavior. Keep the [documented NED and time conventions](../controllers/trajectories.md).
+Prefer composing existing named segments in [trajectories.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/config/trajectory/trajectories.yaml). A new segment type also needs sampler/parser support and verification of derivatives, units, endpoints, and boundary behavior. Keep the [documented NED and time conventions](../controllers/trajectories.md).
 
 ## Add recording topics
 
@@ -32,7 +32,7 @@ Create a YAML under `config/sequences/` selecting existing launches and argument
 
 ## Add an analysis profile
 
-Profiles live in [analysis/profiles](https://github.com/ANCL/px4-dev-toolkit/tree/main/analysis/profiles). Define `PROFILE_NAME`, required/optional topics, `analyze`, and reporting; register it in [`PROFILES`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/__init__.py#L14). [`detect_profile_name()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/__init__.py#L38) resolves study metadata or the standalone bag layout. Reuse bag loading and shared signal/statistics helpers. Include meaningful analysis regression tests under `analysis/tests/`.
+Profiles live in [analysis/profiles](https://github.com/ANCL/px4-dev-toolkit/tree/main/analysis/profiles). Define `PROFILE_NAME`, required/optional topics, `analyze`, and reporting; register it in [`PROFILES`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/__init__.py#L14). Every recorded bag's `experiment.json` identifies its profile. Reuse bag loading and shared signal/statistics helpers.
 
 Comparison support requires an explicit definition of comparable quantities and time origin. `px4_compare` currently accepts SE(3) only; registering a new single-run profile does not automatically create valid comparison semantics.
 
@@ -43,7 +43,7 @@ Comparison support requires an explicit definition of comparable quantities and 
 
 ## Add a tool, package, or external source
 
-Put user-facing commands in `tools/` and internal helpers with their component. Resolve repository configuration without duplicating it, validate arguments, and stop any process trees the command creates. For a new ROS package, provide normal package/CMake metadata and choose its dependencies; update the maintained-package test selection only when the package needs inclusion.
+Put user-facing commands in `tools/` and internal helpers with their component. Resolve repository configuration without duplicating it, validate arguments, and stop any process trees the command creates. For a new ROS package, provide normal package/CMake metadata and choose its dependencies; ensure it is included in the appropriate build profile.
 
 Pin external repositories in the appropriate `config/sources/*.repos` scope. Ordinary controller development does not require changing pinned upstream PX4.
 
@@ -57,8 +57,7 @@ In a **native development checkout at the repository root**:
 
 ```bash
 ./ros2/build.sh sitl
-./ros2/test.sh sitl
 git diff --check
 ```
 
-Run affected harmless/source-level checks and, when behavior changes, validate the relevant simulation in a properly prepared environment. Write tests for the new behavior rather than changing unrelated tests to make it fit an old fixture. Document the exercised environment, expected result, and remaining real-flight validation.
+Inspect affected launch arguments and configuration. When behavior changes, validate an appropriate simulation in a properly prepared environment. Document the exercised environment, observed result, and remaining physical-flight validation.

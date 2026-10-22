@@ -42,7 +42,7 @@ se3::Reference to_se3_reference(const trajectory::Reference& reference) {
 } // namespace
 
 // PX4 nav_state, not command ACK, establishes Offboard ownership.
-// Re-anchor trajectory time on entry and invalidate held rate targets on loss.
+// Restart trajectory time on entry; invalidate held rate targets on loss.
 void Se3::update_vehicle_status(const px4_msgs::msg::VehicleStatus& msg) {
   vehicle_state_.update_vehicle_status(msg);
   vehicle_status_received_ = true;
@@ -90,7 +90,7 @@ void Se3::update_vehicle_status(const px4_msgs::msg::VehicleStatus& msg) {
                                 "waiting for Position-mode confirmation.");
     } else {
       RCLCPP_WARN(get_logger(), "PX4 left Offboard before trajectory completion; "
-                                "the next Offboard entry will restart and re-anchor "
+                                "the next Offboard entry will restart "
                                 "the trajectory.");
     }
 
@@ -180,7 +180,7 @@ double Se3::trajectory_entry_yaw() const {
 }
 
 trajectory::Reference Se3::current_trajectory_reference() {
-  // Outside Offboard, hold the reference at t=0 anchored to current state.
+  // Outside Offboard, sample t=0 from the fixed configured NED start.
   // Once Offboard is confirmed, trajectory time advances on the ROS clock.
   if (!offboard_active_) {
     trajectory_origin_ = trajectory::stationary_reference(

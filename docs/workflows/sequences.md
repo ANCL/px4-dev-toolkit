@@ -60,7 +60,7 @@ bags/se3_handoff_comparison/<timestamp>/
     └── ...
 ```
 
-[`write_manifest()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/manifest.py#L9) records progress, commands, times, exits, logs, and finalized bags. [`write_experiment_metadata()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/manifest.py#L21) saves each bag's profile and effective launch arguments, including direct-controller selection. It is written only after finalization is detected, including a finalized bag from a failed step; finalization and successful flight are different facts.
+[`write_manifest()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/manifest.py#L9) records progress, commands, times, exits, logs, and finalized bags. [`write_experiment_metadata()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/manifest.py#L21) adds study and step identity without replacing the recorder's configuration. The shared recorder writes the experiment configuration on finalization; the sequence runner adds study identity, including for a finalized failed step; finalization and successful flight are different facts.
 
 <!-- Preserve existing section links. -->
 <span id="process-ownership"></span>
@@ -71,7 +71,7 @@ bags/se3_handoff_comparison/<timestamp>/
 
 The checked-in study executes acceleration, attitude, body rate, geometric normalized torque, PX4 rate PID, and geometric physical moment **in that YAML order**, each with `gz_f450`, `full_excitation`, diagnostics, and recording. This execution order is independent of the documentation sidebar order. Each SE(3) node returns to Position mode before ending. The runner waits **3 seconds between successful steps**.
 
-That delay is not a vehicle reset, landing, arming action, or a flight-readiness check. Position can drift between steps, and each controller re-anchors. Confirm the required initial condition and watch the study; do not treat it as a guarantee of independent identical starting states.
+That delay is not a vehicle reset, landing, arming action, or a flight-readiness check. Position can drift between steps, and each controller restarts its fixed absolute NED reference. Confirm the required initial condition and watch the study; do not treat it as a guarantee of independent identical starting states.
 
 Each launch has a process group. Ctrl-C stops the launch tree and preserves per-step logs and the manifest. It can interrupt a live controller stream: recover the aircraft through prepared flight controls and verify mode/arming state before stopping services. A completed controller is not proof the recorder exited cleanly.
 

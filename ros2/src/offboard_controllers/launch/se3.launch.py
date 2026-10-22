@@ -12,6 +12,7 @@ from launch_ros.actions import Node
 
 from px4_control_common.recording import (
     controller_configuration_paths, launch_experiment, parse_recording_flag,
+    ros_parameters, trajectory_configuration, vehicle_configuration,
 )
 
 
@@ -56,6 +57,29 @@ def launch_setup(context):
     record = parse_recording_flag(LaunchConfiguration("record").perform(context))
     recording_output = LaunchConfiguration("recording_output").perform(context).strip()
     controller_config, vehicle_config, origin = controller_configuration_paths(__file__)
+    experiment = None
+    if record:
+        args = {name: LaunchConfiguration(name).perform(context) for name in (
+            "vehicle", "trajectory", "handoff", "offboard_trigger", "direct_controller",
+            "publish_diagnostics",
+        )}
+        controller_file = controller_config / "se3/controller.yaml"
+        trajectory_file = controller_config / "trajectory/trajectories.yaml"
+        experiment = {
+            "profile": "se3",
+            "vehicle": args["vehicle"],
+            "trajectory": args["trajectory"],
+            "handoff": args["handoff"],
+            "offboard_trigger": args["offboard_trigger"],
+            "publish_diagnostics": parse_recording_flag(args["publish_diagnostics"]),
+            "config": {
+                "controller": ros_parameters(controller_file, "se3"),
+                "vehicle": vehicle_configuration(vehicle_config / (args["vehicle"] + ".yaml")),
+                "trajectory": trajectory_configuration(trajectory_file, args["trajectory"]),
+            },
+        }
+        if args["handoff"] == "thrust_and_torque":
+            experiment["direct_controller"] = args["direct_controller"]
     return [
         LogInfo(msg=f"SE3 YAML: {origin}; controller={controller_config / 'se3/controller.yaml'}; "
                     f"trajectory={controller_config / 'trajectory/trajectories.yaml'}; "
@@ -72,6 +96,7 @@ def launch_setup(context):
             failure_message='SE3 controller failed; stopping recording.',
             recording_output=recording_output,
             allow_direct_topics=True,
+            experiment=experiment,
         ),
     ]
 

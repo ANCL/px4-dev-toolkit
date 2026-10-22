@@ -42,9 +42,9 @@ Use this reference to find where a setting belongs. Physical facts, controller t
 
 Environment wrappers source their `.env` files when invoked. Changing a file does not update an already-running tmux process. Stop/restart at an appropriate time to apply service changes; do not stop a flight's required communication as a configuration shortcut.
 
-The standard SE(3) launch loads the installed controller tuning, then supplies vehicle, trajectory, command-level, direct-controller, and diagnostic launch selections. Vehicle and trajectory source data are installed into the package during the ROS build; rebuild after changing them. The [vehicle guide](adding-a-vehicle.md) distinguishes controller-data selection from simulator/PX4 airframe selection.
+The standard SE(3) launch reads source controller, vehicle, and trajectory YAML from the toolkit checkout, then applies launch selections. Restart the controller after changing this YAML; no ROS rebuild is needed. A standalone installation without the checkout uses packaged YAML. The [vehicle guide](adding-a-vehicle.md) distinguishes controller-data selection from simulator/PX4 airframe selection.
 
-Sequences select launches and their arguments; the runner overrides recording output for its study. It does not change gains or calibrations. Keep the configuration used with the recorded data so later trajectory-aware analysis does not read changed maneuver definitions.
+Sequences select launches and their arguments; the runner overrides recording output for its study. It does not change gains or calibrations. Each finalized recording contains the selected experiment configuration in experiment.json. Analysis uses that snapshot rather than current source YAML.
 
 <!-- Preserve existing section links. -->
 <span id="external-sources-and-versions"></span>

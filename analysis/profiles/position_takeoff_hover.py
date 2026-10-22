@@ -1,16 +1,8 @@
-"""Analysis profile for the native PX4 Position-mode takeoff/hover test.
-
-Profile flow:
-    PX4 status + local position (optional manual-control observations)
-      -> resolve Position entry, arming, climb, hover, landing, and disarm
-      -> measure centered-stick hover drift
-      -> analyze the native PX4 controller pipeline over the recorded flight
-"""
+"""Analyze PX4 Position-mode arming, landing, and the controller pipeline."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import hypot, isfinite
 from pathlib import Path
 
 from analysis.core import (
@@ -34,16 +26,12 @@ PROFILE_NAME = "position_takeoff_hover"
 
 STATUS_TOPIC = TOPICS["OUT_VEHICLE_STATUS_V1"]
 LOCAL_POSITION_TOPIC = TOPICS["OUT_VEHICLE_LOCAL_POSITION"]
-MANUAL_CONTROL_TOPIC = TOPICS["OUT_MANUAL_CONTROL_SETPOINT"]
 
 REQUIRED_TOPICS = {
     STATUS_TOPIC,
     LOCAL_POSITION_TOPIC,
     *CONTROL_PIPELINE_TOPICS,
 }
-
-OPTIONAL_TOPICS = {MANUAL_CONTROL_TOPIC}
-
 
 @dataclass
 class AnalysisResult:
@@ -75,24 +63,6 @@ def _first_arming_state_time(
     return None
 
 
-def _first_throttle_time(
-    samples: list[TimedSample],
-    predicate,
-    *,
-    not_before_ns: int,
-) -> int | None:
-    """Find the first manual-control sample matching one flight phase."""
-
-    for sample in samples:
-        if sample.timestamp_ns < not_before_ns:
-            continue
-
-        if predicate(float(sample.message.throttle)):
-            return sample.timestamp_ns
-
-    return None
-
-
 def _first_landing_state_time(
     samples: list[TimedSample],
     status_type: type,
@@ -118,69 +88,15 @@ def _first_landing_state_time(
     return None
 
 
-def _hover_drift(
-    samples: list[TimedSample],
-    start_ns: int,
-    end_ns: int,
-) -> tuple[float, float]:
-    """Measure centered-stick hover drift.
-
-    Inputs:
-        Local-position samples and the hover-window boundaries.
-
-    Method:
-        Use the first finite sample as the hold origin; this intentionally
-        measures drift rather than absolute setpoint error.
-
-    Returns:
-        Horizontal and vertical drift over the hover window.
-    """
-
-    window = [
-        sample
-        for sample in samples
-        if start_ns <= sample.timestamp_ns <= end_ns
-        and isfinite(float(sample.message.x))
-        and isfinite(float(sample.message.y))
-        and isfinite(float(sample.message.z))
-    ]
-
-    if not window:
-        raise RuntimeError(
-            "No finite local-position samples were recorded during hover"
-        )
-
-    x0 = float(window[0].message.x)
-    y0 = float(window[0].message.y)
-    z0 = float(window[0].message.z)
-
-    max_xy = max(
-        hypot(
-            float(sample.message.x) - x0,
-            float(sample.message.y) - y0,
-        )
-        for sample in window
-    )
-
-    max_z = max(
-        abs(float(sample.message.z) - z0)
-        for sample in window
-    )
-
-    return max_xy, max_z
-
-
 def analyze(bag: BagData) -> AnalysisResult:
     """Analyze one native Position-mode takeoff/hover/land experiment.
 
     Inputs:
-        BagData containing PX4 lifecycle, manual-control, local-position, and
-        native controller-pipeline topics.
+        BagData containing PX4 lifecycle, local-position, and pipeline topics.
 
     Method:
-        Resolve each flight phase from recorded PX4 state/manual input, measure
-        hover drift from the centered-stick hold origin, and extract the common
-        controller pipeline.
+        Resolve confirmed Position, arming, landing, and disarm events;
+        analyze the native PX4 controller pipeline.
 
     Returns:
         Lifecycle/hover metrics, textual summary, and plot-ready pipeline data.
@@ -188,7 +104,6 @@ def analyze(bag: BagData) -> AnalysisResult:
 
     status_samples = bag.samples[STATUS_TOPIC]
     local_position_samples = bag.samples[LOCAL_POSITION_TOPIC]
-    manual_samples = bag.samples.get(MANUAL_CONTROL_TOPIC, [])
 
     if not status_samples:
         raise RuntimeError(f"No samples recorded on {STATUS_TOPIC}")
@@ -227,35 +142,10 @@ def analyze(bag: BagData) -> AnalysisResult:
     if armed_ns is None:
         raise RuntimeError("Armed state was not recorded")
 
-    # Historical bags retain exact joystick event timing. New hardware
-    # bags do not export the manual-control DDS observation; do not infer
-    # these events from local-position motion or mode changes.
-    climb_start_ns = None
-    hover_start_ns = None
-
-    if manual_samples:
-        climb_start_ns = _first_throttle_time(
-            manual_samples,
-            lambda value: value > 0.10,
-            not_before_ns=armed_ns,
-        )
-
-        if climb_start_ns is None:
-            raise RuntimeError("Climb-stick command was not recorded")
-
-        hover_start_ns = _first_throttle_time(
-            manual_samples,
-            lambda value: abs(value) <= 0.05,
-            not_before_ns=climb_start_ns,
-        )
-
-        if hover_start_ns is None:
-            raise RuntimeError("Centered-stick hover was not recorded")
-
     landing = _first_landing_state_time(
         status_samples,
         status_type,
-        not_before_ns=hover_start_ns if hover_start_ns is not None else armed_ns,
+        not_before_ns=armed_ns,
     )
 
     if landing is None:
@@ -281,20 +171,6 @@ def analyze(bag: BagData) -> AnalysisResult:
         "landing_entry_s": bag.relative_seconds(landing_ns),
         "disarmed_s": bag.relative_seconds(disarmed_ns),
     }
-
-    if hover_start_ns is not None:
-        max_xy_drift_m, max_z_drift_m = _hover_drift(
-            local_position_samples,
-            hover_start_ns,
-            landing_ns,
-        )
-        metrics.update({
-            "climb_start_s": bag.relative_seconds(climb_start_ns),
-            "hover_start_s": bag.relative_seconds(hover_start_ns),
-            "hover_duration_s": (landing_ns - hover_start_ns) / 1e9,
-            "max_xy_hover_drift_m": max_xy_drift_m,
-            "max_z_hover_drift_m": max_z_drift_m,
-        })
 
     state_names = native_constant_names(
         status_type,
@@ -328,17 +204,6 @@ def analyze(bag: BagData) -> AnalysisResult:
         f"  armed: {metrics['armed_s']:.3f} s",
     ])
 
-    if hover_start_ns is not None:
-        lines.extend([
-            f"  climb command: {metrics['climb_start_s']:.3f} s",
-            f"  sticks centered: {metrics['hover_start_s']:.3f} s",
-            f"  hover duration: {metrics['hover_duration_s']:.3f} s",
-            f"  max XY hover drift: {metrics['max_xy_hover_drift_m']:.4f} m",
-            f"  max Z hover drift: {metrics['max_z_hover_drift_m']:.4f} m",
-        ])
-    else:
-        lines.append("  joystick timing and hover drift: unavailable (not recorded)")
-
     lines.extend([
         f"  native landing entry: {metrics['landing_entry_s']:.3f} s ({landing_name})",
         f"  disarmed: {metrics['disarmed_s']:.3f} s",
@@ -351,9 +216,6 @@ def analyze(bag: BagData) -> AnalysisResult:
         (metrics["armed_s"], "ARMED"),
         (metrics["landing_entry_s"], "LAND"),
     ]
-    if hover_start_ns is not None:
-        markers.insert(2, (metrics["hover_start_s"], "STICKS CENTERED"))
-
     return AnalysisResult(
         summary="\n".join(lines) + "\n",
         metrics=metrics,

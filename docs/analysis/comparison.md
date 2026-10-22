@@ -17,7 +17,7 @@ A useful comparison holds the vehicle, trajectory, tuning context, and test cond
 Use the actual finalized six-mode study from the [complete example](../experiments/complete-example.md#6-compare-finalized-study-bags). In its **repository-root shell**, with ROS sourced and `study_bags` already checked:
 
 ```bash
-./tools/px4_compare "${study_bags[@]}" --trajectory full_excitation
+./tools/px4_compare "${study_bags[@]}"
 ```
 
 If bags are direct children of one study `bags/` directory with a `manifest.json`, output defaults to `<study>/comparison/`. For separately recorded bags, define an array containing their actual paths and provide `--output`; do not assume directory naming supplies experiment identity. The tool writes `summary.txt` and overlay PNGs. It does not reset or execute controllers.
@@ -65,7 +65,7 @@ Motor metrics use the maximum absolute motor envelope, not measured electrical p
 
 ## Trajectory-aware metrics
 
-`--trajectory full_excitation` resolves the canonical [trajectory YAML](../controllers/trajectories.md) into cumulative segment times. It must match the configuration used for recording. See [`step_response_metrics()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/se3/comparison/metrics.py#L280), [`yaw_segment_metrics()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/se3/comparison/metrics.py#L533), and [`figure_eight_metrics()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/se3/comparison/metrics.py#L585):
+The selected trajectory in each bag's `experiment.json` determines maneuver boundaries. Comparison rejects mismatched recorded trajectories. See [`step_response_metrics()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/se3/comparison/metrics.py#L280), [`yaw_segment_metrics()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/se3/comparison/metrics.py#L533), and [`figure_eight_metrics()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/se3/comparison/metrics.py#L585):
 
 | Maneuver | Implemented interpretation |
 |---|---|

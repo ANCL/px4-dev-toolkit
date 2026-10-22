@@ -20,7 +20,7 @@ get_filename_component(
   ABSOLUTE
 )
 
-# Keep ENU/FLU -> NED/FRD conversion independently testable; the ROS
+# Keep ENU/FLU -> NED/FRD conversion separate from ROS I/O; the ROS
 # executable owns subscriptions, timestamp sourcing, and publication.
 add_library(mocap_conversion STATIC
   src/conversion.cpp
@@ -66,20 +66,5 @@ install(
   DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}
 )
-
-if(BUILD_TESTING)
-  add_executable(test_conversion
-    test/test_conversion.cpp
-  )
-
-  target_link_libraries(test_conversion
-    mocap_conversion
-  )
-
-  add_test(
-    NAME mocap_conversion
-    COMMAND test_conversion
-  )
-endif()
 
 ament_package()

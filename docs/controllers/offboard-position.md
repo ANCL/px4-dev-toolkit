@@ -25,11 +25,11 @@ flowchart TB
 
 `TrajectorySetpoint` carries NED position [m], velocity [m/s], acceleration [m/s²], jerk [m/s³], yaw [rad], and yaw rate [rad/s]. Position is the active feedback level (`OffboardControlMode.position=true`); velocity and acceleration provide translational feedforward. Jerk is carried in the message, but the pinned PX4 position controller does not consume it. Both messages share each publication timestamp. See [publication.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/offboard_position/publication.cpp).
 
-The node runs at **20 Hz**. During prestream, the trajectory stays at time zero at the configured absolute NED start position, independent of the measured vehicle position; the trajectory clock starts when PX4 confirms Offboard. Desired yaw comes from trajectory configuration. Read [Trajectories](trajectories.md) for relative offsets and segment definitions.
+The node runs at **20 Hz**. During prestream, the trajectory stays at time zero at the configured absolute NED start position, independent of the measured vehicle position; the trajectory clock starts when PX4 confirms Offboard. Desired yaw comes from trajectory configuration. Read [Trajectories](trajectories.md) for absolute NED segment definitions.
 
 ## Run
 
-Prepare SITL and verify valid local position/status. This controller never requests arming; the pilot or SITL staging helper must arm first. For an airborne comparison, first prepare the aircraft using the [Offboard Staging](offboard-staging.md). A `hover` trajectory holds its entry position; it is not an automatic climb from the ground.
+Prepare SITL and verify valid local position/status. This controller never requests arming; the pilot or SITL staging helper must arm first. For an airborne comparison, first prepare the aircraft using the [Offboard Staging](offboard-staging.md). A `hover` trajectory holds its configured absolute NED position; it is not an automatic climb from the ground.
 
 In a **separate repository-root shell**, after checking the intended simulated vehicle and ensuring no other Offboard controller is running:
 

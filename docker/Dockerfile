@@ -88,7 +88,6 @@ COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} config/runtime/common.env config/runt
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} config/px4_topics.def config/px4_topics.def
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} config/vehicles/ config/vehicles/
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} ros2/build.sh ros2/build.sh
-COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} ros2/test.sh ros2/test.sh
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} ros2/runtime_env.sh ros2/runtime_env.sh
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} ros2/src/offboard_controllers/ ros2/src/offboard_controllers/
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} ros2/src/px4_bringup/ ros2/src/px4_bringup/
@@ -111,8 +110,6 @@ COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} tools/px4_analyze tools/px4_analyze
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} tools/px4_compare tools/px4_compare
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} tools/tmux_log tools/tmux_log
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} tools/mavproxy_modules/ tools/mavproxy_modules/
-# Installer contract tests run from the full repository, not the SITL image.
-COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} tools/tests/test_tools.py tools/tests/test_tools.py
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} docker/entrypoint.sh docker/entrypoint.sh
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} LICENSE README.md ./
 

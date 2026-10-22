@@ -36,13 +36,12 @@ Add/extend an analysis profile only for observables that are meaningful for this
 
 ## 6. Verify the addition
 
-Test pure laws with meaningful frame/sign/unit cases and trajectory derivatives as needed. Test readiness and mode-transition behavior, missing/invalid state, and message semantics where the addition changes them. Include source-backed vehicle/actuator constraints rather than tying unrelated tests to one fixture.
+Review pure laws for frame, sign, and unit correctness, including trajectory derivatives. Verify readiness and mode transitions, missing or invalid state, and published-message semantics. Use source-backed vehicle and actuator constraints rather than copying one vehicle's calibration.
 
 In a **native development checkout at the repository root**:
 
 ```bash
 ./ros2/build.sh sitl
-./ros2/test.sh sitl
 git diff --check
 ```
 

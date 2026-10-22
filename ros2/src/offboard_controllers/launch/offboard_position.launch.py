@@ -9,6 +9,7 @@ from launch_ros.actions import Node
 
 from px4_control_common.recording import (
     controller_configuration_paths, launch_experiment, parse_recording_flag,
+    trajectory_configuration,
 )
 
 
@@ -37,6 +38,19 @@ def make_control_node(controller_config: Path) -> Node:
 def launch_setup(context):
     record = parse_recording_flag(LaunchConfiguration("record").perform(context))
     controller_config, _, origin = controller_configuration_paths(__file__)
+    experiment = None
+    if record:
+        trajectory = LaunchConfiguration("trajectory").perform(context)
+        experiment = {
+            "profile": "offboard_position",
+            "trajectory": trajectory,
+            "offboard_trigger": LaunchConfiguration("offboard_trigger").perform(context),
+            "config": {
+                "trajectory": trajectory_configuration(
+                    controller_config / "trajectory/trajectories.yaml", trajectory
+                ),
+            },
+        }
     return [
         LogInfo(msg=f"Offboard Position YAML: {origin}; "
                     f"trajectory={controller_config / 'trajectory/trajectories.yaml'}"),
@@ -50,6 +64,7 @@ def launch_setup(context):
             process_name="offboard_position",
             complete_message='Offboard position controller complete; stopping recording.',
             failure_message='Offboard position controller failed; stopping recording.',
+            experiment=experiment,
         ),
     ]
 

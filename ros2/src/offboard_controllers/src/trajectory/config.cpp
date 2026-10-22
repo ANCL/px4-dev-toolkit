@@ -110,9 +110,15 @@ Segment compile_segment(const YAML::Node& definitions, const std::string& name,
   if (type == "figure_eight") {
     const Vector3 center = vector3(definition["center"], name + " center");
     require_same_position(cursor, center, name);
-    return Segment::figure_eight(duration,
-        definition["x_amplitude"].as<double>(),
-        definition["y_amplitude"].as<double>(), definition["turns"].as<double>());
+    const double x_amplitude = definition["x_amplitude"].as<double>();
+    const double y_amplitude = definition["y_amplitude"].as<double>();
+    const double turns = definition["turns"].as<double>();
+    const auto segment = Segment::figure_eight(duration, x_amplitude, y_amplitude, turns);
+    constexpr double kPi = 3.14159265358979323846;
+    const double angle = 2.0 * kPi * turns;
+    cursor = {center[0] + x_amplitude * std::sin(angle),
+              center[1] + y_amplitude * std::sin(2.0 * angle), center[2]};
+    return segment;
   }
   if (type == "circle" || type == "helix") {
     const Vector3 center = vector3(definition["center"], name + " center");

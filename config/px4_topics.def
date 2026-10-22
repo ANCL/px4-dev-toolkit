@@ -20,17 +20,11 @@ PX4_TOPIC(OUT_ACTUATOR_MOTORS, "/fmu/out/actuator_motors")
 // Control-allocation achievability feedback used by PX4 rate-loop anti-windup.
 PX4_TOPIC(OUT_CONTROL_ALLOCATOR_STATUS, "/fmu/out/control_allocator_status")
 
-// Battery state reported by PX4.
-PX4_TOPIC(OUT_BATTERY_STATUS, "/fmu/out/battery_status")
-
 // Estimator health and validity flags.
 PX4_TOPIC(OUT_ESTIMATOR_STATUS_FLAGS, "/fmu/out/estimator_status_flags")
 
 // Active PX4 failsafe conditions.
 PX4_TOPIC(OUT_FAILSAFE_FLAGS, "/fmu/out/failsafe_flags")
-
-// Manual-control input selected by PX4.
-PX4_TOPIC(OUT_MANUAL_CONTROL_SETPOINT, "/fmu/out/manual_control_setpoint")
 
 // Completion result for PX4 navigation modes that report completion.
 PX4_TOPIC(OUT_MODE_COMPLETED, "/fmu/out/mode_completed")

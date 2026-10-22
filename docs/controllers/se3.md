@@ -51,7 +51,7 @@ ros2 launch offboard_controllers se3.launch.py \
   publish_diagnostics:=true
 ```
 
-`hover` holds the entry position for 10 seconds. Choose another
+`hover` holds the configured absolute NED position for 10 seconds. Choose another
 [trajectory](trajectories.md) for motion; add `record:=true` for a bag.
 Each mode page shows its exact launch arguments.
 
@@ -82,7 +82,7 @@ require separate SITL verification before physical flight.
    Finish only when PX4 confirms Position mode.
 
 Offboard loss or invalid state can interrupt control. A subsequent confirmed
-Offboard entry re-anchors and restarts the trajectory; PX4-rate internal state
+Offboard entry restarts the trajectory at the same absolute NED start; PX4-rate internal state
 is invalidated after Offboard loss. Returning to Position mode **does not land
 or disarm the aircraft**. Follow the [SITL landing procedure](../environments/sitl.md#land-and-reset-the-simulated-vehicle).
 These readiness checks are not a complete flight failsafe.

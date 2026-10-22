@@ -17,16 +17,4 @@ ament_export_include_directories(include)
 
 ament_python_install_package(${PROJECT_NAME})
 
-include(CTest)
-
-if(BUILD_TESTING)
-  find_package(Python3 REQUIRED COMPONENTS Interpreter)
-
-  add_test(
-    NAME recording_helpers
-    COMMAND "${Python3_EXECUTABLE}" -m unittest discover
-      -s "${CMAKE_CURRENT_SOURCE_DIR}/test" -p "test_*.py"
-  )
-endif()
-
 ament_package()

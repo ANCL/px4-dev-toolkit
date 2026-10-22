@@ -50,7 +50,7 @@ ros2 launch offboard_controllers se3.launch.py \
   publish_diagnostics:=true record:=true
 ```
 
-The staging helper exits after confirmed takeover. SE(3) follows the relative line trajectory and returns to Position mode, then recording shuts down. It does not land/disarm. An Offboard-position demonstration is an alternative controller example, described on its [own page](../controllers/offboard-position.md); do not run both together.
+The staging helper exits after confirmed takeover. SE(3) follows the configured absolute NED line trajectory and returns to Position mode, then recording shuts down. It does not land/disarm. An Offboard-position demonstration is an alternative controller example, described on its [own page](../controllers/offboard-position.md); do not run both together.
 
 <span id="4-inspect-and-analyze-the-finalized-bag"></span>
 ## 4. Analyze the bag
@@ -92,7 +92,7 @@ Verify that this is the intended completed study and all six steps succeeded. Th
 
 ```bash
 mapfile -t study_bags < <(find "$study_path/bags" -mindepth 2 -maxdepth 2 -name metadata.yaml -printf '%h\n' | sort)
-test "${#study_bags[@]}" -eq 6 && ./tools/px4_compare "${study_bags[@]}" --trajectory full_excitation
+test "${#study_bags[@]}" -eq 6 && ./tools/px4_compare "${study_bags[@]}"
 ```
 
 The command filters finalized bag directories rather than expanding unrelated files. Results go to `$study_path/comparison/summary.txt` and PNG figures. Verify the six metadata identities before interpreting overlays; [comparison](../analysis/comparison.md) aligns time to PX4-confirmed Offboard entry and explains which metrics are meaningful.

@@ -1,107 +1,51 @@
-# Fixed PX4 local NED setpoints (metres); independent of Offboard entry position.
-# Z is positive downward. All paths are defined around [0, 0, -0.75].
-# Step is instantaneous; line and yaw are smooth. Restart the controller after edits.
+# Shared absolute PX4 local NED trajectories for Offboard and onboard control.
+# X north, Y east, Z positive down. All named experiments begin/end at
+# [0, 0, -1.0] and yaw 0; never shift the reference to the measured pose.
+# Heights and horizontal dimensions require a verified clear flight volume.
 frame: px4_local_ned
-start_position: [0.0, 0.0, -0.75]
+start_position: [0.0, 0.0, -1.0]
 default_yaw: 0.0
 
 segments:
-  hold_1s:
-    type: hold
-    duration: 1.0
-  hold_2s:
-    type: hold
-    duration: 2.0
-  hold_10s:
-    type: hold
-    duration: 10.0
+  hold_1s: {type: hold, duration: 1.0}
+  hold_2s: {type: hold, duration: 2.0}
+  hold_10s: {type: hold, duration: 10.0}
 
-  step_x:
-    type: step
-    duration: 4.0
-    position: [1.0, 0.0, -0.75]
-  step_y:
-    type: step
-    duration: 4.0
-    position: [0.0, 1.0, -0.75]
-  step_z:
-    type: step
-    duration: 4.0
-    position: [0.0, 0.0, -1.0]
+  step_x: {type: step, duration: 4.0, position: [0.2, 0.0, -1.0]}
+  step_y: {type: step, duration: 4.0, position: [0.0, 0.2, -1.0]}
+  line_x: {type: line, duration: 4.0, position: [0.5, 0.0, -1.0]}
+  line_y: {type: line, duration: 4.0, position: [0.0, 0.5, -1.0]}
+  line_z: {type: line, duration: 4.0, position: [0.0, 0.0, -1.25]}
+  line_z_up: {type: line, duration: 4.0, position: [0.0, 0.0, -1.0]}
+  return: {type: line, duration: 5.0, position: [0.0, 0.0, -1.0]}
 
-  line_x:
-    type: line
-    duration: 4.0
-    position: [1.0, 0.0, -0.75]
-  line_y:
-    type: line
-    duration: 4.0
-    position: [0.0, 1.0, -0.75]
-  line_z:
-    type: line
-    duration: 4.0
-    position: [0.0, 0.0, -1.0]
-  return:
-    type: line
-    duration: 6.0
-    position: [0.0, 0.0, -0.75]
+  circle_entry_05: {type: line, duration: 5.0, position: [0.5, 0.0, -1.0]}
+  circle_entry_10: {type: line, duration: 7.0, position: [1.0, 0.0, -1.0]}
+  circle_05: {type: circle, duration: 12.0, center: [0.0, 0.0, -1.0], radius: 0.5, turns: 1.0}
+  circle_10: {type: circle, duration: 20.0, center: [0.0, 0.0, -1.0], radius: 1.0, turns: 1.0}
 
-  circle:
-    type: circle
-    duration: 8.0
-    center: [0.0, 0.0, -0.75]
-    radius: 1.0
-    turns: 1.0
-  helix:
-    type: helix
-    duration: 10.0
-    center: [0.0, 0.0, -0.75]
-    radius: 1.0
-    height: -1.0
-    turns: 2.0
-  figure_eight:
-    type: figure_eight
-    duration: 60.0
-    center: [0.0, 0.0, -0.75]
-    x_amplitude: 2.0
-    y_amplitude: 1.0
-    turns: 3.0
+  figure_eight: {type: figure_eight, duration: 30.0, center: [0.0, 0.0, -1.0], x_amplitude: 0.75, y_amplitude: 0.4, turns: 1.0}
+  helix_05: {type: helix, duration: 20.0, center: [0.0, 0.0, -1.0], radius: 0.5, height: -0.5, turns: 1.0}
+  helix_return: {type: line, duration: 8.0, position: [0.0, 0.0, -1.0]}
 
-  yaw_90:
-    type: yaw
-    duration: 4.0
-    heading: 1.5707963267948966
-  yaw_0:
-    type: yaw
-    duration: 4.0
-    heading: 0.0
+  yaw_90: {type: yaw, duration: 4.0, heading: 1.5707963267948966}
+  yaw_0: {type: yaw, duration: 4.0, heading: 0.0}
 
 trajectories:
-  hover:
-    segments: [hold_10s]
-
-  step_response:
-    segments: [hold_2s, step_x, hold_2s, return, hold_2s]
-
-  line_tracking:
-    segments: [hold_2s, line_x, hold_2s, return, hold_2s]
-
-  circle_tracking:
-    segments: [hold_2s, line_x, circle, return, hold_2s]
-
-  helix_tracking:
-    segments: [hold_2s, line_x, circle, helix, return, hold_2s]
-
-  translation_yaw_sweep:
-    segments: [hold_2s, line_x, hold_1s, return,
-               line_y, hold_1s, return,
-               line_z, hold_1s, return,
-               yaw_90, hold_1s, yaw_0, hold_2s]
-
-  figure_eight_tracking:
-    segments: [hold_2s, figure_eight, hold_2s]
-
+  hover: {segments: [hold_10s]}
+  step_x: {segments: [hold_2s, step_x, hold_2s, return, hold_2s]}
+  step_y: {segments: [hold_2s, step_y, hold_2s, return, hold_2s]}
+  line_x: {segments: [hold_2s, line_x, hold_2s, return, hold_2s]}
+  line_y: {segments: [hold_2s, line_y, hold_2s, return, hold_2s]}
+  line_z: {segments: [hold_2s, line_z, hold_2s, line_z_up, hold_2s]}
+  circle_r05: {segments: [hold_2s, circle_entry_05, circle_05, return, hold_2s]}
+  circle_r10: {segments: [hold_2s, circle_entry_10, circle_10, return, hold_2s]}
+  figure_eight_tracking: {segments: [hold_2s, figure_eight, hold_2s]}
+  helix_r05: {segments: [hold_2s, circle_entry_05, helix_05, helix_return, hold_2s]}
+  yaw_sweep: {segments: [hold_2s, yaw_90, hold_2s, yaw_0, hold_2s]}
   full_excitation:
     segments: [hold_2s, step_x, hold_2s, return,
                step_y, hold_2s, return,
-               yaw_90, hold_2s, figure_eight, yaw_0, hold_2s]
+               line_z, hold_2s, line_z_up,
+               yaw_90, hold_1s, yaw_0,
+               figure_eight, hold_2s]

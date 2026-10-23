@@ -49,3 +49,50 @@ scaling with analytic derivatives through snap; steps are discontinuous.
 The terminal reference is held after the configured duration. Both Offboard
 Position and SE(3) use the same trajectory YAML parser and sampler. See
 [Offboard Position](offboard-position.md) and [SE(3)](se3.md).
+
+## Compiling trajectories for PX4-native flight modes
+
+The same `config/trajectories.yaml` defines Offboard and onboard experiments.
+The standard hover reference is `[0, 0, -1.0]` PX4 local NED, yaw zero.
+Every named trajectory returns smoothly to that point and yaw before its
+last hold. Vertical experiments use `-0.75 <= z <= -1.5` m; actual aircraft
+motion must be evaluated against available flight space.
+
+```bash
+# Toolkit shell, after installation and PX4 SITL build:
+./tools/trajectory list
+./tools/trajectory compile --all
+./tools/trajectory upload --all
+```
+
+The compiler writes checksummed, bounded `.traj` plans under
+`generated/trajectories/` (gitignored); uploading copies validated files to
+PX4 SITL's local persistent filesystem. The files contain analytic segment
+parameters, not pre-sampled points. Neither operation changes flight mode.
+
+In the PX4 shell, while **disarmed**, start the SE(3) module after configuring
+its existing parameters. Then perform the normal Position-mode takeoff and
+hover. The following are separate operations:
+
+```text
+trajectory list
+trajectory select circle_r05
+trajectory status
+se3_control select       # Request the registered mode; verify acceptance
+se3_control run          # Start selected trajectory after start-pose checks
+se3_control status       # Observe running / completed / holding
+se3_control hold         # Optional interruption; holds measured position
+commander mode posctl    # Explicit return to PX4 Position mode
+```
+
+Completion **does not exit SE(3)**. The sampler holds the final commanded
+reference, equal to `[0, 0, -1.0]` for all provided named plans, until you
+switch modes or command `hold`. On initial SE(3) entry, before `run`, it holds
+the measured handoff pose instead. A loaded plan must begin sufficiently near
+the current measured pose and heading; no implicit frame translation occurs.
+
+Only SITL file copying is implemented. Hardware requires a verified MAVLink
+file-transfer link separate from the existing DDS serial bridge; attempting
+`tools/trajectory upload --target hardware` explicitly fails rather than
+assuming one is available. Files on PX4 persistent storage survive restart,
+but selected/executing plan state does not.

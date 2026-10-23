@@ -33,3 +33,6 @@ __pycache__/
 
 # MkDocs generated site.
 /site/
+
+# Generated compiled flight plans (YAML is the tracked source).
+/generated/trajectories/

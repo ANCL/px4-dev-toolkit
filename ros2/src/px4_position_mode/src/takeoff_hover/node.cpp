@@ -10,6 +10,13 @@ PositionTakeoffHover::PositionTakeoffHover()
     throw std::invalid_argument("finish must be 'hold' or 'land'");
   }
 
+  // A small SITL staging climb can match an absolute-NED experiment start.
+  const double height = declare_parameter<double>("climb_height_m", kClimbHeightM);
+  if (!std::isfinite(height) || height <= 0.0 || height > 5.0) {
+    throw std::invalid_argument("climb_height_m must be within (0, 5] m");
+  }
+  climb_height_m_ = static_cast<float>(height);
+
   // PX4 uXRCE-DDS output topics are live vehicle-state streams. Use
   // SensorDataQoS so consumers prefer fresh state over retransmission of
   // stale samples.

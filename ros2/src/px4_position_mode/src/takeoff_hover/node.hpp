@@ -35,7 +35,7 @@ namespace px4_topics
  *       -> set the background virtual joystick to minimum throttle
  *       -> switch to Position mode
  *       -> arm
- *       -> command a climb of approximately 2 m
+ *       -> command a configurable climb (default approximately 1 m)
  *       -> center the joystick and hover for 20 seconds
  *       -> hold: leave PX4 armed in Position mode and exit (default)
  *       -> land: ask PX4 to land, then wait for disarm
@@ -73,7 +73,7 @@ private:
     DONE,
   };
 
-  static constexpr float kClimbHeightM = 2.0F;
+  static constexpr float kClimbHeightM = 1.0F;
   static constexpr float kPrearmThrottle = -1.0F;
   static constexpr float kClimbThrottle = 0.60F;
 
@@ -142,6 +142,7 @@ private:
 
 
   const std::string finish_;  // "hold" (default) or "land"
+  float climb_height_m_{kClimbHeightM};
   px4_control_common::VirtualJoystickClient virtual_joystick_;
 
   rclcpp::Subscription<px4_msgs::msg::VehicleStatus>::SharedPtr

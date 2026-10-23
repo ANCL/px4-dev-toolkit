@@ -125,7 +125,7 @@ void PositionTakeoffHover::run()
 
         // PX4 local NED uses positive z Down; an upward climb therefore
         // subtracts the requested height from the starting z coordinate.
-        target_z_ = start_z_ - kClimbHeightM;
+        target_z_ = start_z_ - climb_height_m_;
 
         RCLCPP_INFO(
           get_logger(),

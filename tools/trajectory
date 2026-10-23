@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+"""Prepare and upload named parametric plans. Never arms or changes PX4 mode.
+
+All names and parameters are declared once in config/trajectories.yaml.
+Compiled files are deterministic, generated, and excluded from Git.
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+from pathlib import Path
+import sys
+import tempfile
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools" / "trajectory_lib"))
+from compiler import compile_plan  # noqa: E402
+
+DEFINITIONS = ROOT / "config" / "trajectories.yaml"
+GENERATED = ROOT / "generated" / "trajectories"
+SITL_CATALOG = ROOT / "px4" / "PX4-Autopilot" / "build" / "px4_sitl_default" / "rootfs" / "fs" / "microsd" / "trajectories"
+
+
+def save_atomic(path: Path, contents: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=".trajectory-", dir=path.parent)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(contents)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+
+
+def names_for(args: argparse.Namespace, config: dict) -> list[str]:
+    catalog = config.get("trajectories", {})
+    if not isinstance(catalog, dict):
+        raise ValueError("trajectories in YAML must be a map")
+    if args.all:
+        return sorted(catalog)
+    if args.name is None or args.name not in catalog:
+        raise ValueError(f"unknown trajectory {args.name!r}; use tools/trajectory list")
+    return [args.name]
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    for cmd in ("compile", "upload"):
+        sub = commands.add_parser(cmd)
+        choose = sub.add_mutually_exclusive_group(required=True)
+        choose.add_argument("name", nargs="?")
+        choose.add_argument("--all", action="store_true")
+        if cmd == "upload":
+            sub.add_argument("--target", choices=("sitl", "hardware"), default="sitl")
+    commands.add_parser("list")
+    args = parser.parse_args()
+    try:
+        config = yaml.safe_load(DEFINITIONS.read_text())
+        if args.command == "list":
+            print("Defined trajectories:")
+            for name in sorted(config["trajectories"]):
+                compiled = "compiled" if (GENERATED / (name + ".traj")).exists() else "not compiled"
+                print(f"  {name:<24} {compiled}")
+            return 0
+
+        names = names_for(args, config)
+        # Validate EVERY requested plan before replacing any local artifact.
+        expected = {name: compile_plan(config, name).encode("ascii") for name in names}
+        if args.command == "compile":
+            for name, plan in expected.items():
+                path = GENERATED / f"{name}.traj"
+                save_atomic(path, plan)
+                print(f"compiled {name} -> {path}")
+        else:
+            if args.target == "hardware":
+                raise ValueError("hardware upload needs a verified MAVLink file-transfer connection; not configured")
+            if not (SITL_CATALOG.parents[2]).is_dir():
+                raise ValueError("PX4 SITL rootfs not found; build PX4 SITL first")
+            for name, plan in expected.items():
+                source = GENERATED / f"{name}.traj"
+                if not source.is_file() or source.read_bytes() != plan:
+                    raise ValueError(f"{name}: missing/stale compiled artifact; run tools/trajectory compile {name}")
+            for name in names:
+                source = GENERATED / f"{name}.traj"
+                destination = SITL_CATALOG / f"{name}.traj"
+                save_atomic(destination, source.read_bytes())
+                if destination.read_bytes() != source.read_bytes():
+                    raise IOError(f"upload verification failed for {name}")
+                print(f"uploaded {name} -> {destination}")
+            print("Stored on SITL filesystem; use PX4 shell: trajectory select <name>")
+        return 0
+    except (OSError, KeyError, ValueError, yaml.YAMLError) as error:
+        print(f"trajectory: {error}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

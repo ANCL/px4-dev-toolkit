@@ -38,10 +38,10 @@ Local position should have valid horizontal/vertical estimates. PX4 status shoul
 With Gazebo ready, no other controller running, and the simulated aircraft initially landed/disarmed, use **terminal 2**:
 
 ```bash
-ros2 launch px4_position_mode position_takeoff_hover.launch.py
+ros2 launch px4_position_mode position_takeoff_hover.launch.py finish:=land
 ```
 
-The example waits for readiness, selects Position mode, arms, climbs, holds, lands, and disarms through its implemented state machine. In the GUI you should see those phases; in a headless session follow the node/PX4 logs and mode/arming state. This is a PX4 reference flight, not an external SE(3) controller.
+With `finish:=land`, the example waits for readiness, selects Position mode, arms, climbs, holds, lands, and disarms through its implemented state machine. The default `finish:=hold` leaves the aircraft armed and hovering for later controller handoff. In the GUI you should see those phases; in a headless session follow the node/PX4 logs and mode/arming state. This is a PX4 reference flight, not an external SE(3) controller.
 
 Wait for successful completion. If it fails, inspect the reported phase and restore a landed/disarmed simulation before trying again. Ctrl-C interrupts a process; it is not a guaranteed landing command.
 

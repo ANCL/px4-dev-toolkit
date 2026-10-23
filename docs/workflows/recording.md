@@ -20,10 +20,10 @@ With a ready, initially landed/disarmed **SITL** vehicle and MAVProxy, in a **se
 
 ```bash
 source ros2/runtime_env.sh
-ros2 launch px4_position_mode position_takeoff_hover.launch.py record:=true
+ros2 launch px4_position_mode position_takeoff_hover.launch.py finish:=land record:=true
 ```
 
-This produces `bags/position_takeoff_hover/<timestamp>/`. For the separate airborne staging demonstration, the equivalent launch is `offboard_takeoff_handoff.launch.py` and the bag family is `offboard_takeoff_handoff`. Do not run those demonstrations concurrently.
+This produces `bags/position_takeoff_hover/<timestamp>/`. Use `finish:=hold` (the default) when staging an airborne vehicle instead; the recorder stops when the helper exits, but the aircraft remains armed in Position mode. For the separate airborne staging demonstration, the equivalent launch is `offboard_takeoff_handoff.launch.py` and the bag family is `offboard_takeoff_handoff`. Do not run those demonstrations concurrently.
 
 <!-- Preserve existing section links. -->
 <span id="record-offboard-position"></span>

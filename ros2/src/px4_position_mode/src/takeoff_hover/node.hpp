@@ -1,4 +1,4 @@
-// State and ROS interfaces for Position-mode takeoff, hover, and land.
+// State and ROS interfaces for Position-mode takeoff and optional landing.
 
 #pragma once
 
@@ -6,6 +6,8 @@
 #include <cmath>
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
+#include <string>
 
 #include <px4_control_common/virtual_joystick_client.hpp>
 #include <px4_msgs/msg/vehicle_command.hpp>
@@ -35,8 +37,8 @@ namespace px4_topics
  *       -> arm
  *       -> command a climb of approximately 2 m
  *       -> center the joystick and hover for 20 seconds
- *       -> ask PX4 to land at the current position
- *       -> wait for PX4 to land and disarm
+ *       -> hold: leave PX4 armed in Position mode and exit (default)
+ *       -> land: ask PX4 to land, then wait for disarm
  *
  * Ownership:
  *   MAVProxy owns the continuous MANUAL_CONTROL stream. This node changes
@@ -130,16 +132,16 @@ private:
 
   // State-machine contract:
   //   Inputs: PX4 status/local position/land state and virtual-joystick access.
-  //   Action: enter Position mode, arm, climb, hold centered sticks, then issue
-  //           PX4's native land command.
-  //   Exit: success after landing and automatic disarm; invalid state,
-  //         unexpected disarm, or phase timeout is a failure.
+  //   Action: enter Position mode, arm, climb, and hover for 20 seconds.
+  //   Exit: hold leaves the vehicle armed with centered sticks (default);
+  //         land waits for PX4 to land and disarm.
   void run();
 
 
   std::uint64_t now_us() const;
 
 
+  const std::string finish_;  // "hold" (default) or "land"
   px4_control_common::VirtualJoystickClient virtual_joystick_;
 
   rclcpp::Subscription<px4_msgs::msg::VehicleStatus>::SharedPtr

@@ -3,8 +3,13 @@
 #include "node.hpp"
 
 PositionTakeoffHover::PositionTakeoffHover()
-: Node("position_takeoff_hover")
+: Node("position_takeoff_hover"),
+  finish_(declare_parameter<std::string>("finish", "hold"))
 {
+  if (finish_ != "hold" && finish_ != "land") {
+    throw std::invalid_argument("finish must be 'hold' or 'land'");
+  }
+
   // PX4 uXRCE-DDS output topics are live vehicle-state streams. Use
   // SensorDataQoS so consumers prefer fresh state over retransmission of
   // stale samples.
@@ -58,7 +63,8 @@ PositionTakeoffHover::PositionTakeoffHover()
 
   RCLCPP_INFO(
     get_logger(),
-    "Waiting for PX4 vehicle status and valid local position.");
+    "Finish action: %s. Waiting for PX4 vehicle status and valid local position.",
+    finish_.c_str());
 }
 
 

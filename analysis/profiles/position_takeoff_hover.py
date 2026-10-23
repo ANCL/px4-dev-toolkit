@@ -1,8 +1,9 @@
-"""Analyze PX4 Position-mode arming, landing, and the controller pipeline."""
+"""Analyze PX4 Position-mode takeoff, hover, and optional landing."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
 
 from analysis.core import (
@@ -32,6 +33,21 @@ REQUIRED_TOPICS = {
     LOCAL_POSITION_TOPIC,
     *CONTROL_PIPELINE_TOPICS,
 }
+
+
+def _finish_action(bag: BagData) -> str:
+    """Read recorded finish action; older runs used automatic landing."""
+    metadata = bag.path / "experiment.json"
+    finish = "land"
+
+    if metadata.is_file():
+        config = json.loads(metadata.read_text()).get("config", {})
+        finish = config.get("finish", "land")
+
+    if finish not in ("hold", "land"):
+        raise RuntimeError(f"Unknown Position-mode finish action: {finish}")
+
+    return finish
 
 @dataclass
 class AnalysisResult:
@@ -89,14 +105,14 @@ def _first_landing_state_time(
 
 
 def analyze(bag: BagData) -> AnalysisResult:
-    """Analyze one native Position-mode takeoff/hover/land experiment.
+    """Analyze one native Position-mode takeoff/hover experiment.
 
     Inputs:
         BagData containing PX4 lifecycle, local-position, and pipeline topics.
 
     Method:
-        Resolve confirmed Position, arming, landing, and disarm events;
-        analyze the native PX4 controller pipeline.
+        Resolve confirmed Position/arming events and the recorded finish;
+        require landing/disarm only if finish=land.
 
     Returns:
         Lifecycle/hover metrics, textual summary, and plot-ready pipeline data.
@@ -142,44 +158,46 @@ def analyze(bag: BagData) -> AnalysisResult:
     if armed_ns is None:
         raise RuntimeError("Armed state was not recorded")
 
-    landing = _first_landing_state_time(
-        status_samples,
-        status_type,
-        not_before_ns=armed_ns,
-    )
-
-    if landing is None:
-        raise RuntimeError(
-            "PX4 Land/Descend entry after hover was not recorded"
-        )
-
-    landing_ns, landing_state = landing
-
-    disarmed_ns = _first_arming_state_time(
-        status_samples,
-        disarmed_state,
-        not_before_ns=landing_ns,
-    )
-
-    if disarmed_ns is None:
-        raise RuntimeError("Final disarmed state was not recorded")
-
+    finish = _finish_action(bag)
     metrics = {
         "bag_duration_s": bag.duration_s,
         "position_entry_s": bag.relative_seconds(position_entry_ns),
         "armed_s": bag.relative_seconds(armed_ns),
-        "landing_entry_s": bag.relative_seconds(landing_ns),
-        "disarmed_s": bag.relative_seconds(disarmed_ns),
     }
+
+    if finish == "land":
+        landing = _first_landing_state_time(
+            status_samples, status_type, not_before_ns=armed_ns,
+        )
+        if landing is None:
+            raise RuntimeError("PX4 Land/Descend entry after hover was not recorded")
+
+        landing_ns, landing_state = landing
+        disarmed_ns = _first_arming_state_time(
+            status_samples, disarmed_state, not_before_ns=landing_ns,
+        )
+        if disarmed_ns is None:
+            raise RuntimeError("Final disarmed state was not recorded")
+
+        metrics["landing_entry_s"] = bag.relative_seconds(landing_ns)
+        metrics["disarmed_s"] = bag.relative_seconds(disarmed_ns)
+
+    else:
+        final_status = status_samples[-1]
+        if (int(final_status.message.nav_state) != position_state or
+                int(final_status.message.arming_state) != armed_state):
+            raise RuntimeError("Hold recording did not end armed in Position mode")
+        metrics["hold_end_s"] = bag.relative_seconds(final_status.timestamp_ns)
 
     state_names = native_constant_names(
         status_type,
         "NAVIGATION_STATE_",
     )
-    landing_name = state_names.get(
-        landing_state,
-        f"STATE_{landing_state}",
-    )
+    if finish == "land":
+        landing_name = state_names.get(
+            landing_state,
+            f"STATE_{landing_state}",
+        )
     transitions = mode_transitions(status_samples)
     pipeline = analyze_control_pipeline(bag)
 
@@ -204,18 +222,23 @@ def analyze(bag: BagData) -> AnalysisResult:
         f"  armed: {metrics['armed_s']:.3f} s",
     ])
 
-    lines.extend([
-        f"  native landing entry: {metrics['landing_entry_s']:.3f} s ({landing_name})",
-        f"  disarmed: {metrics['disarmed_s']:.3f} s",
-        "",
-        *control_pipeline_summary(pipeline),
-    ])
-
     markers = [
         (metrics["position_entry_s"], "POSCTL ENTRY"),
         (metrics["armed_s"], "ARMED"),
-        (metrics["landing_entry_s"], "LAND"),
     ]
+
+    if finish == "land":
+        lines.extend([
+            f"  native landing entry: {metrics['landing_entry_s']:.3f} s ({landing_name})",
+            f"  disarmed: {metrics['disarmed_s']:.3f} s",
+        ])
+        markers.append((metrics["landing_entry_s"], "LAND"))
+
+    else:
+        lines.append(f"  Position-mode hold confirmed: {metrics['hold_end_s']:.3f} s")
+        lines.append("  Vehicle remains armed; land separately after recording")
+
+    lines.extend(["", *control_pipeline_summary(pipeline)])
     return AnalysisResult(
         summary="\n".join(lines) + "\n",
         metrics=metrics,

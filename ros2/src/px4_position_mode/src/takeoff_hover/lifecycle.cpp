@@ -1,5 +1,5 @@
-// Native Position-mode flight: joystick climb and timed hover, followed by
-// a PX4 land command and disarm confirmation.
+// Native Position-mode takeoff and timed hover. Keep Position mode on
+// finish=hold (default), or request PX4 landing on finish=land.
 
 #include "node.hpp"
 
@@ -34,22 +34,25 @@ void PositionTakeoffHover::fail(const char * reason)
 
 void PositionTakeoffHover::complete()
 {
-  RCLCPP_INFO(
-    get_logger(),
-    "Position-mode takeoff and hover sequence complete.");
+  // MAVProxy continues streaming the virtual joystick after this node exits.
+  // An airborne vehicle must keep centered sticks, not minimum throttle.
+  try {
+    if (arming_state_ == px4_msgs::msg::VehicleStatus::ARMING_STATE_ARMED) {
+      virtual_joystick_.center();
+      RCLCPP_INFO(get_logger(), "Takeoff complete; remaining in Position mode with centered sticks.");
+
+    } else {
+      virtual_joystick_.set(0.0, 0.0, kPrearmThrottle, 0.0);
+      RCLCPP_INFO(get_logger(), "Position-mode flight complete; vehicle disarmed.");
+    }
+
+  } catch (const std::exception & error) {
+    fail(error.what());
+    return;
+  }
 
   exit_code_ = 0;
   set_phase(Phase::DONE);
-
-  try {
-    virtual_joystick_.set(0.0, 0.0, kPrearmThrottle, 0.0);
-  } catch (const std::exception & error) {
-    RCLCPP_WARN(
-      get_logger(),
-      "Could not reset virtual joystick after landing: %s",
-      error.what());
-  }
-
   timer_->cancel();
   rclcpp::shutdown();
 }
@@ -223,13 +226,22 @@ void PositionTakeoffHover::run()
         return;
       }
 
-      if (phase_elapsed_seconds() >= 20.0) {
-        RCLCPP_INFO(
-          get_logger(),
-          "Hover complete; asking PX4 to land.");
+      if (nav_state_ != VehicleStatus::NAVIGATION_STATE_POSCTL) {
+        fail("PX4 left Position mode during hover.");
+        return;
+      }
 
-        publish_land_command();
-        set_phase(Phase::WAIT_LAND);
+      if (phase_elapsed_seconds() >= 20.0) {
+        if (finish_ == "hold") {
+          // Finish the ROS helper, not the flight. Native PX4 Position mode
+          // continues holding and the pilot can take over or change mode.
+          complete();
+
+        } else {
+          RCLCPP_INFO(get_logger(), "Hover complete; asking PX4 to land.");
+          publish_land_command();
+          set_phase(Phase::WAIT_LAND);
+        }
       }
 
       return;

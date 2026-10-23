@@ -28,7 +28,7 @@ Stop the rate display with Ctrl-C. Verify valid position/status and the intended
 With the aircraft initially landed/disarmed and no competing controller, in **terminal 2**:
 
 ```bash
-ros2 launch px4_position_mode position_takeoff_hover.launch.py record:=true
+ros2 launch px4_position_mode position_takeoff_hover.launch.py finish:=land record:=true
 ```
 
 Wait for takeoff, hover, landing, and confirmed disarm. The recorder exits after the node. Inspect the printed bag path and metadata before moving on. This bag uses the `position_takeoff_hover` analysis profile; it is not a SE(3) comparison bag.

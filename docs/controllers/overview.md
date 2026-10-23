@@ -28,7 +28,7 @@ The toolkit includes a PX4 reference flight, a simulation staging helper, an ext
 
 ## Begin with the reference
 
-[Position Mode](position-mode.md) demonstrates the reference takeoff, hover, landing, and disarm sequence. [Offboard Staging](offboard-staging.md) prepares a simulated aircraft for a separate controller; the staging helper does not itself request Offboard.
+[Position Mode](position-mode.md) performs takeoff and hover, then holds Position mode by default (`finish:=land` selects automatic landing). [Offboard Staging](offboard-staging.md) prepares a simulated aircraft for a separate controller; the staging helper does not itself request Offboard.
 
 [Offboard position control](offboard-position.md) sends the shared trajectory position and feedforward to PX4. This is the simplest reference for an external ROS controller. It never arms, waits for confirmed PX4 mode changes, and supports automatic or pilot-triggered Offboard entry.
 

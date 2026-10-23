@@ -19,10 +19,10 @@ position before each real flight.
   `center + [radius, 0, 0]`. A circle ends at the corresponding final phase;
   a helix additionally applies its configured signed height.
 
-The loader refuses any curve that would start away from the preceding
-commanded endpoint, and rejects legacy `offset` and `yaw_offset` keys. Use
-an explicit step/line before a curve to reach its start. A named trajectory
-can override `start_position`; a reusable segment can be selected directly.
+A curve must start at the preceding commanded endpoint. Use an explicit
+line or step to reach its start. YAML uses absolute position, center and
+heading fields. A named trajectory can override `start_position`; a reusable
+segment can also be selected directly.
 
 For example:
 
@@ -42,12 +42,14 @@ The first position is fixed even if the vehicle begins Offboard elsewhere.
 **Do not use flight excitation until the pilot verifies the aircraft's
 PX4 local origin, safe maneuver volume, and the launch's selected YAML file.**
 
-The analytic sampler lives in toolkit-level `trajectory_generator/`, independent of ROS and PX4. The existing YAML loader remains in `trajectory_generator/src/config/yaml.cpp`; controller timing and PX4 message publication still belong to their respective ROS nodes.
+Offboard controllers use the toolkit's `trajectory_generator/` C++ library
+to parse YAML and sample references. Native controllers use the bounded sampler
+in PX4's `src/lib/trajectory/`; `tools/trajectory` compiles the shared YAML
+definitions into onboard plan files.
 
-Mathematics: smooth lines, yaw, and periodic paths use ninth-order time
-scaling with analytic derivatives through snap; steps are discontinuous.
-The terminal reference is held after the configured duration. Both Offboard
-Position and SE(3) use the same trajectory YAML parser and sampler. See
+Smooth lines, yaw, and periodic paths use ninth-order time scaling with
+analytic derivatives through snap; steps are discontinuous. Completed
+sequences hold their final reference. See
 [Offboard Position](offboard-position.md) and [SE(3)](se3.md).
 
 ## Compiling trajectories for PX4-native flight modes

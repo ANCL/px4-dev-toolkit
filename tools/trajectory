@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Prepare and upload named parametric plans. Never arms or changes PX4 mode.
+"""Compile and transfer named trajectory plans.
 
-All names and parameters are declared once in config/trajectories.yaml.
-Compiled files are deterministic, generated, and excluded from Git.
+Plans are generated from config/trajectories.yaml and stored outside Git.
+Uploading a plan does not select a flight mode or begin execution.
 """
 
 from __future__ import annotations
@@ -70,7 +70,7 @@ def main() -> int:
             return 0
 
         names = names_for(args, config)
-        # Validate EVERY requested plan before replacing any local artifact.
+        # Validate all requested plans before replacing generated files.
         expected = {name: compile_plan(config, name).encode("ascii") for name in names}
         if args.command == "compile":
             for name, plan in expected.items():

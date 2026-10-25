@@ -1,0 +1,229 @@
+#!/usr/bin/env python3
+"""Record PX4 DDS telemetry without coupling recording to flight control.
+
+Usage:
+    ./tools/px4_record onboard_se3    # interactive foreground recording
+    ./tools/px4_record stop           # optional stop from another shell
+    ./tools/px4_record status
+
+Profiles share config/recording/common.txt; optional same-name files only add
+profile-specific inputs/diagnostics. Controller launch recordings use the same
+config files through px4_control_common.recording.
+"""
+from __future__ import annotations
+
+from datetime import datetime
+import json
+import os
+from pathlib import Path
+import re
+import signal
+import shutil
+import subprocess
+import sys
+import time
+
+ROOT = Path(__file__).resolve().parents[1]
+CATALOG = ROOT / 'config/px4_topics.def'
+PROFILES = ROOT / 'config/recording'
+STATE = ROOT / 'bags/.px4_record.json'
+PATTERN = re.compile(r'^PX4_TOPIC\(\s*(\w+)\s*,\s*"([^"]+)"\s*\)$')
+
+
+def catalog() -> dict[str, str]:
+    items: dict[str, str] = {}
+    for line in CATALOG.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith('//'):
+            continue
+        match = PATTERN.fullmatch(line)
+        if not match:
+            raise RuntimeError(f'Invalid PX4 topic declaration: {line}')
+        items[match.group(1)] = match.group(2)
+    return items
+
+
+def topics_for(profile: str) -> list[str]:
+    if not re.fullmatch(r'[a-z][a-z0-9_]*', profile):
+        raise ValueError(f'Invalid recording profile: {profile}')
+    profile_file = PROFILES / f'{profile}.txt'
+    if not profile_file.is_file():
+        available = sorted(path.stem for path in PROFILES.glob('*.txt') if path.stem != 'common')
+        raise ValueError(f'Unknown recording profile {profile!r}; available: {", ".join(available)}')
+    mapping = catalog()
+    result = []
+    for file in (PROFILES / 'common.txt', profile_file):
+        for raw in file.read_text().splitlines():
+            name = raw.strip()
+            if not name or name.startswith('#'):
+                continue
+            if name in mapping:
+                topic = mapping[name]
+            elif name.startswith('/'):
+                topic = name  # Explicit ROS-native controller diagnostics.
+            else:
+                raise ValueError(f'{file}: unknown topic symbol {name!r}')
+            if topic not in result:
+                result.append(topic)
+    return result
+
+
+def process_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
+def read_state() -> dict | None:
+    if not STATE.exists():
+        return None
+    return json.loads(STATE.read_text())
+
+
+def active_state() -> dict | None:
+    data = read_state()
+    if data is None:
+        return None
+    pid = int(data['pid'])
+    if process_alive(pid):
+        return data
+    # A dead recorder is not a valid ongoing recording. Keep evidence instead
+    # of deleting the state or silently reusing the experiment directory.
+    raise RuntimeError(f'Recorder PID {pid} exited without stop; inspect {data["log"]} and {data["bag"]}. '
+                       f'Preserve the bag and remove {STATE} only after checking it.')
+
+
+def start(profile: str) -> None:
+    topics = topics_for(profile)
+    if active_state() is not None:
+        raise RuntimeError(f'A recorder is already active; run {sys.argv[0]} status or stop')
+    if shutil.which('ros2') is None:
+        raise RuntimeError('ros2 unavailable; source ros2/runtime_env.sh before starting')
+    bag_root = ROOT / 'bags' / profile
+    bag_root.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+    bag = bag_root / stamp
+    # Keep rosbag in its own process group so Ctrl+C reaches the wrapper,
+    # which can request a graceful rosbag shutdown and write experiment.json.
+    # Inherit stdout/stderr: rosbag output is visible in this terminal.
+    command = ['ros2', 'bag', 'record', '--output', str(bag), '--topics', *topics]
+    proc = subprocess.Popen(command, stdin=subprocess.DEVNULL, start_new_session=True)
+    data = {'profile': profile, 'pid': proc.pid, 'bag': str(bag),
+            'topics': topics, 'started_at': datetime.now().isoformat(),
+            'foreground': True}
+    try:
+        fd = os.open(str(STATE), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'w') as file:
+            json.dump(data, file, indent=2)
+            file.write('\n')
+    except BaseException:
+        os.killpg(proc.pid, signal.SIGINT)
+        proc.wait()
+        raise
+
+    print(f'Recording: {profile}\nBag: {bag}\nTopics: {len(topics)}', flush=True)
+    print('Press Ctrl+C here to stop and save. Use other terminals to fly.', flush=True)
+    started = time.monotonic()
+    next_status = started + 10.0
+    interrupted = False
+    try:
+        while proc.poll() is None:
+            time.sleep(0.5)
+            now = time.monotonic()
+            if now >= next_status:
+                print(f'Recording {profile}: {int(now - started)} s elapsed', flush=True)
+                next_status = now + 10.0
+    except KeyboardInterrupt:
+        interrupted = True
+        print('\nStopping ROS bag recorder; finalizing...', flush=True)
+        if proc.poll() is None:
+            os.killpg(proc.pid, signal.SIGINT)
+
+    try:
+        returncode = proc.wait(timeout=30)
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(f'Recorder did not exit; inspect PID {proc.pid} and {bag}. '
+                           f'State retained at {STATE}') from exc
+    if not interrupted and returncode != 0:
+        raise RuntimeError(f'Recorder exited with code {returncode}; inspect {bag}. '
+                           f'State retained at {STATE}')
+    if not (bag / 'metadata.yaml').is_file():
+        raise RuntimeError(f'Recorder exited without metadata.yaml; inspect {bag}. '
+                           f'State retained at {STATE}')
+
+    write_experiment(data)
+    STATE.unlink()
+    print(f'Saved: {bag}', flush=True)
+
+
+def write_experiment(data: dict) -> None:
+    """Record the analysis profile only after rosbag finalized metadata."""
+    bag = Path(data['bag'])
+    metadata = {'profile': data['profile'], 'config': {'recorder': 'px4_record',
+                 'topics': data['topics']}, 'source': 'rosbag2'}
+    (bag / 'experiment.json').write_text(json.dumps(metadata, indent=2) + '\n')
+
+
+def stop() -> None:
+    data = active_state()
+    if data is None:
+        print('No active recorder')
+        return
+    pid = int(data['pid'])
+    if os.getpgid(pid) != pid:
+        raise RuntimeError('Recorder session identity changed; refusing to signal an unrelated process')
+    os.killpg(pid, signal.SIGINT)
+    if data.get('foreground'):
+        # The foreground wrapper owns child reaping and metadata creation.
+        bag = Path(data['bag'])
+        for _ in range(150):
+            if not STATE.exists() and (bag / 'experiment.json').is_file():
+                print(f'Saved: {bag}')
+                return
+            time.sleep(0.2)
+        raise RuntimeError(f'Recorder has not finalized; inspect {bag} and its terminal')
+
+    # Backward compatibility: finish a recorder started by the old detached CLI.
+    # rosbag2 writes metadata when stopping; another CLI cannot call wait()
+    # on this subprocess, so check for its finalized metadata instead.
+    bag = Path(data['bag'])
+    for _ in range(150):
+        if (bag / 'metadata.yaml').is_file() and not process_alive(pid):
+            break
+        time.sleep(0.2)
+    else:
+        raise RuntimeError(f'Recorder has not finalized; inspect {data["log"]} (state retained)')
+    write_experiment(data)
+    STATE.unlink()
+    print(f'Saved: {bag}')
+
+
+def status() -> None:
+    data = active_state()
+    if data is None:
+        print('No active recorder')
+    else:
+        print(f'Recording {data["profile"]}: {data["bag"]} (PID {data["pid"]})')
+
+
+def main() -> int:
+    if len(sys.argv) != 2:
+        print('Usage: ./tools/px4_record <profile|stop|status>', file=sys.stderr)
+        return 2
+    try:
+        if sys.argv[1] == 'stop':
+            stop()
+        elif sys.argv[1] == 'status':
+            status()
+        else:
+            start(sys.argv[1])
+    except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
+        print(f'px4_record: {exc}', file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

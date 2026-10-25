@@ -98,7 +98,7 @@ def write_plots(
     ) -> None:
         path = directory / filename
 
-        save_tracking_plot(
+        error_plot = save_tracking_plot(
             path,
             components=_vector_components(
                 signals,
@@ -112,6 +112,8 @@ def write_plots(
 
         if path.exists():
             generated.append(path)
+        if error_plot is not None:
+            generated.append(error_plot)
 
     # --------------------------------------------------------
     # General analysis: only signals that are actually part of

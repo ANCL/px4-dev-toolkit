@@ -101,3 +101,41 @@ def comparison_input(result: AnalysisResult, _bag):
         metrics=result.metrics,
         plot_data=result.plot_data,
     )
+
+
+def comparison_signals(experiment: dict) -> dict:
+    """Physical signal provenance for SE3, chosen by its existing handoff.
+
+    This is only an observation contract. It does not publish control messages
+    or reinterpret downstream PX4 setpoints as an upstream SE3 reference.
+    """
+    from analysis.px4 import TOPICS
+
+    handoff = experiment.get("handoff")
+    if handoff not in HANDOFF_MODE_TOPICS:
+        raise ValueError(f"Unsupported SE3 comparison handoff: {handoff!r}")
+
+    if handoff == "acceleration":
+        # PX4's attitude and rate controllers are active downstream.
+        attitude = (TOPICS["OUT_VEHICLE_ATTITUDE_SETPOINT"], "q_d")
+        rate = (TOPICS["OUT_VEHICLE_RATES_SETPOINT"], "rpy")
+    elif handoff == "attitude":
+        attitude = (ATTITUDE_HANDOFF_TOPIC, "q_d")
+        rate = (TOPICS["OUT_VEHICLE_RATES_SETPOINT"], "rpy")
+    elif handoff == "attitude_rate":
+        # PX4 attitude control is bypassed: SE3's desired R_d is diagnostic.
+        attitude = (DESIRED_ATTITUDE_TOPIC, "q_d")
+        rate = (ATTITUDE_RATE_HANDOFF_TOPIC, "rpy")
+    else:
+        controller = experiment.get("direct_controller", "geometric_normalized")
+        if controller not in DIRECT_CONTROLLERS:
+            raise ValueError(f"Unsupported SE3 direct controller: {controller!r}")
+        attitude = (DESIRED_ATTITUDE_TOPIC, "q_d")
+        # Only the reproduced PX4 rate cascade computes a commanded rate.
+        rate = (BODY_RATE_SETPOINT_TOPIC, "xyz") if controller == "px4_rate" else None
+
+    return {
+        "trajectory": TRAJECTORY_REFERENCE_TOPIC,
+        "attitude": attitude,
+        "rates": rate,
+    }

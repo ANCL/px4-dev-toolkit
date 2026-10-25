@@ -137,7 +137,7 @@ def write_control_pipeline_plots(
             continue
 
         path = output_dir / filename
-        save_tracking_plot(
+        error_plot = save_tracking_plot(
             path,
             components=components,
             title=title,
@@ -145,6 +145,8 @@ def write_control_pipeline_plots(
             markers=markers,
         )
         generated.append(path)
+        if error_plot is not None:
+            generated.append(error_plot)
 
     motors = pipeline["motors"]
 

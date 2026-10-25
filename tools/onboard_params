@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+"""Explicitly apply one onboard-controller .parm profile over MAVLink.
+
+Usage: tools/onboard_params load gz_f450
+       tools/onboard_params load f450_02
+
+Flight-control parameters are never applied automatically by the launchers.
+"""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+import re
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from tools.transfer.connection import Connection, TransferError  # noqa: E402
+from tools.transfer.parameters import ParameterLink, read_profile  # noqa: E402
+
+PROFILES = ROOT / "config/controllers/onboard"
+PROFILE_NAME = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("command", choices=("load",))
+    parser.add_argument("profile", help="name of config/controllers/onboard/<name>.parm")
+    args = parser.parse_args()
+    if not PROFILE_NAME.fullmatch(args.profile):
+        parser.error("use a simple profile name, without directories or extensions")
+    try:
+        path = PROFILES / f"{args.profile}.parm"
+        values = read_profile(path)
+        link = Connection.open(init_ftp=False)
+        try:
+            params = ParameterLink(link)
+            # Simulator profile is never allowed to configure another airframe.
+            if args.profile == "gz_f450":
+                aircraft = params.read("SYS_AUTOSTART")
+                if int(params.mavlink.MAV_PARAM_TYPE_INT32) != aircraft.param_type:
+                    raise TransferError("unexpected SYS_AUTOSTART type")
+                from tools.transfer.parameters import decode_value
+                if decode_value(aircraft, params.mavlink) != 4022:
+                    raise TransferError("gz_f450 profile requires SYS_AUTOSTART=4022")
+            print(f"PX4 system {link.system_id}, profile {path.name}, {len(values)} parameters")
+            changed = params.load(values)
+            print(f"Complete: {len(changed)} changed, {len(values) - len(changed)} already matched")
+            return 0
+        finally:
+            link.close()
+    except (TransferError, OSError) as error:
+        print(f"onboard_params: {error}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

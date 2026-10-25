@@ -18,6 +18,7 @@ produce a warning after summary generation rather than invalidating analysis.
 from __future__ import annotations
 
 from pathlib import Path
+import subprocess
 import sys
 
 
@@ -56,6 +57,15 @@ from analysis.profiles import (  # noqa: E402
 
 
 def main() -> int:
+    if len(sys.argv) >= 2:
+        path = Path(sys.argv[1]).expanduser().resolve()
+        if path.suffix == ".ulg" or (path.is_dir() and (path / "flight.ulg").is_file()):
+            python = ROOT / ".venv/onboard_analysis/bin/python3"
+            if not python.is_file():
+                raise RuntimeError("install the onboard analysis dependencies first")
+            return subprocess.call([str(python), str(ROOT / "analysis/onboard/cli.py"),
+                                    "analyze", *sys.argv[1:]])
+
     if len(sys.argv) != 2:
         print("Usage:")
         print(

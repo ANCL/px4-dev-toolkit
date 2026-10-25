@@ -192,6 +192,13 @@ start_stack() {
             "${xrce_command}"
     fi
 
+    # The third pane owns one MAVLink connection for parameter verification,
+    # interactive MAVProxy operation and manual FTP log transfer.
+    tmux new-window \
+        -t "${TMUX_SESSION}:" \
+        -n mavproxy \
+        "${ROOT}/tools/onboard_hardware_mavproxy"
+
     tmux source-file "${TMUX_CONFIG}"
     tmux select-window -t "${TMUX_SESSION}:mocap"
 
@@ -212,6 +219,10 @@ xrce_processes() {
 
 vicon_processes() {
     pgrep -af '[v]icon_client' 2>/dev/null || true
+}
+
+mavproxy_processes() {
+    pgrep -af "[m]avproxy.py" 2>/dev/null || true
 }
 
 mocap_bridge_processes() {
@@ -278,6 +289,11 @@ status_stack() {
         "Mocap bridge" \
         "always" \
         mocap_bridge_processes
+
+    show_component_status \
+        "MAVProxy" \
+        "always" \
+        mavproxy_processes
 }
 
 

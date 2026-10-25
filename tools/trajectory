@@ -1,104 +1,110 @@
 #!/usr/bin/env python3
-"""Compile and transfer named trajectory plans.
+"""Compile and deploy trajectory plans through the active MAVProxy route.
 
-Plans are generated from config/trajectories.yaml and stored outside Git.
-Uploading a plan does not select a flight mode or begin execution.
+Both SITL and hardware receive identical bytes over MAVLink FTP. Upload never
+selects a flight mode, arms PX4, or starts trajectory execution.
 """
 
 from __future__ import annotations
 
 import argparse
 import os
+import tempfile
 from pathlib import Path
 import sys
-import tempfile
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "tools" / "trajectory_lib"))
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "tools/trajectory_lib"))
 from compiler import compile_plan  # noqa: E402
+from tools.transfer.connection import Connection, TRAJECTORY_DIR, TransferError, MissingDirectory, trajectory_names  # noqa: E402
 
-DEFINITIONS = ROOT / "config" / "trajectories.yaml"
-GENERATED = ROOT / "generated" / "trajectories"
-SITL_CATALOG = ROOT / "px4" / "PX4-Autopilot" / "build" / "px4_sitl_default" / "rootfs" / "fs" / "microsd" / "trajectories"
+DEFINITIONS = ROOT / "config/trajectories.yaml"
+GENERATED = ROOT / "generated/trajectories"
 
 
-def save_atomic(path: Path, contents: bytes) -> None:
+def write_atomic(path: Path, data: bytes):
+    """Replace a compiled plan only after writing and syncing complete bytes."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(prefix=".trajectory-", dir=path.parent)
+    descriptor, temp = tempfile.mkstemp(prefix=".trajectory-", dir=path.parent)
     try:
-        with os.fdopen(fd, "wb") as stream:
-            stream.write(contents)
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(data)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(tmp, path)
+        os.replace(temp, path)
     finally:
-        if os.path.exists(tmp):
-            os.unlink(tmp)
+        if os.path.exists(temp):
+            os.unlink(temp)
 
 
-def names_for(args: argparse.Namespace, config: dict) -> list[str]:
-    catalog = config.get("trajectories", {})
-    if not isinstance(catalog, dict):
-        raise ValueError("trajectories in YAML must be a map")
-    if args.all:
-        return sorted(catalog)
-    if args.name is None or args.name not in catalog:
-        raise ValueError(f"unknown trajectory {args.name!r}; use tools/trajectory list")
-    return [args.name]
-
-
-def main() -> int:
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    commands = parser.add_subparsers(dest="command", required=True)
-    for cmd in ("compile", "upload"):
-        sub = commands.add_parser(cmd)
-        choose = sub.add_mutually_exclusive_group(required=True)
-        choose.add_argument("name", nargs="?")
-        choose.add_argument("--all", action="store_true")
-        if cmd == "upload":
-            sub.add_argument("--target", choices=("sitl", "hardware"), default="sitl")
-    commands.add_parser("list")
+    sub = parser.add_subparsers(dest="command", required=True)
+    for command in ("upload", "compile"):
+        option = sub.add_parser(command)
+        chosen = option.add_mutually_exclusive_group(required=True)
+        chosen.add_argument("name", nargs="?")
+        chosen.add_argument("--all", action="store_true")
+    sub.add_parser("list")
+    sub.add_parser("clean", help="remove compiled files and remote catalog .traj files (disarmed only)")
     args = parser.parse_args()
+
     try:
         config = yaml.safe_load(DEFINITIONS.read_text())
+        catalog = config["trajectories"]
         if args.command == "list":
-            print("Defined trajectories:")
-            for name in sorted(config["trajectories"]):
-                compiled = "compiled" if (GENERATED / (name + ".traj")).exists() else "not compiled"
-                print(f"  {name:<24} {compiled}")
+            for name in sorted(catalog):
+                print(name)
             return 0
-
-        names = names_for(args, config)
-        # Validate all requested plans before replacing generated files.
-        expected = {name: compile_plan(config, name).encode("ascii") for name in names}
+        if args.command == "clean":
+            link = Connection.open()
+            try:
+                link.require_disarmed()
+                try:
+                    remote = trajectory_names(link.entries(TRAJECTORY_DIR))
+                except MissingDirectory:
+                    remote = []
+                print(f"Removing {len(remote)} remote trajectory files:")
+                for path in remote:
+                    link.remove(path)
+                    print(f"  removed {path}")
+                for path in sorted(GENERATED.glob("*.traj")):
+                    if not path.is_symlink():
+                        path.unlink()
+                        print(f"  removed {path}")
+            finally:
+                link.close()
+            return 0
+        names = sorted(catalog) if args.all else [args.name]
+        if any(name not in catalog for name in names):
+            raise TransferError("unknown trajectory; run tools/trajectory list")
+        compiled = {name: compile_plan(config, name).encode("ascii") for name in names}
+        GENERATED.mkdir(parents=True, exist_ok=True)
         if args.command == "compile":
-            for name, plan in expected.items():
-                path = GENERATED / f"{name}.traj"
-                save_atomic(path, plan)
-                print(f"compiled {name} -> {path}")
-        else:
-            if args.target == "hardware":
-                raise ValueError("hardware upload needs a verified MAVLink file-transfer connection; not configured")
-            if not (SITL_CATALOG.parents[2]).is_dir():
-                raise ValueError("PX4 SITL rootfs not found; build PX4 SITL first")
-            for name, plan in expected.items():
-                source = GENERATED / f"{name}.traj"
-                if not source.is_file() or source.read_bytes() != plan:
-                    raise ValueError(f"{name}: missing/stale compiled artifact; run tools/trajectory compile {name}")
-            for name in names:
-                source = GENERATED / f"{name}.traj"
-                destination = SITL_CATALOG / f"{name}.traj"
-                save_atomic(destination, source.read_bytes())
-                if destination.read_bytes() != source.read_bytes():
-                    raise IOError(f"upload verification failed for {name}")
-                print(f"uploaded {name} -> {destination}")
-            print("Stored on SITL filesystem; use PX4 shell: trajectory select <name>")
+            for name, content in compiled.items():
+                path = GENERATED / (name + ".traj")
+                write_atomic(path, content)
+                print(f"Compiled: {path}")
+            return 0
+        link = Connection.open()
+        try:
+            link.require_disarmed()
+            link.ensure_directory(TRAJECTORY_DIR)
+            for name, content in compiled.items():
+                path = GENERATED / (name + ".traj")
+                write_atomic(path, content)
+                remote = TRAJECTORY_DIR + "/" + path.name
+                crc = link.upload(path, remote)
+                print(f"Uploaded and verified: {name} -> {remote} (CRC32 {crc:08x})")
+        finally:
+            link.close()
         return 0
-    except (OSError, KeyError, ValueError, yaml.YAMLError) as error:
+    except (ValueError, KeyError, OSError, yaml.YAMLError, TransferError) as error:
         print(f"trajectory: {error}", file=sys.stderr)
         return 1
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

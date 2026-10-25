@@ -69,7 +69,7 @@ void PositionTakeoffHover::run()
   if (!status_received_) {
     if (
       phase_ == Phase::WAIT_READY &&
-      phase_elapsed_seconds() > 20.0)
+      phase_elapsed_seconds() > 10.0)
     {
       fail("PX4 vehicle status was not available.");
     }
@@ -84,7 +84,7 @@ void PositionTakeoffHover::run()
     {
       fail("PX4 local position became invalid.");
 
-    } else if (phase_elapsed_seconds() > 20.0) {
+    } else if (phase_elapsed_seconds() > 10.0) {
       fail("A valid PX4 local position was not available.");
     }
 
@@ -206,7 +206,7 @@ void PositionTakeoffHover::run()
         RCLCPP_INFO(
           get_logger(),
           "Climb target reached: z=%.2f. "
-          "Centering sticks for 20-second hover.",
+          "Centering sticks for 10-second hover.",
           static_cast<double>(local_z_));
 
         set_phase(Phase::HOVER);
@@ -231,7 +231,7 @@ void PositionTakeoffHover::run()
         return;
       }
 
-      if (phase_elapsed_seconds() >= 20.0) {
+      if (phase_elapsed_seconds() >= 10.0) {
         if (finish_ == "hold") {
           // Finish the ROS helper, not the flight. Native PX4 Position mode
           // continues holding and the pilot can take over or change mode.

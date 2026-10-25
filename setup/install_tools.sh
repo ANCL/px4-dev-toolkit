@@ -26,6 +26,14 @@ sudo apt install -y --no-install-recommends \
 if [[ "${profile}" == "sitl" ]]; then
     sudo apt install -y --no-install-recommends \
         python3-numpy python3-matplotlib python3-scipy
+
+    # PX4 ULog analysis uses an isolated Python environment.
+    root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    venv="${root}/.venv/onboard_analysis"
+
+    /usr/bin/python3 -m venv --system-site-packages "${venv}"
+    "${venv}/bin/python3" -m pip install         --disable-pip-version-check 'pyulog==1.2.4'
+    "${venv}/bin/python3" -c         'import pyulog, numpy, matplotlib; print("ULog analysis ready")'
 fi
 
 echo "PX4 ${profile} build/runtime tools ready."

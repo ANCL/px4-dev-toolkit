@@ -1,0 +1,88 @@
+PX4 onboard experiments — copyable commands
+===========================================
+
+These tools use MAVLink through the running MAVProxy session on either SITL
+or hardware. Only connection settings differ. All parameter changes and
+trajectory uploads are EXPLICIT; starting SITL/hardware does not change gains.
+
+LINUX SHELL ($)
+---------------
+# Start the appropriate toolkit session first:
+./tools/sitl start
+# Or on the companion: ./tools/hardware start
+
+# Inspect the catalog and remove old compiled/uploaded .traj files (DISARMED):
+./tools/trajectory list
+./tools/trajectory clean
+
+# Compile the YAML plan, upload over MAVLink FTP, verify byte-for-byte:
+./tools/trajectory upload full_excitation
+# Optional: ./tools/trajectory upload --all
+
+# Load the chosen existing .parm profile over MAVLink. DISARMED only.
+# Checks parameter types, writes differences and verifies readback.
+./tools/onboard_params load gz_f450
+# Physical vehicle after filling verified values in f450_02.parm:
+# ./tools/onboard_params load f450_02
+
+# Start independent ROS 2 telemetry recording before flight:
+source ros2/runtime_env.sh
+./tools/px4_record onboard_se3
+# After landing, from Ubuntu Bash:
+./tools/px4_record stop
+# Analyze the ROS bag or manually obtained ULog:
+./tools/px4_analyze bags/onboard_se3/<recording-directory>
+./tools/px4_analyze /path/to/flight.ulg --profile onboard_se3
+
+PX4 SHELL (pxh>)
+----------------
+# Start the controller while disarmed, then choose the uploaded trajectory:
+se3_control status
+trajectory list
+logger status
+
+# After Position-mode takeoff and verification of stable hover:
+se3_control select
+se3_control status
+trajectory start full_excitation
+# Observe, then return to Position mode and land:
+se3_control status
+commander mode posctl
+commander land
+# After landing/disarming, finalize the ULog:
+logger status
+logger stop
+
+MAVPROXY PROMPT (MAV>) — optional direct inspection
+--------------------------------------------------
+param show SYS_AUTOSTART
+param show SE3_*
+param diff /home/mohssene/px4_env/config/controllers/onboard/gz_f450.parm
+# Manual FTP remains available; normally use the tools above.
+module load ftp
+ftp list /log
+ftp list /fs/microsd/log
+ftp list /fs/microsd/trajectories
+
+PX4 log names, sizes, and clocks
+--------------------------------
+# PX4 files:  /log/YYYY-MM-DD/HH_MM_SS.ulg (SITL)
+#          or /fs/microsd/log/YYYY-MM-DD/HH_MM_SS.ulg (hardware)
+# In FTP listings: D = directory, numeric value after filename = BYTES.
+# Example: 22_49_06.ulg 574020860 = 574,020,860 bytes (~547.4 MiB).
+# It is NOT the flight duration. Logger 'dropouts' are missed logging data.
+# Log filenames default to UTC. For Edmonton on Oct 23 (MDT, UTC-6),
+# 22:49:06 UTC is 16:49:06 local. Keep SDLOG_UTC_OFFSET=0 for consistent UTC.
+# PX4 log retention is separate from downloaded copies under bags/.
+# Finalize with 'logger stop' before manually obtaining the ULog.
+
+Safety and connection notes
+---------------------------
+- Tools do not arm, take off, change modes, or launch trajectories.
+- tools/onboard_params requires PX4 disarmed and makes NO changes at startup.
+- The gz_f450 profile is restricted to SYS_AUTOSTART=4022.
+- For hardware, identify the vehicle and supply verified physical gains.
+- If multiple SITL/hardware instances run on the same host, use only one
+  toolkit MAVProxy transfer endpoint at a time (local UDP port 14655).
+- Trajectory upload uses MAVLink FTP; ULogs are obtained manually.
+- ULog/rosbag analysis uses tools/px4_analyze.

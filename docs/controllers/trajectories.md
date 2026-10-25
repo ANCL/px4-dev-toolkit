@@ -63,13 +63,12 @@ motion must be evaluated against available flight space.
 ```bash
 # Toolkit shell, after installation and PX4 SITL build:
 ./tools/trajectory list
-./tools/trajectory compile --all
 ./tools/trajectory upload --all
 ```
 
-The compiler writes checksummed, bounded `.traj` plans under
-`generated/trajectories/` (gitignored); uploading copies validated files to
-PX4 SITL's local persistent filesystem. The files contain analytic segment
+The uploader compiles bounded, checksummed `.traj` plans under
+`generated/trajectories/` (gitignored) and transfers them through MAVProxy
+using MAVLink FTP on either SITL or hardware. The files contain analytic segment
 parameters, not pre-sampled points. Neither operation changes flight mode.
 
 In the PX4 shell, while **disarmed**, start the SE(3) module after configuring
@@ -93,8 +92,9 @@ switch modes or command `hold`. On initial SE(3) entry, before `run`, it holds
 the measured handoff pose instead. A loaded plan must begin sufficiently near
 the current measured pose and heading; no implicit frame translation occurs.
 
-Only SITL file copying is implemented. Hardware requires a verified MAVLink
-file-transfer link separate from the existing DDS serial bridge; attempting
-`tools/trajectory upload --target hardware` explicitly fails rather than
-assuming one is available. Files on PX4 persistent storage survive restart,
+See [Onboard flight logging](../workflows/onboard-logging.md) for ULog recording and analysis.
+
+Both SITL and hardware use MAVLink FTP through the running MAVProxy
+session. `tools/trajectory clean` removes compiled and remotely uploaded
+trajectory files while the vehicle is disarmed. Files on PX4 persistent storage survive restart,
 but selected/executing plan state does not.

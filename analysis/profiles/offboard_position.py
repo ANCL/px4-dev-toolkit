@@ -250,3 +250,12 @@ def write_plots(
     generated.append(mode_path)
 
     return generated
+
+
+def comparison_signals(_experiment: dict) -> dict:
+    """Position input trajectory, and PX4's downstream attitude/rate targets."""
+    return {
+        "trajectory": TRAJECTORY_INPUT_TOPIC,
+        "attitude": (TOPICS["OUT_VEHICLE_ATTITUDE_SETPOINT"], "q_d"),
+        "rates": (TOPICS["OUT_VEHICLE_RATES_SETPOINT"], "rpy"),
+    }

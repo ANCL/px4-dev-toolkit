@@ -1,0 +1,12 @@
+# Onboard SE(3) parameter set for PX4 Gazebo F450 SITL.
+# Values are initial tuning from the toolkit's SE(3) Offboard configuration.
+# Load explicitly from the SITL MAVProxy prompt after verifying the vehicle.
+# No parameters are applied by tools/sitl start.
+SE3_ENABLE       1
+SE3_MASS         2.0736
+SE3_KX           6.0
+SE3_KV           5.0
+SE3_KRX          6.5
+SE3_KRY          6.5
+SE3_KRZ          2.8
+SE3_RATE_MAX     3.0

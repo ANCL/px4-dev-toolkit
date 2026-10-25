@@ -1,19 +1,10 @@
 #!/usr/bin/python3 -s
+"""Compare finalized ROS bags using recorded PX4 signals at trajectory time.
 
-"""Compare recorded controller performance from compatible experiment bags.
-
-Flow:
-    bags with a common recorded trajectory
-      -> analyze each bag independently
-      -> align runs to confirmed PX4 Offboard entry
-      -> build common physical comparison views
-      -> resolve maneuver boundaries from recorded experiment metadata
-      -> write comparison summary and overlay figures
-
-Each profile provides its own comparable reference and interval. The tool
-does not select controller architectures or redefine PX4 topics.
+All controllers use the same measurements, tracking metrics and figures.
+Offboard trajectories begin at confirmed Offboard entry; legacy native-SE3
+recordings without execution-phase metadata require validated reference fitting.
 """
-
 from __future__ import annotations
 
 import argparse
@@ -22,228 +13,53 @@ import sys
 
 
 def find_repo_root() -> Path:
-    """Locate the toolkit root from this executable."""
+    """Locate the PX4 toolkit without relying on the caller's working directory."""
     start = Path(__file__).resolve()
-
-    for path in (
-        start.parent,
-        *start.parents,
-    ):
-        if (
-            (path / "config" / "px4_topics.def").is_file()
-            and (path / "analysis").is_dir()
-            and (path / "ros2").is_dir()
-        ):
-            return path
-
-    raise RuntimeError(
-        "Could not locate toolkit repository root "
-        f"from {start}"
-    )
+    for candidate in (start.parent, *start.parents):
+        if ((candidate / "config" / "px4_topics.def").is_file()
+                and (candidate / "analysis").is_dir()
+                and (candidate / "ros2").is_dir()):
+            return candidate
+    raise RuntimeError(f"Could not locate PX4 toolkit root from {start}")
 
 
 ROOT = find_repo_root()
-sys.path.insert(
-    0,
-    str(ROOT),
-)
+sys.path.insert(0, str(ROOT))
 
-from analysis.comparison import unique_labels  # noqa: E402
-from analysis.core import read_bag  # noqa: E402
-from analysis.profiles import (  # noqa: E402
-    detect_profile_name,
-    get_profile,
-    read_experiment,
-)
-from analysis.profiles.se3.comparison import (  # noqa: E402
-    build_run,
-    comparison_summary,
-    trajectory_segments,
-    write_comparison_plots,
-)
+from analysis.trajectory_comparison import compare_bags  # noqa: E402
 
 
-def default_study_output(
-    bag_paths: list[Path],
-) -> Path:
-    """Resolve the default comparison directory for one sequence study.
-
-    All bags must be direct children of the same study's bags/ directory and
-    that study must contain manifest.json; otherwise output location is
-    ambiguous and the caller must provide --output.
-    """
-    parents = {
-        path.parent.resolve()
-        for path in bag_paths
-    }
-
+def default_study_output(bag_paths: list[Path]) -> Path:
+    """Keep the existing per-study default; other comparisons require --output."""
+    parents = {path.parent.resolve() for path in bag_paths}
     if len(parents) != 1:
-        raise ValueError(
-            "Bags do not share one study bag directory; "
-            "provide --output."
-        )
-
-    bag_root = next(
-        iter(parents)
-    )
-
-    if bag_root.name != "bags":
-        raise ValueError(
-            "Comparison output cannot be inferred for "
-            "standalone bags; provide --output."
-        )
-
-    study_dir = bag_root.parent
-
-    if not (
-        study_dir / "manifest.json"
-    ).is_file():
-        raise ValueError(
-            "Shared bag directory is not a sequence study; "
-            "provide --output."
-        )
-
-    return (
-        study_dir / "comparison"
-    )
+        raise ValueError("Bags do not share one study bag directory; provide --output")
+    bag_root = next(iter(parents))
+    if bag_root.name != "bags" or not (bag_root.parent / "manifest.json").is_file():
+        raise ValueError("Comparison output cannot be inferred for standalone bags; provide --output")
+    return bag_root.parent / "comparison"
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Compare two or more PX4 experiment bags."
-        )
-    )
-    parser.add_argument(
-        "bags",
-        nargs="+",
-        type=Path,
-        help=(
-            "ROS 2 bag directories to compare."
-        ),
-    )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        help=(
-            "Output directory. Sequence-study bags "
-            "default to <study>/comparison."
-        ),
-    )
+    parser = argparse.ArgumentParser(description="Compare PX4 experiments by trajectory start")
+    parser.add_argument("bags", nargs="+", type=Path, help="Finalized ROS 2 bag directories")
+    parser.add_argument("--output", type=Path, help="Comparison output directory")
     args = parser.parse_args()
-
-    bag_paths = [
-        path.expanduser().resolve()
-        for path in args.bags
-    ]
-
+    bag_paths = [path.expanduser().resolve() for path in args.bags]
     if len(bag_paths) < 2:
-        raise ValueError(
-            "Comparison requires at least two bags."
-        )
-
+        raise ValueError("Comparison requires at least two bags")
     for path in bag_paths:
-        if not path.is_dir():
-            raise RuntimeError(
-                "Bag directory does not exist: "
-                f"{path}"
-            )
-
-    profile_names = [
-        detect_profile_name(path)
-        for path in bag_paths
-    ]
-    views = []
-
-    for path, profile_name in zip(bag_paths, profile_names):
-        profile = get_profile(profile_name)
-        adapter = getattr(profile, "comparison_input", None)
-        if not callable(adapter):
-            raise ValueError(
-                f"Profile {profile_name!r} does not provide a common "
-                "flight comparison view."
-            )
-        bag = read_bag(
-            path,
-            profile.REQUIRED_TOPICS,
-            getattr(profile, "OPTIONAL_TOPICS", ()),
-        )
-        views.append(adapter(profile.analyze(bag), bag))
-
-    labels = unique_labels(
-        [view.label for view in views],
-        bag_paths,
-    )
-    runs = [
-        build_run(view, path, label)
-        for view, path, label in zip(views, bag_paths, labels)
-    ]
-
-    experiments = [read_experiment(path) for path in bag_paths]
-    trajectory_configs = [run["config"].get("trajectory") for run in experiments]
-    if any(not isinstance(config, dict) for config in trajectory_configs):
-        raise ValueError("Comparison requires embedded trajectory configuration in every bag")
-    if any(config != trajectory_configs[0] for config in trajectory_configs[1:]):
-        raise ValueError("Recorded trajectories differ; comparisons require the same path")
-    segments = trajectory_segments(trajectory_configs[0])
-
-    if args.output is None:
-        output_dir = (
-            default_study_output(
-                bag_paths
-            )
-        )
-    else:
-        output_dir = (
-            args.output
-            .expanduser()
-            .resolve()
-        )
-
-    output_dir.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    summary = comparison_summary(
-        runs,
-        segments,
-    )
-
-    summary_path = (
-        output_dir / "summary.txt"
-    )
-    summary_path.write_text(
-        summary
-    )
-
-    print(
-        summary,
-        end="",
-    )
-    print(
-        f"Summary: {summary_path}"
-    )
-
-    for path in write_comparison_plots(
-        runs,
-        output_dir,
-        segments,
-    ):
-        print(f"Plot: {path}")
-
+        if not (path / "metadata.yaml").is_file():
+            raise ValueError(f"Not a finalized ROS 2 bag: {path}")
+    output_dir = (args.output.expanduser().resolve() if args.output
+                  else default_study_output(bag_paths))
+    compare_bags(bag_paths, output_dir)
     return 0
 
 
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (
-        RuntimeError,
-        ValueError,
-    ) as exc:
-        print(
-            f"ERROR: {exc}",
-            file=sys.stderr,
-        )
+    except (ValueError, RuntimeError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
         raise SystemExit(1)

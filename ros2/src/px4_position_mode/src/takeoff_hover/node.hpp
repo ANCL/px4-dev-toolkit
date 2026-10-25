@@ -36,7 +36,7 @@ namespace px4_topics
  *       -> switch to Position mode
  *       -> arm
  *       -> command a configurable climb (default approximately 1 m)
- *       -> center the joystick and hover for 20 seconds
+ *       -> center the joystick and hover for 10 seconds
  *       -> hold: leave PX4 armed in Position mode and exit (default)
  *       -> land: ask PX4 to land, then wait for disarm
  *
@@ -132,7 +132,7 @@ private:
 
   // State-machine contract:
   //   Inputs: PX4 status/local position/land state and virtual-joystick access.
-  //   Action: enter Position mode, arm, climb, and hover for 20 seconds.
+  //   Action: enter Position mode, arm, climb, and hover for 10 seconds.
   //   Exit: hold leaves the vehicle armed with centered sticks (default);
   //         land waits for PX4 to land and disarm.
   void run();

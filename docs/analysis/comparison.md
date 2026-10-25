@@ -85,3 +85,49 @@ Yaw/figure-eight windows use start-inclusive/end-exclusive intervals. Yaw errors
 Confirm all expected study steps succeeded, data is complete, each run used the same canonical trajectory/vehicle, and the Offboard window covers the intended segments. Inspect state quality and allocation/motor limits alongside errors. Account for drift/re-anchoring between steps, transport/logging rate differences, and real-world environmental variation. A source-compatible launch and a finalized bag do not by themselves establish a controlled scientific comparison.
 
 To add a controller or a metric, use [Extending the Toolkit](../reference/extending.md).
+
+## Tracking and error figures
+
+The comparison generates paired figures for compatible position, velocity,
+attitude, body-rate and trajectory-yaw observations. Tracking figures overlay
+each run's measured and recorded reference components; error figures overlay
+`actual - reference` on the same three component axes (yaw error wrapped to
+`[-180, 180)` degrees). There is **no fourth vector-error-norm panel**.
+The existing time-weighted vector-norm statistics remain in `summary.txt`.
+
+The plots use the common 300-DPI analysis style. Missing setpoints result in
+actual-only plots, **not** invented error curves. Existing thrust/torque,
+body-rate magnitude and motor envelope overlays remain separate.
+
+## Trajectory-time alignment
+
+Comparison time zero is the trajectory start. For these Offboard controllers,
+the controller starts the trajectory when PX4 confirms Offboard entry.
+For legacy native SE3 ROS bags, trajectory execution is *not* directly
+recorded; its start is estimated by fitting the full position/yaw
+trajectory reference against a confirmed reference run. Ambiguous
+or incompatible fits are rejected, not plotted. The saved summary
+labels observed versus inferred timestamps explicitly.
+
+Identical PX4 topic names do not guarantee populated streams: each
+controller may bypass layers. Missing references remain unavailable.
+The comparison requires at least one recorded trajectory configuration
+and one mode-confirmed reference run for legacy inference.
+
+
+## Comparison signal provenance
+
+`px4_compare` uses `comparison_signals(experiment)` from the existing
+`analysis.profiles` modules. This is a read-only mapping from controller
+configuration to the *physical meaning* and source topic of each signal.
+The comparison engine is shared and never publishes flight commands.
+
+For an SE3 attitude-rate handoff, the desired attitude is
+`/se3/diagnostics/desired_attitude` (when diagnostics were recorded),
+not the inactive PX4 attitude-controller output. For the PX4-rate
+reproduction the desired rate is the SE3 diagnostic body-rate setpoint.
+Direct geometric torque handoffs have no equivalent commanded body-rate
+reference. Missing observations remain unavailable, without fabricated
+values or fallback to a different stage of the control cascade.
+
+The summary reports the selected source names and alignment evidence.

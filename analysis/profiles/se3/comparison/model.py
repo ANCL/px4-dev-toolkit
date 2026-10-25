@@ -44,12 +44,21 @@ class ComparisonRun:
     position_actual: dict[str, list[float]]
     position_reference: dict[str, list[float]]
     position_error: dict[str, list[float]]
+    velocity_actual: dict[str, list[float]]
+    velocity_reference: dict[str, list[float]]
     velocity_error: dict[str, list[float]]
+    attitude_actual: dict[str, list[float]]
+    attitude_reference: dict[str, list[float]]
+    attitude_error: dict[str, list[float]]
+    yaw_actual: dict[str, list[float]]
+    yaw_reference: dict[str, list[float]]
     yaw_error: dict[str, list[float]]
 
     thrust: dict[str, list[float]]
     torque: dict[str, list[float]]
     body_rates: dict[str, list[float]]
+    body_rate_reference: dict[str, list[float]]
+    body_rate_error: dict[str, list[float]]
 
     motors: dict[
         str,
@@ -118,11 +127,35 @@ def build_run(
             time_origin_s=origin,
             end_time_s=end,
         ),
+        velocity_actual=shift_vector_series(
+            pipeline["velocity"]["actual"], origin, duration,
+        ),
+        velocity_reference=shift_vector_series(
+            layers["reference"]["velocity"], origin, duration,
+        ),
         velocity_error=tracking_error_series(
             pipeline["velocity"]["actual"],
             layers["reference"]["velocity"],
             time_origin_s=origin,
             end_time_s=end,
+        ),
+        attitude_actual=shift_vector_series(
+            pipeline["attitude"]["actual"], origin, duration,
+        ),
+        attitude_reference=shift_vector_series(
+            pipeline["attitude"]["setpoint"], origin, duration,
+        ),
+        attitude_error=tracking_error_series(
+            pipeline["attitude"]["actual"],
+            pipeline["attitude"]["setpoint"],
+            time_origin_s=origin, end_time_s=end,
+            components=("x", "y", "z"), wrap_degrees=True,
+        ),
+        yaw_actual=shift_vector_series(
+            pipeline["attitude"]["actual"], origin, duration,
+        ),
+        yaw_reference=shift_vector_series(
+            layers["reference"]["yaw"], origin, duration,
         ),
         yaw_error=tracking_error_series(
             pipeline["attitude"]["actual"],
@@ -146,6 +179,14 @@ def build_run(
             pipeline["rates"]["actual"],
             origin,
             duration,
+        ),
+        body_rate_reference=shift_vector_series(
+            pipeline["rates"]["setpoint"], origin, duration,
+        ),
+        body_rate_error=tracking_error_series(
+            pipeline["rates"]["actual"],
+            pipeline["rates"]["setpoint"],
+            time_origin_s=origin, end_time_s=end,
         ),
         motors=shift_motor_series(
             pipeline["motors"],

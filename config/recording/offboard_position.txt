@@ -1,0 +1,4 @@
+# Extra Offboard-position inputs (in addition to common.txt).
+IN_VEHICLE_COMMAND
+IN_OFFBOARD_CONTROL_MODE
+IN_TRAJECTORY_SETPOINT

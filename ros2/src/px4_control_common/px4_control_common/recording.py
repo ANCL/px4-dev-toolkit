@@ -171,8 +171,24 @@ def launch_experiment(*, node, record: bool, launch_file: str,
 
     root = find_repo_root(launch_file)
     share = Path(get_package_share_directory(package))
-    topics = read_topics(share / "config" / topic_file,
-                        root / "config" / "px4_topics.def", allow_direct_topics)
+    topic_root = root / "config" / "recording"
+    profile_file = topic_root / (str(experiment["profile"]) + ".txt")
+    common_file = topic_root / "common.txt"
+    catalog_file = root / "config" / "px4_topics.def"
+    if common_file.is_file() and profile_file.is_file():
+        topics = read_topics(common_file, catalog_file)
+        # Allow PX4 catalog tokens and explicit ROS controller diagnostics.
+        # The shared parser validates every entry; it does not silently skip
+        # an unknown symbolic topic.
+        extra_entries = [line.strip() for line in profile_file.read_text().splitlines()
+                         if line.strip() and not line.lstrip().startswith("#")]
+        if extra_entries:
+            topics.extend(read_topics(profile_file, catalog_file, allow_direct=True))
+        topics = list(dict.fromkeys(topics))
+    else:
+        # Preserve older experiments without a shared topic profile.
+        topics = read_topics(share / "config" / topic_file,
+                            catalog_file, allow_direct_topics)
     if recording_output:
         bag_path = Path(recording_output).expanduser().resolve()
         if bag_path.exists():

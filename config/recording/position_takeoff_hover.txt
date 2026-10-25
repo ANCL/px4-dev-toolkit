@@ -1,0 +1,2 @@
+# Position-mode command used by the takeoff helper.
+IN_VEHICLE_COMMAND

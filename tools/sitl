@@ -260,6 +260,9 @@ mavproxy_command() {
     printf -v argument ' %q' '--cmd=module load virtual_joystick'
     command+="${argument}"
 
+    printf -v argument ' %q' '--out=udp:127.0.0.1:14655'
+    command+="${argument}"
+
     printf 'bash -lc %q' "${command}"
 }
 

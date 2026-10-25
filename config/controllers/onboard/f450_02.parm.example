@@ -1,0 +1,17 @@
+# Hardware onboard SE(3) parameter template for F450_02.
+# Copy to f450_02.parm on the companion after measuring vehicle mass and
+# validating the controller gains for the real airframe.
+# MAVProxy's `param load` accepts NAME VALUE on each uncommented line.
+# Keep unvalidated values commented out. Do not use SITL tuning blindly.
+#
+# Before manually loading, verify SYS_AUTOSTART and MAV_SYS_ID in MAVProxy.
+# Verify the vehicle is DISARMED; `param load` itself is not a safety interlock.
+#
+# SE3_ENABLE       0
+# SE3_MASS         <measured_mass_kg>
+# SE3_KX           <validated_position_gain>
+# SE3_KV           <validated_velocity_gain>
+# SE3_KRX          <validated_roll_gain>
+# SE3_KRY          <validated_pitch_gain>
+# SE3_KRZ          <validated_yaw_gain>
+# SE3_RATE_MAX     <validated_rate_limit>

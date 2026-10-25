@@ -7,6 +7,7 @@ from pathlib import Path
 
 from . import (
     offboard_position,
+    onboard_se3,
     offboard_takeoff_handoff,
     position_takeoff_hover,
     se3,
@@ -14,6 +15,7 @@ from . import (
 
 
 PROFILES = {
+    onboard_se3.PROFILE_NAME: onboard_se3,
     position_takeoff_hover.PROFILE_NAME: position_takeoff_hover,
     offboard_position.PROFILE_NAME: offboard_position,
     offboard_takeoff_handoff.PROFILE_NAME: offboard_takeoff_handoff,

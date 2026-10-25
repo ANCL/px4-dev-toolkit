@@ -1,0 +1,3 @@
+# Onboard SE3 needs no additional DDS streams: the native controller
+# publishes trajectory_setpoint and vehicle_rates_setpoint to common uORB topics.
+# Its execution metadata remains available in onboard ULog only.

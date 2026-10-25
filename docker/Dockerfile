@@ -124,6 +124,11 @@ COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} LICENSE README.md ./
 
 RUN mkdir -p bags log
 
+# Check ULog analysis after PX4 dependency installation, which may add an
+# incompatible NumPy version to the user's site-packages.
+RUN .venv/onboard_analysis/bin/python3 -s -c \
+    'import pyulog, numpy, matplotlib; print("ULog analysis ready")'
+
 USER root
 RUN install -m 0755 \
     /opt/px4-dev-toolkit/docker/entrypoint.sh \

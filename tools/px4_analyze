@@ -63,7 +63,9 @@ def main() -> int:
             python = ROOT / ".venv/onboard_analysis/bin/python3"
             if not python.is_file():
                 raise RuntimeError("install the onboard analysis dependencies first")
-            return subprocess.call([str(python), str(ROOT / "analysis/onboard/cli.py"),
+            # Ignore user-site packages: PX4 dependencies may install NumPy 2.x,
+            # while Ubuntu's Matplotlib binary is built against NumPy 1.x.
+            return subprocess.call([str(python), "-s", str(ROOT / "analysis/onboard/cli.py"),
                                     "analyze", *sys.argv[1:]])
 
     if len(sys.argv) != 2:

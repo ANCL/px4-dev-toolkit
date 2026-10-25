@@ -32,10 +32,12 @@ if [[ "${profile}" == "sitl" ]]; then
     venv="${root}/.venv/onboard_analysis"
 
     /usr/bin/python3 -m venv --system-site-packages "${venv}"
-    "${venv}/bin/python3" -m pip install \
+    # -s ignores PX4/user-installed NumPy under ~/.local, so the APT Matplotlib
+    # binary extension uses the compatible NumPy supplied by Ubuntu.
+    "${venv}/bin/python3" -s -m pip install \
         --disable-pip-version-check \
         'pyulog==1.2.4'
-    "${venv}/bin/python3" -c \
+    "${venv}/bin/python3" -s -c \
         'import pyulog, numpy, matplotlib; print("ULog analysis ready")'
 fi
 

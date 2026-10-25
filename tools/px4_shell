@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Open the official PX4 MAVLink Shell on the toolkit's shell endpoint.
+set -Eeuo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PYTHON="${ROOT}/.venv/mavlink/bin/python"
+SHELL_CLIENT="${ROOT}/.venv/mavlink/bin/mavlink_shell.py"
+
+[[ -x "${PYTHON}" && -f "${SHELL_CLIENT}" ]] || {
+    echo "Install MAVLink tools: ./setup/install_mavlink.sh" >&2
+    exit 1
+}
+
+echo "Connecting to the PX4 MAVLink Shell..."
+exec "${PYTHON}" "${SHELL_CLIENT}" udpin:127.0.0.1:14661

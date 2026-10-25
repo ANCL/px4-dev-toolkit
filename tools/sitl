@@ -330,6 +330,9 @@ start_stack() {
             ;;
     esac
 
+    tmux new-window -t "${TMUX_SESSION}:" -n mavlink-router \
+        "${ROOT}/tools/mavlink_router sitl"
+
     tmux source-file "${TMUX_CONFIG}"
     tmux select-window -t "${TMUX_SESSION}:px4"
 

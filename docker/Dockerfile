@@ -78,6 +78,11 @@ COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} setup/install_mavproxy.sh setup/
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} config/mavproxy-requirements.txt config/mavproxy-requirements.txt
 RUN ./setup/install_mavproxy.sh
 
+# Independent PX4 MAVLink shell and transfer transport.
+COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} setup/install_mavlink.sh setup/
+RUN ./setup/install_mavlink.sh \
+    && rm -rf /home/${TOOLKIT_USER}/.cache/px4-dev-toolkit/mavlink-router
+
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} config/runtime/sitl.env config/runtime/sitl.env
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} px4/build_sitl.sh px4/build_sitl.sh
 RUN ./px4/build_sitl.sh
@@ -101,9 +106,12 @@ RUN ./ros2/build.sh sitl
 
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} config/sequences/ config/sequences/
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} config/tmux.conf config/tmux.conf
+COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} config/mavlink-router.conf config/mavlink-router.conf
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} config/versions.env config/versions.env
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} analysis/ analysis/
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} tools/sitl tools/sitl
+COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} tools/mavlink_router tools/mavlink_router
+COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} tools/px4_shell tools/px4_shell
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} tools/runtime/ tools/runtime/
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} tools/run_sequence tools/run_sequence
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} tools/sequence/ tools/sequence/

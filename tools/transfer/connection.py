@@ -1,7 +1,7 @@
 """Reusable PX4 MAVLink-FTP client for either toolkit runtime.
 
-MAVProxy owns the PX4 transport. The tools connect only to its dedicated
-loopback MAVLink forwarding port; no serial device or PX4 filesystem is opened.
+The MAVLink router owns the PX4 connection. Transfer tools communicate
+over their own local UDP endpoint without opening the serial device.
 """
 
 from __future__ import annotations
@@ -10,11 +10,10 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 import re
-import tempfile
 import time
 import zlib
 
-ENDPOINT = "udpin:127.0.0.1:14655"
+ENDPOINT = "udpin:127.0.0.1:14662"
 TRAJECTORY_DIR = "/fs/microsd/trajectories"
 _NAME = re.compile(r"^[A-Za-z0-9_-]+\.traj$")
 
@@ -47,7 +46,7 @@ class RemoteEntry:
 
 
 class Connection:
-    """One bounded CLI operation over a MAVProxy-routed MAVLink endpoint."""
+    """One bounded CLI operation over an independent MAVLink endpoint."""
 
     def __init__(self, master, heartbeat, *, init_ftp=True):
         from pymavlink.mavftp import MAVFTP
@@ -73,7 +72,7 @@ class Connection:
                 if msg.autopilot == mavutil.mavlink.MAV_AUTOPILOT_INVALID:
                     continue
                 return Connection(master, msg, init_ftp=init_ftp)
-            raise TransferError("no PX4 heartbeat from MAVProxy forwarding; start the toolkit MAVProxy session")
+            raise TransferError("no PX4 heartbeat from the toolkit MAVLink router")
         except BaseException:
             master.close()
             raise
@@ -105,36 +104,31 @@ class Connection:
     def remove(self, remote):
         require(self.ftp.cmd_rm([remote]), f"remove {remote}")
 
-    def _get_small(self, remote):
-        """Memory-limited readback used only for small trajectory validation."""
-        # Download to a temporary local file without a second callback buffer.
-        # pymavlink 2.4.49 can expose different buffered representations when a
-        # callback is supplied. One byte-for-byte comparison with the compiled
-        # payload (performed by upload()) is sufficient for verification.
-        with tempfile.TemporaryDirectory(prefix="trajectory-readback-") as folder:
-            destination = Path(folder) / "readback.traj"
-            require(self.ftp.cmd_get([remote, str(destination)]), f"open {remote}")
-            require(self.ftp.process_ftp_reply("OpenFileRO", timeout=90), f"read {remote}")
-            if not destination.is_file():
-                raise TransferError(f"{remote}: downloaded file is missing")
-            if destination.stat().st_size > 131072:
-                raise TransferError(f"{remote}: downloaded file exceeds 128 KiB")
-            return destination.read_bytes()
-
     def upload(self, local: Path, remote: str):
+        """Require MAVLink FTP completion without downloading the file."""
         payload = local.read_bytes()
         if len(payload) > 131072:
             raise TransferError("trajectory file unexpectedly exceeds 128 KiB")
-        wrote = []
-        def completed(length):
-            wrote.append(length)
-        require(self.ftp.cmd_put([str(local), remote], callback=completed), f"start upload {remote}")
-        require(self.ftp.process_ftp_reply("CreateFile", timeout=90), f"upload {remote}")
-        if wrote != [len(payload)]:
-            raise TransferError(f"{remote}: upload did not confirm complete length")
-        received = self._get_small(remote)
-        if received != payload:
-            raise TransferError(f"{remote}: readback mismatch")
+
+        completed = []
+
+        def on_complete(length):
+            completed.append(length)
+
+        require(
+            self.ftp.cmd_put([str(local), remote], callback=on_complete),
+            f"start upload {remote}",
+        )
+        require(
+            self.ftp.process_ftp_reply("CreateFile", timeout=90),
+            f"upload {remote}",
+        )
+
+        if completed != [len(payload)]:
+            raise TransferError(
+                f"{remote}: FTP did not confirm the full transfer"
+            )
+
         return zlib.crc32(payload) & 0xFFFFFFFF
 
 

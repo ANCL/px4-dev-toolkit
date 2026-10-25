@@ -1,1 +1,1 @@
-"""MAVLink file transfer through the toolkit-managed MAVProxy route."""
+"""MAVLink file transfer through the toolkit-managed MAVLink router."""

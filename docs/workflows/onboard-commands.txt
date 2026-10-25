@@ -1,8 +1,8 @@
 PX4 onboard experiments — copyable commands
 ===========================================
 
-These tools use MAVLink through the running MAVProxy session on either SITL
-or hardware. Only connection settings differ. All parameter changes and
+The parameter and trajectory tools use an independent MAVLink connection
+in both SITL and hardware. Only connection settings differ. All parameter changes and
 trajectory uploads are EXPLICIT; starting SITL/hardware does not change gains.
 
 LINUX SHELL ($)
@@ -15,15 +15,15 @@ LINUX SHELL ($)
 ./tools/trajectory list
 ./tools/trajectory clean
 
-# Compile the YAML plan, upload over MAVLink FTP, verify byte-for-byte:
+# Compile the YAML plan and upload over MAVLink FTP:
 ./tools/trajectory upload full_excitation
 # Optional: ./tools/trajectory upload --all
 
 # Load the chosen existing .parm profile over MAVLink. DISARMED only.
-# Checks parameter types, writes differences and verifies readback.
-./tools/onboard_params load gz_f450
+# Checks parameter types and requires MAVLink acknowledgements.
+./tools/onboard_params load se3 gz_f450
 # Physical vehicle after filling verified values in f450_02.parm:
-# ./tools/onboard_params load f450_02
+# ./tools/onboard_params load se3 f450_02
 
 # Start independent ROS 2 telemetry recording before flight:
 source ros2/runtime_env.sh
@@ -53,11 +53,10 @@ commander land
 logger status
 logger stop
 
-MAVPROXY PROMPT (MAV>) — optional direct inspection
+MAVPROXY PROMPT (MAV>) — optional SITL inspection
 --------------------------------------------------
 param show SYS_AUTOSTART
 param show SE3_*
-param diff /home/mohssene/px4_env/config/controllers/onboard/gz_f450.parm
 # Manual FTP remains available; normally use the tools above.
 module load ftp
 ftp list /log
@@ -83,6 +82,6 @@ Safety and connection notes
 - The gz_f450 profile is restricted to SYS_AUTOSTART=4022.
 - For hardware, identify the vehicle and supply verified physical gains.
 - If multiple SITL/hardware instances run on the same host, use only one
-  toolkit MAVProxy transfer endpoint at a time (local UDP port 14655).
+  toolkit MAVLink router using the same local ports at a time.
 - Trajectory upload uses MAVLink FTP; ULogs are obtained manually.
 - ULog/rosbag analysis uses tools/px4_analyze.

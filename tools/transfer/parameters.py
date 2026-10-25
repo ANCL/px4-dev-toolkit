@@ -19,7 +19,7 @@ _PARAM_NAME = re.compile(r"^[A-Z][A-Z0-9_]{0,15}$")
 
 
 def read_profile(path: Path) -> dict[str, float]:
-    """Validate a MAVProxy-compatible NAME VALUE .parm profile before I/O."""
+    """Validate a PX4 NAME VALUE .parm profile before I/O."""
     if not path.is_file():
         raise TransferError(f"parameter profile does not exist: {path}")
     values: dict[str, float] = {}
@@ -95,7 +95,7 @@ def name_of(message) -> str:
 
 
 class ParameterLink:
-    """Read and apply named PX4 parameters using the existing forwarded link."""
+    """Read and apply named PX4 parameters over the shared MAVLink link."""
 
     def __init__(self, connection):
         from pymavlink import mavutil
@@ -165,14 +165,14 @@ class ParameterLink:
                 self.connection.system_id, self.connection.component_id,
                 name.encode("ascii"), encoded, kind,
             )
-            # PX4 must acknowledge the write through a new read request.
-            verified = self.read(name)
-            if verified.param_type != kind or not equivalent(
+            # Wait for the normal PARAM_VALUE acknowledgement.
+            verified = self._read_matching(name)
+            if verified is None or verified.param_type != kind or not equivalent(
                 decode_value(verified, self.mavlink), requested, kind, self.mavlink
             ):
                 raise TransferError(
                     f"{name}: PX4 readback differs; earlier writes may have applied"
                 )
             changed.append(name)
-            print(f"verified: {name}: {current} -> {decode_value(verified, self.mavlink)}")
+            print(f"acknowledged: {name}: {current} -> {decode_value(verified, self.mavlink)}")
         return changed

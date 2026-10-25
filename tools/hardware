@@ -192,12 +192,12 @@ start_stack() {
             "${xrce_command}"
     fi
 
-    # The third pane owns one MAVLink connection for parameter verification,
-    # interactive MAVProxy operation and manual FTP log transfer.
-    tmux new-window \
-        -t "${TMUX_SESSION}:" \
-        -n mavproxy \
-        "${ROOT}/tools/onboard_hardware_mavproxy"
+    # Dedicated PX4 MAVLink transport and interactive shell.
+    tmux new-window -t "${TMUX_SESSION}:" -n mavlink-router \
+        "${ROOT}/tools/mavlink_router hardware"
+
+    tmux new-window -t "${TMUX_SESSION}:" -n px4-shell \
+        "${ROOT}/tools/px4_shell"
 
     tmux source-file "${TMUX_CONFIG}"
     tmux select-window -t "${TMUX_SESSION}:mocap"
@@ -221,8 +221,8 @@ vicon_processes() {
     pgrep -af '[v]icon_client' 2>/dev/null || true
 }
 
-mavproxy_processes() {
-    pgrep -af "[m]avproxy.py" 2>/dev/null || true
+mavlink_processes() {
+    pgrep -af '[m]avlink-routerd' 2>/dev/null || true
 }
 
 mocap_bridge_processes() {
@@ -291,9 +291,9 @@ status_stack() {
         mocap_bridge_processes
 
     show_component_status \
-        "MAVProxy" \
+        "MAVLink Router" \
         "always" \
-        mavproxy_processes
+        mavlink_processes
 }
 
 

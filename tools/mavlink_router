@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# Own exactly one PX4 MAVLink connection and route it to local clients.
+# 14661: interactive PX4 shell
+# 14662: independent parameter and trajectory CLI
+set -Eeuo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROUTER="${ROOT}/.venv/mavlink/bin/mavlink-routerd"
+CONFIG="${ROOT}/config/mavlink-router.conf"
+MODE="${1:-}"
+
+[[ -x "${ROUTER}" ]] || {
+    echo "Install MAVLink tools: ./setup/install_mavlink.sh" >&2
+    exit 1
+}
+
+ARGS=(
+    -c "${CONFIG}"
+    -e 127.0.0.1:14661
+    -e 127.0.0.1:14662
+)
+
+case "${MODE}" in
+    sitl)
+        # PX4's independent MAVLink API stream, not its GCS stream.
+        SOURCE="127.0.0.1:14540"
+        ;;
+
+    hardware)
+        source "${ROOT}/config/runtime/hardware.env"
+
+        DEVICE="${MAVLINK_MASTER:-auto}"
+        BAUD="${MAVLINK_BAUD:-115200}"
+
+        [[ "${BAUD}" =~ ^[1-9][0-9]*$ ]] || {
+            echo "Invalid MAVLINK_BAUD" >&2
+            exit 1
+        }
+
+        if [[ "${DEVICE}" == "auto" ]]; then
+            shopt -s nullglob
+            CANDIDATES=()
+
+            for device in /dev/serial/by-id/*; do
+                case "${device##*/}" in
+                    *PX4*|*Pixhawk*|*pixhawk*|*Cube*|*cube*)
+                        if [[ "$(readlink -f "${device}")" != \
+                              "$(readlink -f "${XRCE_AGENT_DEVICE:-/dev/null}")" ]]; then
+                            CANDIDATES+=("${device}")
+                        fi
+                        ;;
+                esac
+            done
+
+            ((${#CANDIDATES[@]} == 1)) || {
+                echo "Set MAVLINK_MASTER to the PX4 MAVLink serial device." >&2
+                exit 1
+            }
+            DEVICE="${CANDIDATES[0]}"
+        fi
+
+        [[ -e "${DEVICE}" ]] || {
+            echo "Missing MAVLink device: ${DEVICE}" >&2
+            exit 1
+        }
+
+        if [[ "$(readlink -f "${DEVICE}")" == \
+              "$(readlink -f "${XRCE_AGENT_DEVICE:-/dev/null}")" ]]; then
+            echo "MAVLink and XRCE-DDS cannot share the same device." >&2
+            exit 1
+        fi
+
+        if [[ -n "${MAVLINK_QGC_OUT:-}" ]]; then
+            ARGS+=(-e "${MAVLINK_QGC_OUT}")
+        fi
+
+        SOURCE="${DEVICE}:${BAUD}"
+        ;;
+
+    *)
+        echo "Usage: tools/mavlink_router sitl|hardware" >&2
+        exit 2
+        ;;
+esac
+
+echo "PX4 MAVLink source: ${SOURCE}"
+echo "Shell: 127.0.0.1:14661"
+echo "Transfers: 127.0.0.1:14662"
+
+exec "${ROUTER}" "${ARGS[@]}" "${SOURCE}"

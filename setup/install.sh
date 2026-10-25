@@ -19,6 +19,7 @@ case "${profile}" in
         "${ROOT}/setup/fetch_sources.sh" sitl
         "${ROOT}/setup/install_px4_dependencies.sh" sitl
         "${ROOT}/setup/install_mavproxy.sh"
+        "${ROOT}/setup/install_mavlink.sh"
         ;;
     hardware)
         # The companion uses ROS-base, Vicon, and a serial DDS agent.
@@ -26,7 +27,7 @@ case "${profile}" in
         "${ROOT}/setup/install_ros2_jazzy.sh" base
         "${ROOT}/setup/install_tools.sh" hardware
         "${ROOT}/setup/fetch_sources.sh" hardware
-        "${ROOT}/setup/install_mavproxy.sh"
+        "${ROOT}/setup/install_mavlink.sh"
         ;;
     *)
         echo "Usage: ./setup/install.sh sitl|hardware" >&2

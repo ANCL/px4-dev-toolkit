@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compile and deploy trajectory plans through the active MAVProxy route.
+"""Compile and deploy trajectory plans through independent MAVLink.
 
 Both SITL and hardware receive identical bytes over MAVLink FTP. Upload never
 selects a flight mode, arms PX4, or starts trajectory execution.
@@ -17,13 +17,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools/trajectory_lib"))
 
-# MAVLink FTP uses the same pinned pymavlink that MAVProxy was validated with.
-# Re-execute the CLI in its existing venv instead of depending on user Python.
-MAVPROXY_ENV = ROOT / ".venv/mavproxy"
-if __name__ == "__main__" and Path(sys.prefix).resolve() != MAVPROXY_ENV.resolve():
-    python = MAVPROXY_ENV / "bin/python"
+# Use the shared, isolated MAVLink Python environment.
+MAVLINK_ENV = ROOT / ".venv/mavlink"
+if __name__ == "__main__" and Path(sys.prefix).resolve() != MAVLINK_ENV.resolve():
+    python = MAVLINK_ENV / "bin/python"
     if not python.is_file():
-        raise SystemExit("MAVProxy Python environment missing; run ./setup/install.sh sitl|hardware")
+        raise SystemExit("MAVLink environment missing; run ./setup/install_mavlink.sh")
     os.execv(str(python), [str(python), str(Path(__file__).resolve()), *sys.argv[1:]])
 
 import yaml  # noqa: E402
@@ -107,7 +106,7 @@ def main():
                 write_atomic(path, content)
                 remote = TRAJECTORY_DIR + "/" + path.name
                 crc = link.upload(path, remote)
-                print(f"Uploaded and verified: {name} -> {remote} (CRC32 {crc:08x})")
+                print(f"FTP upload complete: {name} -> {remote} (local CRC32 {crc:08x})")
         finally:
             link.close()
         return 0

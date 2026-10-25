@@ -74,6 +74,7 @@ expected = {
     "wheel": "0.42.0",
     "future": "1.0.0",
     "pymavlink": "2.4.49",
+    "PyYAML": "6.0.2",
     "pyserial": "3.5",
     "numpy": "2.5.3",
     "pynmeagps": "1.1.7",

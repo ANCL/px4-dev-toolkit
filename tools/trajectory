@@ -12,11 +12,21 @@ import os
 import tempfile
 from pathlib import Path
 import sys
-import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools/trajectory_lib"))
+
+# MAVLink FTP uses the same pinned pymavlink that MAVProxy was validated with.
+# Re-execute the CLI in its existing venv instead of depending on user Python.
+MAVPROXY_ENV = ROOT / ".venv/mavproxy"
+if __name__ == "__main__" and Path(sys.prefix).resolve() != MAVPROXY_ENV.resolve():
+    python = MAVPROXY_ENV / "bin/python"
+    if not python.is_file():
+        raise SystemExit("MAVProxy Python environment missing; run ./setup/install.sh sitl|hardware")
+    os.execv(str(python), [str(python), str(Path(__file__).resolve()), *sys.argv[1:]])
+
+import yaml  # noqa: E402
 from compiler import compile_plan  # noqa: E402
 from tools.transfer.connection import Connection, TRAJECTORY_DIR, TransferError, MissingDirectory, trajectory_names  # noqa: E402
 

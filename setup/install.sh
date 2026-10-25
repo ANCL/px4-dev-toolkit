@@ -26,6 +26,7 @@ case "${profile}" in
         "${ROOT}/setup/install_ros2_jazzy.sh" base
         "${ROOT}/setup/install_tools.sh" hardware
         "${ROOT}/setup/fetch_sources.sh" hardware
+        "${ROOT}/setup/install_mavproxy.sh"
         ;;
     *)
         echo "Usage: ./setup/install.sh sitl|hardware" >&2

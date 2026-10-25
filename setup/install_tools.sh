@@ -32,8 +32,11 @@ if [[ "${profile}" == "sitl" ]]; then
     venv="${root}/.venv/onboard_analysis"
 
     /usr/bin/python3 -m venv --system-site-packages "${venv}"
-    "${venv}/bin/python3" -m pip install         --disable-pip-version-check 'pyulog==1.2.4'
-    "${venv}/bin/python3" -c         'import pyulog, numpy, matplotlib; print("ULog analysis ready")'
+    "${venv}/bin/python3" -m pip install \
+        --disable-pip-version-check \
+        'pyulog==1.2.4'
+    "${venv}/bin/python3" -c \
+        'import pyulog, numpy, matplotlib; print("ULog analysis ready")'
 fi
 
 echo "PX4 ${profile} build/runtime tools ready."

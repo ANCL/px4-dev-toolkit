@@ -56,6 +56,33 @@ if (( existing == 0 )); then
 elif (( existing == ${#repositories[@]} )); then
     # Existing source checkouts are intentionally not reset or updated.
     echo "${profile} sources already exist; keeping current checkouts."
+elif [[ "${profile}" == "hardware" ]] \
+     && (( existing == ${#repositories[@]} - 1 )) \
+     && [[ ! -e "${ROOT}/tools/MAVProxy" ]] \
+     && [[ -d "${ROOT}/ros2/src/px4_msgs" ]] \
+     && [[ -d "${ROOT}/ros2/src/Micro-XRCE-DDS-Agent" ]] \
+     && [[ -d "${ROOT}/ros2/src/vicon_receiver" ]]; then
+    # Upgrade an existing three-source companion checkout by fetching ONLY
+    # the newly required pinned MAVProxy source. Never reset other sources.
+    temporary_manifest="$(mktemp --suffix=.repos)"
+    trap 'rm -f "${temporary_manifest}"' EXIT
+    python3 - "${manifest}" "${temporary_manifest}" <<'PY'
+from pathlib import Path
+import sys
+import yaml
+
+config = yaml.safe_load(Path(sys.argv[1]).read_text())
+repositories = config.get("repositories", {})
+if "tools/MAVProxy" not in repositories:
+    raise SystemExit("hardware source manifest is missing tools/MAVProxy")
+Path(sys.argv[2]).write_text(yaml.safe_dump({
+    "repositories": {"tools/MAVProxy": repositories["tools/MAVProxy"]}
+}, sort_keys=False))
+PY
+    echo "Fetching pinned MAVProxy for existing hardware checkout..."
+    vcs import --input "${temporary_manifest}" "${ROOT}"
+    rm -f "${temporary_manifest}"
+    trap - EXIT
 else
     echo "ERROR: ${profile} source tree is partially populated." >&2
     echo "Refusing to modify it automatically." >&2

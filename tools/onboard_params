@@ -10,12 +10,22 @@ Flight-control parameters are never applied automatically by the launchers.
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+
+# Keep parameter transfers on the validated MAVProxy/pymavlink interpreter.
+MAVPROXY_ENV = ROOT / ".venv/mavproxy"
+if __name__ == "__main__" and Path(sys.prefix).resolve() != MAVPROXY_ENV.resolve():
+    python = MAVPROXY_ENV / "bin/python"
+    if not python.is_file():
+        raise SystemExit("MAVProxy Python environment missing; run ./setup/install.sh sitl|hardware")
+    os.execv(str(python), [str(python), str(Path(__file__).resolve()), *sys.argv[1:]])
+
 from tools.transfer.connection import Connection, TransferError  # noqa: E402
 from tools.transfer.parameters import ParameterLink, read_profile  # noqa: E402
 

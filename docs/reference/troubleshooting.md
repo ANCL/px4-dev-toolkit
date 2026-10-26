@@ -20,7 +20,7 @@ Find the symptom below and check the corresponding service, state, or configurat
 
 </div>
 
-For source installation failures, see [Native SITL](../installation/native.md) or [Companion installation](../installation/companion.md).
+For source installation failures, see [Native SITL](../get-started/sitl/ubuntu.md) or [Companion installation](../get-started/companion.md).
 
 <!-- Preserve existing section links. -->
 <span id="toolssitl-rejects-the-command"></span>
@@ -66,18 +66,18 @@ If a stopped tmux session leaves Gazebo running, use `./tools/sitl stop` **after
 
 </div>
 
-Use [Companion Computer](../environments/hardware.md) for service and flight-readiness checks. Companion process status does not prove estimator health, RC/failsafe behavior, or a valid actuator mapping.
+Use [Companion Computer](../operations/companion.md) for service and flight-readiness checks. Companion process status does not prove estimator health, RC/failsafe behavior, or a valid actuator mapping.
 
 <!-- Preserve existing section links. -->
 <span id="controller-refuses-a-vehiclehandoff-combination"></span>
 
 ## Controller and vehicle
 
-A missing `hover_thrust` or physical configuration is a mode-compatibility issue. Choose a supported mode from [vehicle requirements](adding-a-vehicle.md); calibrate/derive missing facts in separate vehicle work. Six-rotor data cannot satisfy the current four-rotor physical adapter.
+A missing `hover_thrust` or physical configuration is a mode-compatibility issue. Choose a supported mode from [vehicle requirements](../extending/vehicles.md); calibrate/derive missing facts in separate vehicle work. Six-rotor data cannot satisfy the current four-rotor physical adapter.
 
 If Offboard SE(3) waits for state, inspect position/velocity validity and the selected mode's attitude/rate needs. Invalid required state stops its heartbeat and selected setpoint output and resets warmup; a visible diagnostic reference alone is not proof that PX4 control output is active. If Offboard is rejected or lost, inspect PX4 estimator/mode status and acknowledgements. Confirm actual `nav_state`, not only an accepted mode command.
 
-After interruption, check the actual mode and arming state before restarting. See [Offboard SE3 lifecycle](../controllers/se3.md#when-the-controller-starts-and-stops).
+After interruption, check the actual mode and arming state before restarting. See [Offboard SE3 lifecycle](../controllers/offboard/se3/index.md#when-the-controller-starts-and-stops).
 
 <!-- Preserve existing section links. -->
 <span id="sequence-runner-says-ros2-is-unavailable"></span>
@@ -98,7 +98,7 @@ After interruption, check the actual mode and arming state before restarting. Se
 
 </div>
 
-`se3_control hold` requests native hold behavior; it is not a landing command. Verify the reported holding state, and use the pilot's Position-mode control to give control back before landing. See the [native implementation](../controllers/onboard-se3.md) for fault-latching and reference behavior.
+`se3_control hold` requests native hold behavior; it is not a landing command. Verify the reported holding state, and use the pilot's Position-mode control to give control back before landing. See the [native implementation](../controllers/onboard/se3.md) for fault-latching and reference behavior.
 
 ## Recording and analysis
 
@@ -116,4 +116,4 @@ After interruption, check the actual mode and arming state before restarting. Se
 
 </div>
 
-Read [Recording](../workflows/recording.md) before attempting interrupted-bag recovery, and [Comparison](../analysis/comparison.md) for metric windows and data requirements.
+Read [Recording](../experiments/recording.md) before attempting interrupted-bag recovery, and [Comparison](../experiments/comparison.md) for metric windows and data requirements.

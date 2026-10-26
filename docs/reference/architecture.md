@@ -59,7 +59,7 @@ flowchart TB
     R --> B["Recorded data"]
 ```
 
-In simulation, PX4 uses configured Gazebo/external-vision aiding and IMU. On hardware, the mocap bridge converts ENU/FLU pose to NED/FRD `VehicleOdometry`. MAVLink transfer and XRCE-DDS use separate links. See [SITL](../environments/sitl.md) and [Companion computer](../environments/hardware.md) for runtime setup.
+In simulation, PX4 uses configured Gazebo/external-vision aiding and IMU. On hardware, the mocap bridge converts ENU/FLU pose to NED/FRD `VehicleOdometry`. MAVLink transfer and XRCE-DDS use separate links. See [SITL](../operations/sitl.md) and [Companion computer](../operations/companion.md) for runtime setup.
 
 <!-- Preserve existing section links. -->
 <span id="reading-the-source-code"></span>
@@ -70,17 +70,17 @@ In simulation, PX4 uses configured Gazebo/external-vision aiding and IMU. On har
 
 | Read for | Entry point | Follow into |
 |---|---|---|
-| Installation | [setup/install.sh](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/setup/install.sh) | Source pins and build scripts |
-| Start services | [tools/sitl](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/tools/sitl), [tools/hardware](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/tools/hardware) | Runtime config and process helpers |
-| Position-mode reference | [px4_position_mode](https://github.com/ANCL/px4-dev-toolkit/tree/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/px4_position_mode) | Launch, state and joystick |
-| External position reference | [offboard_position](https://github.com/ANCL/px4-dev-toolkit/tree/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/offboard_controllers/src/offboard_position) | Node and control lifecycle |
-| Shared trajectory mathematics | [`trajectory_generator/`](https://github.com/ANCL/px4-dev-toolkit/tree/0b668261e04732ef97e2965dbe8f5c1ba56730f0/trajectory_generator) | C++ sampler and YAML adapter |
-| ROS 2 Offboard SE3 controller | [se3/node.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/offboard_controllers/src/se3/node.cpp) | [`Se3::execute_handoff()`](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/offboard_controllers/src/se3/runtime/control.cpp#L23), pure `control/`, trajectories |
+| Installation | [setup/install.sh](https://github.com/ANCL/px4-dev-toolkit/blob/main/setup/install.sh) | Source pins and build scripts |
+| Start services | [tools/sitl](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sitl), [tools/hardware](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/hardware) | Runtime config and process helpers |
+| Position-mode reference | [px4_position_mode](https://github.com/ANCL/px4-dev-toolkit/tree/main/ros2/src/px4_position_mode) | Launch, state and joystick |
+| External position reference | [offboard_position](https://github.com/ANCL/px4-dev-toolkit/tree/main/ros2/src/offboard_controllers/src/offboard_position) | Node and control lifecycle |
+| Shared trajectory mathematics | [`trajectory_generator/`](https://github.com/ANCL/px4-dev-toolkit/tree/main/trajectory_generator) | C++ sampler and YAML adapter |
+| ROS 2 Offboard SE3 controller | [se3/node.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/node.cpp) | [`Se3::execute_handoff()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/runtime/control.cpp#L23), pure `control/`, trajectories |
 | Native onboard control | [pinned PX4 SE3 runtime](https://github.com/ANCL/PX4-Autopilot/blob/5dd32eb1e7ab8b79b8ece462ce5f22cd75272c56/src/modules/se3_control/Runtime.cpp) | Mode registration, hold and rate output |
 | Parameter / trajectory transfer | `tools/onboard_params`, `tools/trajectory`, `tools/transfer/` | MAVLink transfers and acknowledgements |
-| Record an experiment | [recording.py](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/px4_control_common/px4_control_common/recording.py) | [`launch_experiment()`](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/px4_control_common/px4_control_common/recording.py#L150) and topic selection |
-| Run a study | [tools/run_sequence](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/tools/run_sequence) | [`load_sequence()`](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/tools/sequence/config.py#L43), [`run_step()`](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/tools/sequence/execution.py#L50), manifests |
-| Analyze/compare | [analysis](https://github.com/ANCL/px4-dev-toolkit/tree/0b668261e04732ef97e2965dbe8f5c1ba56730f0/analysis) | Signals, profiles and plots |
+| Record an experiment | [recording.py](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_control_common/px4_control_common/recording.py) | [`launch_experiment()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_control_common/px4_control_common/recording.py#L150) and topic selection |
+| Run a study | [tools/run_sequence](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/run_sequence) | [`load_sequence()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/config.py#L43), [`run_step()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/execution.py#L50), manifests |
+| Analyze/compare | [analysis](https://github.com/ANCL/px4-dev-toolkit/tree/main/analysis) | Signals, profiles and plots |
 
 </div>
 
@@ -99,7 +99,7 @@ In simulation, PX4 uses configured Gazebo/external-vision aiding and IMU. On har
 
 The analytic core of `trajectory_generator/` owns reference sampling through snap without ROS or PX4 dependencies; its separate configuration layer reads YAML. Offboard nodes load shared YAML and start trajectory time at confirmed Offboard entry. For onboard use, the toolkit compiler writes a `.traj` plan, MAVLink FTP uploads it, and the firmware's `src/lib/trajectory/` samples it after an explicit request. Firmware mode selection first captures the actual pose for holding.
 
-Native SE3 registers a Commander external-mode slot **inside PX4** and publishes body rates and normalized thrust at a nominal 100 Hz. PX4 retains rate control and allocation. Its implementation is described under [Onboard SE3](../controllers/onboard-se3.md); the ROS controller is described under [Offboard SE3](../controllers/se3.md).
+Native SE3 registers a Commander external-mode slot **inside PX4** and publishes body rates and normalized thrust at a nominal 100 Hz. PX4 retains rate control and allocation. Its implementation is described under [Onboard SE3](../controllers/onboard/se3.md); the ROS controller is described under [Offboard SE3](../controllers/offboard/se3/index.md).
 
 
 <!-- Preserve existing section links. -->
@@ -130,4 +130,4 @@ The toolkit separates an implemented interface from a configuration that has bee
 
 </div>
 
-Physical flight requires the [hardware](../environments/hardware.md) and [onboard](../operations/onboard.md) preparation procedures.
+Physical flight requires the [hardware](../operations/companion.md) and [onboard](../operations/onboard.md) preparation procedures.

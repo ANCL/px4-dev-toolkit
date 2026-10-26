@@ -37,7 +37,7 @@ or, on the physical companion:
 
 SITL starts Gazebo with a GUI unless `headless` is selected. Repeating `start` attaches to the running session. Use `./tools/sitl status` or `./tools/hardware status` in another shell; use the matching `stop` after landing and disarming.
 
-The [SITL](../environments/sitl.md) and [companion](../environments/hardware.md) guides list the services and configuration for each runtime.
+The [SITL](sitl.md) and [companion](companion.md) guides list the services and configuration for each runtime.
 
 ## Communication paths
 
@@ -74,11 +74,11 @@ The **Ubuntu repository shell** provides the following toolkit commands; command
 | Tool | Purpose | Procedure |
 |---|---|---|
 | `./tools/onboard_params` | Apply and verify a named PX4 parameter profile while disarmed | [Onboard control](onboard.md#prepare-before-takeoff) |
-| `./tools/trajectory` | List/compile YAML plans, upload them over MAVLink FTP, or explicitly clean plan files | [Trajectories](../controllers/trajectories.md#compile-and-upload-an-onboard-plan) |
-| `./tools/px4_record` | Independently record PX4 DDS telemetry to a ROS bag | [Onboard logging](../workflows/onboard-logging.md) |
-| `./tools/px4_analyze` | Analyze a finalized ROS bag or PX4 ULog | [Analysis](../analysis/analysis.md) |
-| `./tools/px4_compare` | Compare supported recorded ROS flights | [Comparison](../analysis/comparison.md) |
-| `./tools/run_sequence` | Run a configured series of controller launches | [Sequences](../workflows/sequences.md) |
+| `./tools/trajectory` | List/compile YAML plans, upload them over MAVLink FTP, or explicitly clean plan files | [Trajectories](../experiments/trajectories.md#compile-and-upload-an-onboard-plan) |
+| `./tools/px4_record` | Independently record PX4 DDS telemetry to a ROS bag | [Onboard logging](../experiments/onboard-logs.md) |
+| `./tools/px4_analyze` | Analyze a finalized ROS bag or PX4 ULog | [Analysis](../experiments/analysis.md) |
+| `./tools/px4_compare` | Compare supported recorded ROS flights | [Comparison](../experiments/comparison.md) |
+| `./tools/run_sequence` | Run a configured series of controller launches | [Sequences](../experiments/sequences.md) |
 
 </div>
 
@@ -90,4 +90,4 @@ In the **PX4 shell**, use native `se3_control` and `trajectory` commands. See [O
 
 `./tools/px4_record onboard_se3` starts independent ROS recording in the foreground; the recorder does not arm, select a mode or start motion. `./tools/px4_record status` and `stop` can be used from another repository shell. A supported ROS launch can instead own recording with `record:=true`. PX4 ULog is a separate on-aircraft log, transferred after finalization.
 
-`px4_analyze` reads ROS bags or `.ulg` files. `px4_compare` compares finalized ROS bags and requires `--output` for standalone runs outside a recognized study. ULog comparison uses a separate command. See [Data formats](../workflows/common-analysis.md), [Recording](../workflows/recording.md), and [Analysis](../analysis/analysis.md). `run_sequence` launches controllers and requires prepared SITL.
+`px4_analyze` reads ROS bags or `.ulg` files. `px4_compare` compares finalized ROS bags and requires `--output` for standalone runs outside a recognized study. ULog comparison uses a separate command. See [Data formats](../experiments/data-formats.md), [Recording](../experiments/recording.md), and [Analysis](../experiments/analysis.md). `run_sequence` launches controllers and requires prepared SITL.

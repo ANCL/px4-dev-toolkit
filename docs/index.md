@@ -9,8 +9,8 @@ hide:
     <p class="px4-home-lede">A development environment for PX4 and ROS 2, supporting controller experiments in Gazebo simulation and on physical aircraft.</p>
     <p class="px4-home-summary">Start with a simulation, choose where your controller runs, then record and analyze an experiment. Follow the operational guides at the terminal or work through the shared dynamics and geometric-control derivation.</p>
     <div class="px4-home-actions">
-      <a href="installation/" class="md-button md-button--primary">Get started</a>
-      <a href="controllers/overview/" class="px4-home-secondary">Explore controllers <span aria-hidden="true">→</span></a>
+      <a href="get-started/" class="md-button md-button--primary">Get started</a>
+      <a href="controllers/" class="px4-home-secondary">Explore controllers <span aria-hidden="true">→</span></a>
     </div>
   </section>
 
@@ -44,12 +44,13 @@ hide:
   <section class="px4-home-docs" aria-labelledby="documentation">
     <h2 id="documentation">Documentation</h2>
     <nav class="px4-home-directory" aria-label="Documentation sections">
-      <a href="installation/" class="px4-home-doc-link"><span class="px4-home-doc-title">Get started <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Installation and first simulation</span></a>
-      <a href="operations/tools/" class="px4-home-doc-link"><span class="px4-home-doc-title">Using the toolkit <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">SITL, companion setup, onboard and Offboard workflows</span></a>
-      <a href="controllers/overview/" class="px4-home-doc-link"><span class="px4-home-doc-title">Controllers <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">PX4 reference, Offboard, and onboard controllers</span></a>
-      <a href="mathematics/geometric-control/" class="px4-home-doc-link"><span class="px4-home-doc-title">Mathematics <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Frames, rigid-body dynamics, and geometric SE3 control</span></a>
-      <a href="experiments/complete-example/" class="px4-home-doc-link"><span class="px4-home-doc-title">Experiments <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Define motion, record data, and compare observed behavior</span></a>
-      <a href="reference/architecture/" class="px4-home-doc-link"><span class="px4-home-doc-title">Reference <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Architecture, configuration, and troubleshooting</span></a>
+      <a href="get-started/" class="px4-home-doc-link"><span class="px4-home-doc-title">Get started <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Installation and first simulation</span></a>
+      <a href="operations/" class="px4-home-doc-link"><span class="px4-home-doc-title">Operations <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">SITL, companion setup, onboard and Offboard workflows</span></a>
+      <a href="controllers/" class="px4-home-doc-link"><span class="px4-home-doc-title">Controllers <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">PX4 reference, Offboard, and onboard controllers</span></a>
+      <a href="mathematics/" class="px4-home-doc-link"><span class="px4-home-doc-title">Mathematics <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Frames, rigid-body dynamics, and geometric SE3 control</span></a>
+      <a href="experiments/" class="px4-home-doc-link"><span class="px4-home-doc-title">Experiments <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Define motion, record data, and compare observed behavior</span></a>
+      <a href="extending/" class="px4-home-doc-link"><span class="px4-home-doc-title">Extending <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Vehicles, controllers, and new toolkit components</span></a>
+      <a href="reference/" class="px4-home-doc-link"><span class="px4-home-doc-title">Reference <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Architecture, configuration, and troubleshooting</span></a>
     </nav>
   </section>
 </div>

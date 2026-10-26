@@ -2,11 +2,11 @@
 
 # Offboard control
 
-ROS 2 Offboard controllers stream setpoints to PX4 over uXRCE-DDS. This procedure covers [Offboard Position](../controllers/offboard-position.md) and [Offboard SE3](../controllers/se3.md), from takeoff through handback. For firmware modes, see [Onboard control](onboard.md).
+ROS 2 Offboard controllers stream setpoints to PX4 over uXRCE-DDS. This procedure covers [Offboard Position](../controllers/offboard/position.md) and [Offboard SE3](../controllers/offboard/se3/index.md), from takeoff through handback. For firmware modes, see [Onboard control](onboard.md).
 
 ## Prepare the runtime and aircraft
 
-Start [SITL](../environments/sitl.md) or the [companion stack](../environments/hardware.md), and confirm DDS state messages and a valid PX4 local estimate.
+Start [SITL](sitl.md) or the [companion stack](companion.md), and confirm DDS state messages and a valid PX4 local estimate.
 
 Before launching a controller:
 
@@ -23,7 +23,7 @@ ros2 launch px4_position_mode position_takeoff_hover.launch.py \
   height:=1.0 finish:=hold
 ```
 
-Run in an Ubuntu repository shell. The helper climbs 1 m relative to takeoff and holds for 10 seconds; verify the resulting position and heading. The alternative [Offboard Staging](../controllers/offboard-staging.md) helper targets Z = −2 m. Use one preparation helper per flight.
+Run in an Ubuntu repository shell. The helper climbs 1 m relative to takeoff and holds for 10 seconds; verify the resulting position and heading. The alternative [Offboard Staging](../controllers/px4-reference/staging.md) helper targets Z = −2 m. Use one preparation helper per flight.
 
 The MAVProxy virtual-joystick helpers are for simulation only. On physical hardware, use the aircraft’s established pilot-controlled takeoff, handoff, and recovery procedures.
 
@@ -48,9 +48,9 @@ ros2 launch offboard_controllers se3.launch.py \
   offboard_trigger:=automatic publish_diagnostics:=true record:=true
 ```
 
-Select the matching vehicle file. For attitude, body-rate, or thrust/torque output, see [SE3 handoffs](../controllers/se3.md#choose-a-handoff) and their state/data requirements.
+Select the matching vehicle file. For attitude, body-rate, or thrust/torque output, see [SE3 handoffs](../controllers/offboard/se3/index.md#choose-a-handoff) and their state/data requirements.
 
-Both controllers load checkout YAML at startup; restart after edits. `record:=true` starts a ROS bag. See [Recording](../workflows/recording.md) for ULog and ROS-bag differences.
+Both controllers load checkout YAML at startup; restart after edits. `record:=true` starts a ROS bag. See [Recording](../experiments/recording.md) for ULog and ROS-bag differences.
 
 ## Enter Offboard and run the reference
 
@@ -80,14 +80,14 @@ The implementations deliberately differ at the transition:
 
 </div>
 
-SE3's diagnostic reference is separate from its active PX4 setpoint. See the [SE3 lifecycle](../controllers/se3.md#lifecycle) for readiness and mode-loss behavior.
+SE3's diagnostic reference is separate from its active PX4 setpoint. See the [SE3 lifecycle](../controllers/offboard/se3/index.md#lifecycle) for readiness and mode-loss behavior.
 
 ## Monitor, return, and land
 
-Monitor measured local NED position/heading, arming state, and `VehicleStatus.nav_state` alongside the controller log. For SE(3), optional diagnostics help distinguish the desired reference, calculated feedback/feedforward, and actual PX4 input. Use the selected [analysis workflow](../analysis/analysis.md) to interpret tracking and actuator limits.
+Monitor measured local NED position/heading, arming state, and `VehicleStatus.nav_state` alongside the controller log. For SE(3), optional diagnostics help distinguish the desired reference, calculated feedback/feedforward, and actual PX4 input. Use the selected [analysis workflow](../experiments/analysis.md) to interpret tracking and actuator limits.
 
 Confirm the Position-mode return before ending the experiment. In external mode, the controller continues tracking the final reference until handback.
 
-Then land and disarm using the prepared flight controls. For simulation, follow [Land and reset](../environments/sitl.md#land-and-reset-the-simulated-vehicle) before a new run or environment shutdown. Controller completion, rosbag completion, and returning to Position do not themselves land the aircraft.
+Then land and disarm using the prepared flight controls. For simulation, follow [Land and reset](sitl.md#land-and-reset-the-simulated-vehicle) before a new run or environment shutdown. Controller completion, rosbag completion, and returning to Position do not themselves land the aircraft.
 
-If tracking, state, or mode is unexpected, recover through the prepared pilot control path and inspect actual vehicle state. Interrupting ROS can remove the stream and invoke PX4's configured failsafe; it is not a landing command. The [Offboard Position lifecycle](../controllers/offboard-position.md#readiness-timing-and-return) and [SE(3) lifecycle](../controllers/se3.md#lifecycle) explain their different exit behavior.
+If tracking, state, or mode is unexpected, recover through the prepared pilot control path and inspect actual vehicle state. Interrupting ROS can remove the stream and invoke PX4's configured failsafe; it is not a landing command. The [Offboard Position lifecycle](../controllers/offboard/position.md#readiness-timing-and-return) and [SE(3) lifecycle](../controllers/offboard/se3/index.md#lifecycle) explain their different exit behavior.

@@ -1,6 +1,6 @@
 # First simulation
 
-Run a repeatable Position-mode takeoff, hover, and landing in Gazebo. PX4 performs the flight control; the example supplies simulated pilot input. This guide uses a **native SITL installation**. If you use [Docker](../installation/docker.md), run the same repository-root commands inside the container shells described there.
+Run a Position-mode takeoff, hover, and landing in **native SITL**. For [Docker](../installation/docker.md), run the same repository commands inside the container.
 
 ## 1. Prepare the simulation
 
@@ -12,7 +12,7 @@ In **terminal 1 at the repository root**, start the desktop simulation:
 ./tools/sitl start
 ```
 
-Gazebo should show the aircraft, and tmux should contain `px4`, `xrce-dds`, and `mavproxy` windows. For a terminal-only host, use `./tools/sitl start headless`; inspect messages instead of a Gazebo view. Switch tmux windows with **Ctrl-b, then n**; detach with **Ctrl-b, then d** without stopping the services.
+Gazebo should show the aircraft, and tmux should contain `px4`, `xrce-dds`, `mavproxy`, and `mavlink-router` windows. For a terminal-only host, use `./tools/sitl start headless`; inspect messages instead of a Gazebo view. The tmux session keeps the named services running independently of the terminal view.
 
 ## 2. Check communication and state
 
@@ -24,14 +24,14 @@ source ros2/runtime_env.sh
 ./tools/topic_rates
 ```
 
-Check that the expected components run and PX4 topics carry samples. Stop the rate display with Ctrl-C. Then inspect state in the **same sourced shell**:
+Check the services and arriving PX4 messages. In the same sourced shell, inspect vehicle state:
 
 ```bash
 ros2 topic echo /fmu/out/vehicle_local_position --qos-reliability best_effort --once
 ros2 topic echo /fmu/out/vehicle_status_v1 --qos-reliability best_effort --once
 ```
 
-Local position should have valid horizontal/vertical estimates. PX4 status should belong to the intended simulated vehicle. If state or messages are missing, resolve [simulation/DDS checks](../reference/troubleshooting.md#simulation-and-dds) before launching a flight. A topic name without samples is insufficient.
+Require valid local position and the expected vehicle status before flight. For missing samples, see [Simulation and DDS troubleshooting](../reference/troubleshooting.md#simulation-and-dds).
 
 ## 3. Run the reference flight
 
@@ -41,7 +41,7 @@ With Gazebo ready, no other controller running, and the simulated aircraft initi
 ros2 launch px4_position_mode position_takeoff_hover.launch.py finish:=land
 ```
 
-With `finish:=land`, the example waits for readiness, selects Position mode, arms, climbs, holds, lands, and disarms through its implemented state machine. The default `finish:=hold` leaves the aircraft armed and hovering for later controller handoff. In the GUI you should see those phases; in a headless session follow the node/PX4 logs and mode/arming state. This is a PX4 reference flight, not an external SE(3) controller.
+`finish:=land` arms, climbs, holds, lands, and disarms under PX4 Position-mode control. The default `finish:=hold` leaves the aircraft airborne for an Offboard handoff. Follow the node/PX4 logs and mode/arming state in headless runs.
 
 Wait for successful completion. If it fails, inspect the reported phase and restore a landed/disarmed simulation before trying again. Ctrl-C interrupts a process; it is not a guaranteed landing command.
 
@@ -54,8 +54,8 @@ After landing and disarm have been confirmed, stop the simulation from a **repos
 ./tools/sitl status
 ```
 
-The wrapper stops its tmux services and cleans up detached Gazebo processes associated with this checkout. The status should show the session stopped.
+Confirm `status` reports the session stopped.
 
 Confirm the expected phases and final PX4 state on your installation before moving to the Offboard examples.
 
-Continue with [Position Mode](../controllers/position-mode.md) for the reference workflow, then [Offboard Staging](../controllers/offboard-staging.md) to prepare for an external controller. See [Recording](../workflows/recording.md) when the basic example works.
+Continue with [Position Mode](../controllers/position-mode.md) for the reference workflow, then [Offboard Staging](../controllers/offboard-staging.md) to prepare for an external controller. See [Recording](../workflows/recording.md) when the basic example works. For native firmware control, follow [Onboard control](../operations/onboard.md); [Tools and terminals](../operations/tools.md) explains which commands belong in Bash, PX4, or the GCS.

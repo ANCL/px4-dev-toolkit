@@ -99,7 +99,30 @@
   outline: 2px solid var(--md-accent-fg-color); outline-offset: 3px;
 }
 
-/* Tables and code scroll locally instead of squeezing technical content. */
+/* Scroll wide tables instead of squeezing labels or breaking identifiers. */
+.md-typeset .px4-table-scroll {
+  width: 100%; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain;
+  margin-block: 1.2rem; scrollbar-width: thin;
+}
+.md-typeset .px4-table-scroll table:not([class]) {
+  width: 100%; min-width: 740px; margin: 0; table-layout: auto;
+}
+.md-typeset .px4-table-scroll th,
+.md-typeset .px4-table-scroll td {
+  word-break: normal; overflow-wrap: normal; hyphens: none;
+}
+/* Column labels and technical tokens should remain readable on one line.
+   Longer explanatory cells may wrap at spaces; the wrapper handles overflow. */
+.md-typeset .px4-table-scroll th,
+.md-typeset .px4-table-scroll td:first-child {
+  white-space: nowrap;
+}
+.md-typeset .px4-table-scroll table:not([class]) th code,
+.md-typeset .px4-table-scroll table:not([class]) td code {
+  white-space: nowrap; overflow-wrap: normal;
+}
+
+/* Code blocks retain their own horizontal scrolling. */
 .md-typeset code { font-size: .8em; overflow-wrap: anywhere; }
 .md-typeset :not(pre) > code {
   -webkit-box-decoration-break: clone; box-decoration-break: clone; padding-inline: .18em;
@@ -109,7 +132,7 @@
 .md-typeset .highlight, .md-typeset pre, .md-typeset .md-typeset__scrollwrap { margin-inline: 0; }
 .md-typeset .md-typeset__table { display: block; padding-inline: 0; }
 .md-typeset table:not([class]) {
-  width: 100%; min-width: 480px; font-size: .79rem;
+  width: 100%; min-width: 0; font-size: .79rem;
   border: 0; border-block: 1px solid var(--md-default-fg-color--lightest);
   border-radius: 0; background: transparent;
 }

@@ -7,7 +7,7 @@ hide:
   <section class="px4-home-intro" aria-labelledby="px4-development-toolkit">
     <h1 id="px4-development-toolkit">PX4 Development Toolkit</h1>
     <p class="px4-home-lede">A development environment for PX4 and ROS 2, supporting controller experiments in Gazebo simulation and on physical aircraft.</p>
-    <p class="px4-home-summary">Run controllers, record flight data, and analyze their behavior. The documentation explains the implementation and mathematics of the supported control methods.</p>
+    <p class="px4-home-summary">Start with a simulation, choose where your controller runs, then record and analyze an experiment. Follow the operational guides at the terminal or work through the shared dynamics and geometric-control derivation.</p>
     <div class="px4-home-actions">
       <a href="installation/" class="md-button md-button--primary">Get started</a>
       <a href="controllers/overview/" class="px4-home-secondary">Explore controllers <span aria-hidden="true">→</span></a>
@@ -20,13 +20,13 @@ hide:
         <div class="px4-home-media-frame px4-home-media-frame--sim">
           <img src="assets/hero-gazebo-placeholder.svg" width="640" height="360" alt="Schematic Gazebo simulation with a quadrotor inside a modeled three-dimensional environment">
         </div>
-        <figcaption><strong>Gazebo SITL</strong><span>Simulation illustration · video to be added</span></figcaption>
+        <figcaption><strong>Gazebo SITL</strong><span>Schematic illustration of the simulation environment</span></figcaption>
       </figure>
       <figure class="px4-home-media-item">
         <div class="px4-home-media-frame px4-home-media-frame--lab">
           <img src="assets/hero-f450-placeholder.svg" width="640" height="360" alt="Schematic quadrotor inside a motion-capture flight laboratory with ceiling cameras">
         </div>
-        <figcaption><strong>Physical flight</strong><span>Laboratory illustration · video to be added</span></figcaption>
+        <figcaption><strong>Companion-computer environment</strong><span>Schematic illustration of a motion-capture laboratory</span></figcaption>
       </figure>
     </div>
   </section>
@@ -44,12 +44,12 @@ hide:
   <section class="px4-home-docs" aria-labelledby="documentation">
     <h2 id="documentation">Documentation</h2>
     <nav class="px4-home-directory" aria-label="Documentation sections">
-      <a href="installation/" class="px4-home-doc-link"><span class="px4-home-doc-title">Getting started <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Installation and first simulation</span></a>
-      <a href="environments/sitl/" class="px4-home-doc-link"><span class="px4-home-doc-title">Running the toolkit <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Simulation and physical hardware</span></a>
-      <a href="controllers/overview/" class="px4-home-doc-link"><span class="px4-home-doc-title">Controllers <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Position, Offboard, and five SE(3) configurations</span></a>
-      <a href="experiments/complete-example/" class="px4-home-doc-link"><span class="px4-home-doc-title">Experiments and analysis <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Recording and interpreting flight data</span></a>
-      <a href="reference/extending/" class="px4-home-doc-link"><span class="px4-home-doc-title">Extending the toolkit <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Vehicles, controllers, and trajectories</span></a>
-      <a href="reference/architecture/" class="px4-home-doc-link"><span class="px4-home-doc-title">Technical reference <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Software structure and configuration</span></a>
+      <a href="installation/" class="px4-home-doc-link"><span class="px4-home-doc-title">Get started <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Installation and first simulation</span></a>
+      <a href="operations/tools/" class="px4-home-doc-link"><span class="px4-home-doc-title">Using the toolkit <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">SITL, companion setup, onboard and Offboard workflows</span></a>
+      <a href="controllers/overview/" class="px4-home-doc-link"><span class="px4-home-doc-title">Controllers <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">PX4 reference, Offboard, and onboard controllers</span></a>
+      <a href="mathematics/geometric-control/" class="px4-home-doc-link"><span class="px4-home-doc-title">Mathematics <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Frames, rigid-body dynamics, and geometric SE3 control</span></a>
+      <a href="experiments/complete-example/" class="px4-home-doc-link"><span class="px4-home-doc-title">Experiments <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Define motion, record data, and compare observed behavior</span></a>
+      <a href="reference/architecture/" class="px4-home-doc-link"><span class="px4-home-doc-title">Reference <span aria-hidden="true">↗</span></span><span class="px4-home-doc-detail">Architecture, configuration, and troubleshooting</span></a>
     </nav>
   </section>
 </div>

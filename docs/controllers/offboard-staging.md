@@ -1,74 +1,44 @@
 # Offboard Staging
 
-The staging helper prepares a **SITL aircraft** for an independent Offboard
-controller. Unlike the [Position Mode](position-mode.md) reference flight,
-it does not land or disarm after reaching its hold state. It also does not
-request Offboard mode itself.
+This SITL helper uses MAVProxy's virtual joystick to take off in Position mode and wait for an independent Offboard controller. It exits after confirmed handoff, leaving the aircraft airborne.
 
 ## Prepare the aircraft
 
-Use a prepared SITL environment with `GCS=mavproxy`, valid PX4 state,
-no competing controller, and an initially landed/disarmed aircraft.
-In a **repository-root shell**, run:
+Use a prepared SITL environment with `GCS=mavproxy`, valid PX4 state, no competing controller, and an initially landed/disarmed aircraft. In an Ubuntu repository-root shell:
 
 ```bash
 source ros2/runtime_env.sh
 ros2 launch px4_position_mode offboard_takeoff_handoff.launch.py
 ```
 
-The [staging helper](https://github.com/ANCL/px4-dev-toolkit/tree/main/ros2/src/px4_position_mode/src/offboard_staging)
-supplies minimum-throttle input, selects Position mode, arms, climbs to
-the configured staging altitude, and centers the virtual joystick to hold.
-It then waits for another controller to enter Offboard and exits after
-confirmed takeover. Configuration lives in
-[offboard.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_position_mode/config/offboard.yaml).
+The helper selects Position mode, checks readiness, arms, and climbs to the `initial_z` threshold before centering the joystick. Launch the Offboard controller after the helper reports its hold phase.
 
-**Start the independent controller only after staging reaches its hold phase.**
-Do not run the reference Position-mode flight and the staging helper
-concurrently.
+The launch reads the **installed** `px4_position_mode/config/offboard.yaml`, rather than the checkout-first configuration loader used by the Offboard controllers. Its source is [offboard.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/px4_position_mode/config/offboard.yaml). Rebuild/install the ROS package after editing that source file; changing the source alone does not update the installed copy.
+
+### Check the starting position
+
+The pinned staging target is `initial_z=-2.0` m, while the shared trajectory start is `[0,0,-1.0]` m. Those defaults differ by one metre. The helper uses the altitude threshold only; it does not navigate to `initial_x`, `initial_y`, or `initial_yaw` even though the YAML supplies them. Centered sticks hold the attained Position-mode pose.
+
+Before takeover, compare measured NED position/heading with the selected trajectory's fixed start. Offboard entry does not translate that reference to the hover pose, so the default staging workflow can command a descent toward Z = −1 m. For the standard start near local Z = −1 m, the [Position-mode helper](position-mode.md#reference-flight) offers a `height:=1.0 finish:=hold` preparation from the ground near Z = 0; confirm the resulting measured pose rather than assuming exact alignment.
 
 ## Offboard transition
 
-**Offboard** means PX4 accepts an external controller's chosen command type.
-A ROS `OffboardControlMode` heartbeat identifies the active command level.
-With automatic activation, the controller requests Offboard. With external
-activation, the pilot or another source selects it. Both paths confirm
-`VehicleStatus.nav_state`; a command acknowledgement alone is insufficient.
+The independent controller's heartbeat declares the command level; the controller or pilot then selects Offboard. Both controllers verify `VehicleStatus.nav_state`, rather than treating a command acknowledgement as ownership. Both begin their trajectory clock on confirmed entry. Their trajectories execute in ROS and stream over DDS; no PX4 `trajectory start` command is used for these Offboard paths.
 
 ```mermaid
----
-config:
-  flowchart:
-    useMaxWidth: true
-    wrappingWidth: 160
-    padding: 16
-    rankSpacing: 26
-    nodeSpacing: 24
----
 flowchart TB
-    P["Position mode"] --> S["Prepare<br/>Offboard stream"]
-    S --> Q["Controller or pilot<br/>selects Offboard"]
-    Q --> C["PX4 confirms<br/>Offboard entry"]
-    C --> T["Run trajectory"]
-    T --> R["Request<br/>Position mode"]
-    R --> F["PX4 confirms<br/>Position mode"]
+    P["Position-mode takeoff"] --> H["Centered-stick hold"]
+    H --> W["Independent controller warms heartbeat"]
+    W --> E["Controller or pilot selects Offboard"]
+    E --> C["PX4 confirms entry; ROS reference starts"]
+    C --> R["Controller or pilot returns to Position"]
+    R --> L["Pilot lands and disarms"]
 ```
 
-[Offboard Position](offboard-position.md) streams a heartbeat and actual
-trajectory setpoints before takeover; only automatic activation requests Offboard.
-[SE(3) Control](se3.md#when-the-controller-starts-and-stops) warms up its
-heartbeat and diagnostic trajectory reference, then begins the selected
-control output after confirmed Offboard entry. The two controllers differ
-in their failure and return behavior; consult the relevant controller page.
+[Offboard Position](offboard-position.md) prestreams actual trajectory setpoints. [Offboard SE(3)](se3.md#when-the-controller-starts-and-stops) prestreams its heartbeat and diagnostic reference but starts the selected PX4 control output after confirmed entry. See [Offboard control](../operations/offboard.md) for automatic/external activation and recovery.
 
 ## After handoff
 
-The staging helper exits when the independent controller enters Offboard.
-A confirmed return to Position mode ends the controller experiment, but
-**does not necessarily land or disarm the aircraft**. Use the
-[SITL landing and reset procedure](../environments/sitl.md#land-and-reset-the-simulated-vehicle)
-before starting another run or stopping the environment.
+After handoff, MAVProxy keeps its virtual joystick centered. Follow [Land and reset](../environments/sitl.md#land-and-reset-the-simulated-vehicle) after the controller returns to Position mode.
 
-Interrupting an active controller can remove its command stream and invoke
-PX4's configured failsafe instead of a controlled return. Check actual
-mode, position, and arming state before proceeding.
+On controller failure or lost Offboard stream, check PX4's actual mode and recover through pilot control. This helper runs in SITL only. Implementation: [offboard_staging/lifecycle.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/px4_position_mode/src/offboard_staging/lifecycle.cpp).

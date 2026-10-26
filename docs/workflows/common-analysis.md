@@ -1,24 +1,48 @@
-# PX4 flight analysis from ROS bags and ULogs
+<span id="px4-flight-analysis-from-ros-bags-and-ulogs"></span>
 
-`px4_analyze` and `px4_compare` support both ROS 2 bag directories and PX4
-`.ulg` files. Source readers supply the PX4 observation contract to the same
-`analysis/pipeline/` calculations, plots and statistics.
+# Analysis data
+
+`px4_analyze` accepts finalized ROS 2 bag directories and PX4 `.ulg` files.
+`px4_compare` accepts finalized ROS bags; ULog comparison has a separate
+entry point below. Both formats use shared analysis functions. Run these commands on a workstation
+with the SITL analysis dependencies.
 
 ```bash
 source ros2/runtime_env.sh
 ./tools/px4_analyze bags/raw/flight.ulg
 ./tools/px4_analyze bags/se3/experiment_directory
-./tools/px4_compare bags/raw/flight_a.ulg bags/raw/flight_b.ulg --output bags/comparison/ulog_test
+./tools/px4_compare bags/se3/<run-a> bags/se3/<run-b> --output bags/comparison/rosbag_test
 ```
+
+For ULog comparison, invoke the installed isolated analysis runtime directly:
+
+```bash
+.venv/onboard_analysis/bin/python3 -s analysis/onboard/cli.py compare \
+  bags/raw/flight_a.ulg bags/raw/flight_b.ulg \
+  --output bags/comparison/ulog_test --profile onboard_se3
+```
+
+Use `--profile px4_ulog` for generic PX4 logs, or the default `auto` to detect
+matching profiles. At least two sources and an explicit output directory are
+required. Native SE3 comparison requires matching nonzero plan CRCs and one
+unambiguous run per source (or a `flight.ulg` directory with run-selection
+metadata); it rejects stationary-hold-only comparisons. This CLI does not
+combine a ROS bag with a ULog in one comparison.
+
+Single-source ULog analysis accepts `--profile auto|px4_ulog|onboard_se3` and
+`--run-id <id>` through `px4_analyze`; the run selector applies only to native
+SE3. Generic single-source output is `<ulog-parent>/<ulog-stem>/analysis/`.
+Native SE3 uses the same directory, or `<ulog-stem>_run<id>/analysis/` when a
+run ID is explicitly selected. An imported directory containing `flight.ulg`
+gets its own `analysis/`. ROS-bag output is always `<bag>/analysis/`.
 
 For a generic ULog, `summary.txt` contains the full native PX4 control
 pipeline. The shared plotting code produces position, velocity, acceleration,
 attitude, rates, thrust, torque and motor figures wherever the corresponding
 signals were logged. Unavailable/bypassed layers are not synthesized.
 
-For a native onboard SE(3) log, the controller-specific reference/CRC and
-tracking analysis remains the primary profile. No unrelated whole-flight native pipeline report is generated. Controller
-comparison still enforces matching trajectory CRCs.
+For native onboard SE3, analysis uses its reference, plan CRC, and execution
+interval. Comparison requires matching trajectory CRCs.
 
 ## Signal conventions
 
@@ -39,9 +63,11 @@ comparison still enforces matching trajectory CRCs.
   controller performance on the same trajectory, use profile-specific
   comparison with recorded maneuver timing and references.
 
-ULog data inventory is source dependent. The adapter selects the control
-pipeline and relevant diagnostics, not every possible sensor/estimator field.
-A recorded dataset's count describes *logger sampling*, not guaranteed
-controller execution frequency. For physical hardware, the source coordinate
-frame, state estimator and actuator allocation must be understood before
-interpreting differences as controller errors.
+ULog analysis selects the control pipeline and relevant diagnostics. Logged
+sample counts reflect recording frequency, not controller update rate. For
+hardware flights, account for frames, estimation, and allocation when
+interpreting tracking results.
+
+See [Analyze a run](../analysis/analysis.md) for profile interpretation and
+[Controller comparison](../analysis/comparison.md) for trajectory-time
+alignment and metrics.

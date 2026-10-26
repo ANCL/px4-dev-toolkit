@@ -4,7 +4,7 @@
 <span id="analyzing-one-run"></span>
 # Analyze a run
 
-`px4_analyze` loads one finalized rosbag, selects an experiment profile, and writes a textual summary plus available plots. Start with the summary to establish what happened before interpreting a curve.
+`px4_analyze` analyzes finalized ROS bags and PX4 ULogs, producing `summary.txt` and available plots. This page covers ROS-bag profiles; [Analysis data](../workflows/common-analysis.md) covers formats and timing.
 
 <!-- Preserve existing section links. -->
 <span id="run"></span>
@@ -18,7 +18,7 @@ In a **repository-root shell with `ros2/runtime_env.sh` sourced**, use the disco
 ./tools/px4_analyze "$bag_path"
 ```
 
-Set `bag_path` to a finalized bag directory. Example result structure:
+`bag_path` must contain `metadata.yaml` and `experiment.json`. Run analysis on a workstation with the numerical dependencies. Results appear under:
 
 ```{ .text .no-copy }
 <bag>/analysis/
@@ -26,33 +26,36 @@ Set `bag_path` to a finalized bag directory. Example result structure:
 └── *.png
 ```
 
-The summary is written before plotting. A plotting dependency failure can leave a usable summary and a warning. Required-topic or data errors can prevent analysis entirely; optional missing topics suppress the corresponding observations. The reader supports rosbag storage backends through their installed ROS plugins, using `metadata.yaml` to select the storage identifier.
+`summary.txt` is written before plots. Required-topic errors stop analysis; absent optional topics omit their corresponding metrics. Storage backend selection comes from `metadata.yaml` and installed ROS plugins.
 
 <!-- Preserve existing section links. -->
 <span id="analysis-flow"></span>
 
 ## Profile detection
 
-Registered profiles are `position_takeoff_hover`, `offboard_takeoff_handoff`, `offboard_position`, and `se3`. `experiment.json` identifies every recorded profile, whether standalone or part of a study. Analysis requires that file instead of guessing from directory names.
+ROS-bag profiles: `position_takeoff_hover`, `offboard_takeoff_handoff`, `offboard_position`, `se3`, and `onboard_se3`. Analysis selects the profile from `experiment.json`. For ULogs, choose `px4_ulog` or `onboard_se3` through detection or `--profile`.
 
-For SE(3), recorded `OffboardControlMode` determines the active command level. Simultaneous or changing levels are rejected. Direct-law identity comes from explicit metadata. Without it, downstream thrust/torque messages alone cannot reliably distinguish geometric-normalized and PX4-rate control; diagnostic topics may provide supporting evidence. `unknown` is a data limitation, not a missing controller label to guess.
+Offboard SE3 handoff selection comes from recorded `OffboardControlMode`; conflicting/changing levels are rejected. Direct thrust/torque law identity requires metadata because the normalized commands alone do not distinguish the geometric, physical-adapter, and PX4-rate variants.
 
 ## Reduced DDS telemetry on F450 hardware
 
-The ANCL hardware firmware intentionally omits `/fmu/out/sensor_combined`,
-`/fmu/out/battery_status`, and `/fmu/out/manual_control_setpoint` to preserve
-serial bandwidth. The vehicle still handles its battery and pilot controls
-internally. Recorder topic lists therefore omit those unavailable ROS topics.
+The F450 hardware DDS profile omits `/fmu/out/sensor_combined`, `/fmu/out/battery_status`, and `/fmu/out/manual_control_setpoint` for serial bandwidth. These signals remain available internally to PX4.
 
 The Position-mode and staging profiles use PX4-confirmed arming and mode transitions. Joystick timing and centered-stick drift are not measured by the DDS recording contract.
 
 ## Time alignment
 
-[analysis/core.py](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/core.py) uses **rosbag receive timestamps** as the common cross-topic clock. It does not mix PX4 boot/sample timestamps with host/ROS time. Each topic is independently sampled.
+[analysis/core.py](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/analysis/core.py) uses **rosbag receive timestamps** as the common cross-topic clock. It does not mix PX4 boot/sample timestamps with host/ROS time. Each topic is independently sampled.
 
-The full bag establishes lifecycle events. SE(3) extraction begins at confirmed Offboard entry; the common performance view clips to the interval ending at the first confirmed Position return. The profile requires recorded armed state, Offboard entry, Position return, heartbeat/diagnostic reference before entry, and selected handoff samples. An interrupted run without return may fail this profile rather than yielding a normal performance report.
+The full bag establishes lifecycle events. Offboard SE3 extraction begins at confirmed Offboard entry; the common performance view clips to the interval ending at the first confirmed Position return. The profile requires recorded armed state, Offboard entry, Position return, heartbeat/diagnostic reference before entry, and selected handoff samples. An interrupted run without return may fail this profile rather than yielding a normal performance report.
 
-Reference signals are interpolated onto measured-signal times over their common interval. Stable sorting retains the first reference value at duplicate times. Do not compare arrays by index just because their rates look similar.
+The `onboard_se3` ROS-bag profile selects the first external-mode interval
+(`nav_state` 23–30) and includes holds before/after motion. It does not identify
+a specific external controller or infer ULog-only run phase/CRC fields. Record
+one known controller experiment per bag. Use native [ULog analysis](../workflows/onboard-logging.md)
+when an exact trajectory execution interval is required.
+
+Reference signals are interpolated onto measured-signal timestamps over the overlapping interval; duplicate reference times retain the first value.
 
 <!-- Preserve existing section links. -->
 <span id="se3-analysis"></span>
@@ -62,10 +65,10 @@ Reference signals are interpolated onto measured-signal times over their common 
 
 Check profile, controller identity, bag duration, arming and mode transitions, prestream, handoff timing, and missing signals. Then read tracking and control statistics. Two statistical treatments appear in the code:
 
-- Axis tracking tables from [`_aligned_error_stats()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/pipeline/statistics.py#L8) use sample RMS $\sqrt{\frac1N\sum e_k^2}$ and maximum absolute error after interpolation.
+- Axis tracking tables from [`_aligned_error_stats()`](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/analysis/pipeline/statistics.py) use sample RMS $\sqrt{\frac1N\sum e_k^2}$ and maximum absolute error after interpolation.
 - Common Offboard performance and maneuver metrics use time-weighted RMS from trapezoidal squared-error integration, explained in [comparison](comparison.md#metric-definitions).
 
-Uneven logging rates can make these numbers differ. Read the table's context instead of applying one generic RMS interpretation to every metric.
+Uneven sampling makes sample-RMS and time-weighted RMS differ.
 
 <!-- Preserve existing section links. -->
 <span id="source-organization"></span>
@@ -86,4 +89,4 @@ Uneven logging rates can make these numbers differ. Read the table's context ins
 
 **Missing data:** an absent diagnostic/actuator stream cannot demonstrate absence of saturation or good tracking at that stage. Optional diagnostics differ by mode; the common measured response is the more consistent comparison basis.
 
-[`enrich_summary()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/se3/reporting.py#L500) assembles the SE(3) reporting details. Use [SE(3) Comparison](comparison.md) to compare completed runs.
+[`enrich_summary()`](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/analysis/profiles/se3/reporting.py) assembles the Offboard SE3 reporting details. Use [Controller comparison](comparison.md) to compare completed runs.

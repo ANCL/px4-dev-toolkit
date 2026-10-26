@@ -4,7 +4,7 @@
 <span id="comparing-se3-controllers"></span>
 # Controller comparison
 
-`px4_compare` compares two or more flights using equivalent physical quantities. Each analysis profile supplies the reference, PX4 measurements and confirmed flight interval; different controllers or gains do not prevent comparison. The tool requires the same recorded trajectory configuration and reports unavailable signals rather than inventing measurements.
+`px4_compare` compares finalized ROS bags using each profile's reference and measured PX4 signals. Runs must have compatible saved trajectories. For ULog comparison and plan CRC matching, see [Analysis data](../workflows/common-analysis.md).
 
 <!-- Preserve existing section links. -->
 <span id="basic-usage"></span>
@@ -20,16 +20,20 @@ Use the actual finalized six-step study from the [complete example](../experimen
 ./tools/px4_compare "${study_bags[@]}"
 ```
 
-If bags are direct children of one study `bags/` directory with a `manifest.json`, output defaults to `<study>/comparison/`. For separately recorded bags, define an array containing their actual paths and provide `--output`; do not assume directory naming supplies experiment identity. The tool writes `summary.txt` and overlay PNGs. It does not reset or execute controllers.
+For bags from one manifested study, output defaults to `<study>/comparison/`. Standalone bags require `--output`. The result contains `summary.txt` and overlay PNGs. Example with standalone bag paths:
+
+```bash
+./tools/px4_compare bags/se3/<run-a> bags/se3/<run-b> --output bags/comparison/example
+```
 
 <!-- Preserve existing section links. -->
 <span id="labels"></span>
 
 ## Offboard alignment
 
-Each run is analyzed independently. The comparison shifts time so **$t=0$ is recorded PX4-confirmed Offboard entry**, and clips to its confirmed Position return. It uses rosbag receive time, not controller process start, recorder start, command acknowledgement, or gyro `timestamp_sample`.
+Runs align at **$t=0$ = PX4-confirmed Offboard entry**, using rosbag receive timestamps. The selected-mode interval ends at confirmed Position return.
 
-Each series keeps its own time samples. Measured/reference errors use interpolation over their overlapping interval. Missing or differing run durations must be considered when reading overlays. Mode labels come from recorded heartbeat and metadata; duplicate labels are disambiguated by bag identity rather than silently merged.
+Each series retains its sample times; errors use interpolation over the overlap. Labels and reference sources come from the analysis profile and saved metadata.
 
 ## Common quantities and limits
 
@@ -43,7 +47,7 @@ Normalized torque is not N·m. Hover calibration, actuator mapping, frames, PX4 
 
 ## Metric definitions
 
-[`timed_stats()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/comparison.py#L246), [`activity_stats()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/comparison.py#L336), and [`effort_stats()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/comparison.py#L408) compute the shared time-weighted and actuator-activity statistics. For scalar magnitude/error samples $q_k$ and positive finite intervals $\Delta t_k$:
+[`timed_stats()`](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/analysis/comparison.py), [`activity_stats()`](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/analysis/comparison.py), and [`effort_stats()`](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/analysis/comparison.py) compute the shared time-weighted and actuator-activity statistics. For scalar magnitude/error samples $q_k$ and positive finite intervals $\Delta t_k$:
 
 $$
 q_{\mathrm{RMS}}=\sqrt{
@@ -65,13 +69,17 @@ Motor metrics use the maximum absolute motor envelope, not measured electrical p
 
 ## Trajectory-aware metrics
 
-The selected trajectory in each bag's `experiment.json` determines maneuver boundaries. Comparison rejects mismatched recorded trajectories. See [`step_response_metrics()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/se3/comparison/metrics.py#L280), [`yaw_segment_metrics()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/se3/comparison/metrics.py#L533), and [`figure_eight_metrics()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/se3/comparison/metrics.py#L585):
+The selected trajectory in each bag's `experiment.json` determines maneuver boundaries. Comparison rejects mismatched recorded trajectories. See [`step_response_metrics()`](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/analysis/profiles/se3/comparison/metrics.py), [`yaw_segment_metrics()`](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/analysis/profiles/se3/comparison/metrics.py), and [`figure_eight_metrics()`](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/analysis/profiles/se3/comparison/metrics.py):
+
+<div class="px4-table-scroll" markdown="1">
 
 | Maneuver | Implemented interpretation |
 |---|---|
 | Single-axis step | Sampled 10–90% rise time, overshoot, settling, integral absolute error, final residual RMS, uncommanded-axis RMS |
 | Yaw | Wrapped yaw RMS/peak and final residual RMS in degrees |
 | Figure eight | Time-weighted position/velocity error, measured body-rate activity, normalized wrench, and motor effort/roughness |
+
+</div>
 
 Step response normalizes measured motion by the signed configured amplitude. The target is the first reference **strictly after** the boundary. The window includes one immediately following hold when present. Settling requires all remaining sampled errors within the larger of **0.02 m or 5% of step amplitude**. Residual uses the final 0.5 s; integral absolute error uses trapezoidal integration in m·s. Multi-axis steps are excluded from single-axis step metrics.
 
@@ -82,7 +90,7 @@ Yaw/figure-eight windows use start-inclusive/end-exclusive intervals. Yaw errors
 
 ## Before drawing a conclusion
 
-Confirm all expected study steps succeeded, data is complete, each run used the same canonical trajectory/vehicle, and the Offboard window covers the intended segments. Inspect state quality and allocation/motor limits alongside errors. Account for drift/re-anchoring between steps, transport/logging rate differences, and real-world environmental variation. A source-compatible launch and a finalized bag do not by themselves establish a controlled scientific comparison.
+Confirm all expected study steps succeeded, data is complete, each run used the same canonical trajectory/vehicle, and the Offboard window covers the intended segments. Inspect state quality and allocation/motor limits alongside errors. Account for drift and estimator-frame resets between steps, transport/logging rate differences, and real-world environmental variation. A source-compatible launch and a finalized bag do not by themselves establish a controlled scientific comparison.
 
 To add a controller or a metric, use [Extending the Toolkit](../reference/extending.md).
 
@@ -103,8 +111,8 @@ body-rate magnitude and motor envelope overlays remain separate.
 
 Comparison time zero is the trajectory start. For these Offboard controllers,
 the controller starts the trajectory when PX4 confirms Offboard entry.
-For legacy native SE3 ROS bags, trajectory execution is *not* directly
-recorded; its start is estimated by fitting the full position/yaw
+For native SE3 ROS bags, trajectory execution is *not* directly
+recorded by the standard DDS recording contract; its start is estimated by fitting the full position/yaw
 trajectory reference against a confirmed reference run. Ambiguous
 or incompatible fits are rejected, not plotted. The saved summary
 labels observed versus inferred timestamps explicitly.
@@ -112,7 +120,11 @@ labels observed versus inferred timestamps explicitly.
 Identical PX4 topic names do not guarantee populated streams: each
 controller may bypass layers. Missing references remain unavailable.
 The comparison requires at least one recorded trajectory configuration
-and one mode-confirmed reference run for legacy inference.
+and one mode-confirmed Offboard reference run for that inference. Current
+standalone `px4_record onboard_se3` metadata contains a topic list, not a
+trajectory snapshot: pair it with a compatible recorded Offboard reference
+only when the reference fit and coverage checks succeed. An ambiguous hover or
+shortened execution can be rejected. For exact native run timing, use ULog.
 
 
 ## Comparison signal provenance
@@ -122,10 +134,10 @@ and one mode-confirmed reference run for legacy inference.
 configuration to the *physical meaning* and source topic of each signal.
 The comparison engine is shared and never publishes flight commands.
 
-For an SE3 attitude-rate handoff, the desired attitude is
+For an Offboard SE3 attitude-rate handoff, the desired attitude is
 `/se3/diagnostics/desired_attitude` (when diagnostics were recorded),
 not the inactive PX4 attitude-controller output. For the PX4-rate
-reproduction the desired rate is the SE3 diagnostic body-rate setpoint.
+reproduction the desired rate is the Offboard SE3 diagnostic body-rate setpoint.
 Direct geometric torque handoffs have no equivalent commanded body-rate
 reference. Missing observations remain unavailable, without fabricated
 values or fallback to a different stage of the control cascade.

@@ -60,42 +60,52 @@ extra_javascript:
   - https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js
 nav:
   - Home: index.md
-  - Getting started:
-      - Installation options: installation/index.md
-      - SITL installation:
-          - Native Ubuntu: installation/native.md
+  - Get started:
+      - Install: installation/index.md
+      - SITL:
+          - Ubuntu: installation/native.md
           - Docker: installation/docker.md
-      - Companion computer: installation/companion.md
+      - Companion: installation/companion.md
       - First simulation: getting-started/first-simulation.md
-  - Running the toolkit:
+  - Using the toolkit:
       - SITL: environments/sitl.md
-      - Companion Computer: environments/hardware.md
+      - Companion: environments/hardware.md
+      - Onboard: operations/onboard.md
+      - Offboard: operations/offboard.md
+      - Tools: operations/tools.md
   - Controllers:
       - Overview: controllers/overview.md
-      - Position Mode: controllers/position-mode.md
-      - Offboard Staging: controllers/offboard-staging.md
-      - Offboard Position: controllers/offboard-position.md
-      - SE(3) Control:
-          - Overview: controllers/se3.md
-          - Math: controllers/se3/foundations.md
-          - Acceleration: controllers/se3/acceleration.md
-          - Attitude: controllers/se3/attitude.md
-          - Body Rate: controllers/se3/attitude-rate.md
-          - Thrust & Torque:
-              - Geometric (Normalized): controllers/se3/geometric-normalized.md
-              - PX4 Rate PID: controllers/se3/px4-rate.md
-      - Trajectories: controllers/trajectories.md
+      - PX4 reference:
+          - Position mode: controllers/position-mode.md
+          - Staging: controllers/offboard-staging.md
+      - Offboard (ROS 2):
+          - Position: controllers/offboard-position.md
+          - SE3:
+              - Overview: controllers/se3.md
+              - Acceleration: controllers/se3/acceleration.md
+              - Attitude: controllers/se3/attitude.md
+              - Body rate: controllers/se3/attitude-rate.md
+              - Normalized torque: controllers/se3/geometric-normalized.md
+              - Physical torque: controllers/se3/geometric-physical.md
+              - PX4 rate PID: controllers/se3/px4-rate.md
+      - Onboard (PX4):
+          - SE3: controllers/onboard-se3.md
+  - Mathematics:
+      - Geometric control: mathematics/geometric-control.md
   - Experiments:
-      - SITL Experiment: experiments/complete-example.md
+      - Trajectories: controllers/trajectories.md
+      - SITL example: experiments/complete-example.md
       - Recording: workflows/recording.md
+      - Onboard logs: workflows/onboard-logging.md
       - Sequences: workflows/sequences.md
-      - Analyze a Run: analysis/analysis.md
-      - SE(3) Comparison: analysis/comparison.md
-  - Extending the toolkit:
+      - Analysis: analysis/analysis.md
+      - Comparison: analysis/comparison.md
+      - Data formats: workflows/common-analysis.md
+  - Extending:
       - Overview: reference/extending.md
       - Vehicles: reference/adding-a-vehicle.md
       - Controllers: reference/developing-a-controller.md
-  - Technical reference:
+  - Reference:
       - Architecture: reference/architecture.md
       - Configuration: reference/configuration.md
       - Troubleshooting: reference/troubleshooting.md

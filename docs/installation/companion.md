@@ -1,8 +1,8 @@
-# Companion-computer installation
+<span id="companion-computer-installation"></span>
 
-Use this installation for the **ROS 2 companion computer connected to a PX4 flight controller**. The supported host is **Ubuntu 24.04 (Noble)** with **ROS 2 Jazzy Base**. It includes the toolkit's controllers, Vicon receiver, mocap-to-PX4 odometry bridge, and Micro XRCE-DDS Agent for a serial link.
+# Companion setup
 
-This is independent of SITL: **PX4-Autopilot sources, Gazebo, MAVProxy, and graphical ROS Desktop are not required or installed by this profile**. PX4 firmware runs on the flight controller, not the companion. For simulation use [Native SITL](native.md) or [Docker SITL](docker.md).
+Install the companion services on **Ubuntu 24.04** with **ROS 2 Jazzy Base**. The hardware profile includes the Vicon receiver, pose conversion, DDS agent, controller tools, and MAVLink connectivity to PX4.
 
 ## Install on the companion computer
 
@@ -14,7 +14,7 @@ cd px4-dev-toolkit
 ./setup/install.sh hardware
 ```
 
-This installs the lean ROS 2 Base environment and required build tools, fetches the pinned source repositories, and builds the hardware ROS 2 packages. The complete independent dependency set is defined in [config/sources/hardware.repos](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/sources/hardware.repos): `px4_msgs`, Micro XRCE-DDS Agent, and Vicon receiver. It does **not** build or flash PX4 firmware.
+The installer sets up ROS 2 Base, MAVLink Router and transfer tools, Vicon receiver, and the hardware ROS packages from [config/sources/hardware.repos](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/sources/hardware.repos). PX4 firmware is installed separately on the aircraft. Analyze recorded bags and ULogs on an analysis workstation.
 
 `setup/fetch_sources.sh hardware` preserves complete existing source checkouts and refuses partially populated sets. See [installation troubleshooting](../reference/troubleshooting.md#installation) if fetching stops.
 
@@ -33,8 +33,6 @@ source ros2/runtime_env.sh
 ros2 pkg list
 ```
 
-A successful build confirms compilation, not the serial connection, Vicon tracking, PX4 estimator, or aircraft readiness.
-
 ## Runtime YAML editing
 
 Controller gains and trajectory YAML in the toolkit source checkout are
@@ -47,9 +45,11 @@ installed YAML copies.
 
 ## Configure connections
 
-Edit [config/runtime/hardware.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/hardware.env) for your actual setup. Check the serial device and baud rate against the PX4 uXRCE-DDS client, and configure the Vicon server, rigid-body topic, frames, mapping transform, and timestamp behavior.
+Edit [config/runtime/hardware.env](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/runtime/hardware.env) for your actual setup. Check the serial device and baud rate against the PX4 uXRCE-DDS client, and configure the Vicon server, rigid-body topic, frames, mapping transform, and timestamp behavior.
 
-The current hardware launcher supports a **serial** DDS-agent connection. Confirm the serial device exists and is accessible to the companion user; confirm the Vicon machine is reachable and publishing the intended rigid body. Do not assume the example addresses, devices, or transforms match your lab.
+The current hardware launcher supports a **serial** DDS-agent connection. MAVLink uses a separate device configured by `MAVLINK_MASTER` and `MAVLINK_BAUD`; it cannot share `XRCE_AGENT_DEVICE`. Prefer an explicit stable `/dev/serial/by-id/…` device. The `auto` setting accepts exactly one matching PX4 USB device after excluding the DDS device. `MAVLINK_QGC_OUT` optionally forwards MAVLink to QGroundControl; the launcher does not start a hardware GCS.
+
+Confirm both serial devices are accessible, the Vicon server publishes the intended rigid body, and the configured transforms match your laboratory setup.
 
 ## Verify services before flight
 
@@ -61,4 +61,4 @@ First inspect the configuration and the environment without arming a vehicle:
 
 A stopped session is normal before startup. Once the wiring, Vicon configuration, and PX4-side connection have been checked, use the [Hardware runtime guide](../environments/hardware.md) to start the companion services, inspect Vicon and converted odometry, and verify the PX4 estimator and safety setup.
 
-Starting the companion services does **not** start firmware, arm, launch a flight controller, or make the vehicle flight-ready. Hardware operation requires real-device and pre-flight checks beyond a successful build.
+The launcher provides a PX4 MAVLink Shell; see [Tools](../operations/tools.md) for commands.

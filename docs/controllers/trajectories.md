@@ -1,10 +1,10 @@
-# Trajectories: absolute PX4 local NED targets
+<span id="trajectories-absolute-px4-local-ned-targets"></span>
 
-The YAML `config/trajectories.yaml`
-uses `frame: px4_local_ned` and a fixed `start_position` and `default_yaw`.
-**These coordinates never shift when the aircraft enters Offboard.** PX4's
-local frame is estimator-relative and can reset: validate the frame and start
-position before each real flight.
+<span id="trajectories-and-reference-motions"></span>
+
+# Trajectories
+
+`config/trajectories.yaml` defines named trajectories in absolute `px4_local_ned` coordinates using `start_position` and `default_yaw`. References remain in that frame when control begins; verify the PX4 local origin before execution.
 
 ## Absolute YAML commands
 
@@ -21,8 +21,9 @@ position before each real flight.
 
 A curve must start at the preceding commanded endpoint. Use an explicit
 line or step to reach its start. YAML uses absolute position, center and
-heading fields. A named trajectory can override `start_position`; a reusable
-segment can also be selected directly.
+heading fields. A named trajectory can override `start_position`; the Offboard loader also accepts a reusable
+segment name directly. The public onboard CLI accepts named entries under
+`trajectories`, so wrap a segment in a named sequence for deployment.
 
 For example:
 
@@ -38,9 +39,7 @@ trajectories:
   test: {segments: [hold_initial, north, home]}
 ```
 
-The first position is fixed even if the vehicle begins Offboard elsewhere.
-**Do not use flight excitation until the pilot verifies the aircraft's
-PX4 local origin, safe maneuver volume, and the launch's selected YAML file.**
+Before running a moving trajectory, check the selected plan, aircraft start pose, and maneuver volume.
 
 Offboard controllers use the toolkit's `trajectory_generator/` C++ library
 to parse YAML and sample references. Native controllers use the bounded sampler
@@ -49,52 +48,59 @@ definitions into onboard plan files.
 
 Smooth lines, yaw, and periodic paths use ninth-order time scaling with
 analytic derivatives through snap; steps are discontinuous. Completed
-sequences hold their final reference. See
-[Offboard Position](offboard-position.md) and [SE(3)](se3.md).
+sequences hold their final reference. The derivatives feed position/feedforward control and geometric attitude/rate
+references; see the [shared geometric derivation](../mathematics/geometric-control.md).
 
-## Compiling trajectories for PX4-native flight modes
+## Two execution paths
 
-The same `config/trajectories.yaml` defines Offboard and onboard experiments.
-The standard hover reference is `[0, 0, -1.0]` PX4 local NED, yaw zero.
-Every named trajectory returns smoothly to that point and yaw before its
-last hold. Vertical experiments use `-0.75 <= z <= -1.5` m; actual aircraft
-motion must be evaluated against available flight space.
+The single named YAML definition is used by two runtimes:
+
+<div class="px4-table-scroll" markdown="1">
+
+| Path | Preparation | Execution |
+|---|---|---|
+| Offboard | A ROS 2 launch resolves the named YAML trajectory | The ROS controller samples it and streams setpoints through uXRCE-DDS; trajectory time starts at confirmed Offboard entry |
+| Onboard | The toolkit compiles a `.traj` file and uploads it over MAVLink FTP | PX4 samples the uploaded plan after an explicit `trajectory start <name>` command |
+
+</div>
+
+See [Offboard](../operations/offboard.md) or [Onboard](../operations/onboard.md) for flight procedures.
+
+<span id="compiling-trajectories-for-px4-native-flight-modes"></span>
+
+## Compile and upload an onboard plan
+
+In an **Ubuntu repository-root shell**, inspect the catalog and compile the
+specific plan before connecting to PX4:
 
 ```bash
-# Toolkit shell, after installation and PX4 SITL build:
 ./tools/trajectory list
-./tools/trajectory upload --all
+./tools/trajectory compile full_excitation
 ```
 
-The uploader compiles bounded, checksummed `.traj` plans under
-`generated/trajectories/` (gitignored) and transfers them through MAVProxy
-using MAVLink FTP on either SITL or hardware. The files contain analytic segment
-parameters, not pre-sampled points. Neither operation changes flight mode.
+Compilation writes `generated/trajectories/full_excitation.traj` and needs no
+PX4 connection. The artifact contains analytic segment parameters and a
+checksum, rather than sampled points. The native format allows at most 32
+segments with durations of at least 0.01 s, finite float32 values, continuous
+curve entry positions, and a final pose matching the absolute start pose
+within the compiler's closure tolerance. A deliberately discontinuous `step`
+is still permitted; closure does not make that step smooth.
 
-In the PX4 shell, while **disarmed**, start the SE(3) module after configuring
-its existing parameters. Then perform the normal Position-mode takeoff and
-hover. The following are separate operations:
+With the chosen [SITL](../environments/sitl.md) or
+[hardware](../environments/hardware.md) environment running and PX4 disarmed:
 
-```text
-trajectory list
-trajectory select circle_r05
-trajectory status
-se3_control select       # Request the registered mode; verify acceptance
-se3_control run          # Start selected trajectory after start-pose checks
-se3_control status       # Observe running / completed / holding
-se3_control hold         # Optional interruption; holds measured position
-commander mode posctl    # Explicit return to PX4 Position mode
+```bash
+./tools/trajectory upload full_excitation
 ```
 
-Completion **does not exit SE(3)**. The sampler holds the final commanded
-reference, equal to `[0, 0, -1.0]` for all provided named plans, until you
-switch modes or command `hold`. On initial SE(3) entry, before `run`, it holds
-the measured handoff pose instead. A loaded plan must begin sufficiently near
-the current measured pose and heading; no implicit frame translation occurs.
+Upload recompiles the plan and transfers it to `/fs/microsd/trajectories/full_excitation.traj` via MAVLink FTP. It requires a disarmed PX4 and checks transfer completion. The uploader CRC32 covers the local file; PX4's ULog `plan_crc32` covers the embedded plan body. Uploading does not start motion.
 
-See [Onboard flight logging](../workflows/onboard-logging.md) for ULog recording and analysis.
+## Start an uploaded plan
 
-Both SITL and hardware use MAVLink FTP through the running MAVProxy
-session. `tools/trajectory clean` removes compiled and remotely uploaded
-trajectory files while the vehicle is disarmed. Files on PX4 persistent storage survive restart,
-but selected/executing plan state does not.
+Uploading a `.traj` file does **not** start motion. In the PX4 shell, `trajectory list` shows onboard files; the command `trajectory start <name>` requests execution only when the native SE3 mode is already active and holding. The Ubuntu `./tools/trajectory list` command instead lists local YAML definitions.
+
+A plan starts at its **absolute** PX4 local NED coordinates and heading. There is no repositioning, translation to the current hover, or proximity guard. Confirm the aircraft's current pose, heading, local origin, and safe maneuver volume before execution. The [Onboard control procedure](../operations/onboard.md#se3-example-native-f450-sitl) owns the full mode-selection, start, monitoring, hold, and handback sequence; [Onboard SE3](onboard-se3.md) describes how the firmware implements it.
+
+## Retain and remove plans
+
+Uploaded `.traj` files persist on PX4 storage. `./tools/trajectory clean` requires disarm and removes remote catalog plans and locally compiled files. Retain the plan identity with [recordings](../workflows/onboard-logging.md).

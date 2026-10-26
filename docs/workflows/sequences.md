@@ -2,13 +2,17 @@
 <span id="experiment-sequences"></span>
 
 <span id="running-a-series-of-experiments"></span>
+<span id="sequences"></span>
+
+<span id="running-experiment-sequences"></span>
+
 # Sequences
 
-`tools/run_sequence` runs ordered ROS launches from YAML. It preserves each launch's output, gives recorded steps deterministic bag paths, and records the study result in a manifest. Environment startup and preparing the aircraft remain separate.
+`tools/run_sequence` executes ordered ROS launches from YAML, storing step logs, bags, and a study manifest.
 
 ## Run a sequence
 
-Prepare a matching airborne F450 SITL vehicle in Position mode, valid state/DDS, adequate recording space, and no competing controller. The SE(3) launches do not arm or reset the aircraft. Check that the whole study path is appropriate for the simulation before beginning.
+Prepare an airborne `gz_f450` SITL vehicle in Position mode, with valid DDS state, sufficient recording space, and no competing controller.
 
 In a **separate repository-root shell**:
 
@@ -17,11 +21,11 @@ source ros2/runtime_env.sh
 ./tools/run_sequence config/sequences/se3/handoff_comparison.yaml
 ```
 
-The runner accepts one positional YAML path. First prepare and arm the SITL aircraft using the Offboard staging helper; the runner itself does not arm or take off. It validates the sequence and prints the actual study directory before launching steps. It stops on a failed step or a successful recorded step whose expected bag lacks `metadata.yaml`.
+The runner validates the YAML, prints the study directory, then launches steps. It stops on a failed step or missing finalized bag metadata. Takeoff and staging must happen first.
 
 ## Sequence schema
 
-The [checked-in study](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/sequences/se3/handoff_comparison.yaml) defines six recorded steps: Offboard Position and five SE(3) controller configurations. The study-level `profile: se3` remains the default, but the first step specifies `profile: offboard_position`. This **fragment** shows its first step:
+The [checked-in study](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/sequences/se3/handoff_comparison.yaml) records Offboard Position plus five Offboard SE3 configurations, excluding `geometric_physical`. The study defaults to profile `se3`; the first step overrides it with `offboard_position`:
 
 ```{ .yaml .no-copy }
 name: se3_handoff_comparison
@@ -38,7 +42,7 @@ steps:
       record: true
 ```
 
-Names permit letters, numbers, `.`, `_`, and `-`. Argument values must be strings, numbers, or booleans. The runner overrides the named recording argument for recorded steps; it does not change vehicle/gain/trajectory definitions. [`load_sequence()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/config.py#L43) validates the whole definition before creating the study directory. [`run_step()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/execution.py#L50) starts and supervises each launch.
+Names permit letters, numbers, `.`, `_`, and `-`. Argument values must be strings, numbers, or booleans. The runner overrides the named recording argument for recorded steps; it does not change vehicle/gain/trajectory definitions. [`load_sequence()`](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/tools/sequence/config.py) validates the whole definition before creating the study directory. [`run_step()`](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/tools/sequence/execution.py) starts and supervises each launch.
 
 ## Study layout
 
@@ -58,7 +62,7 @@ bags/se3_handoff_comparison/<timestamp>/
     └── ...
 ```
 
-[`write_manifest()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/manifest.py#L9) records progress, commands, times, exits, logs, and finalized bags. [`write_experiment_metadata()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/manifest.py#L21) adds study and step identity without replacing the recorder's configuration. The shared recorder writes the experiment configuration on finalization; the sequence runner adds study identity, including for a finalized failed step; finalization and successful flight are different facts.
+[`manifest.py`](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/tools/sequence/manifest.py) records commands, timestamps, exits, logs, and bag paths. Each finalized bag's `experiment.json` includes its study/step identity.
 
 <!-- Preserve existing section links. -->
 <span id="process-ownership"></span>
@@ -67,15 +71,15 @@ bags/se3_handoff_comparison/<timestamp>/
 
 ## Ordering, settling, and interruption
 
-The checked-in study executes **Offboard Position first**, then SE(3) acceleration, attitude, body rate, geometric normalized torque, and PX4 rate PID, all using `full_excitation`. The five SE(3) steps select `gz_f450` with diagnostics enabled. Each step returns to native PX4 Position mode before ending, and the runner waits **3 seconds between successful steps**. The manifest records each step's analysis profile.
+The checked-in study executes **Offboard Position first**, then Offboard SE3 acceleration, attitude, body rate, geometric normalized torque, and PX4 rate PID, all using `full_excitation`. The five Offboard SE3 steps select `gz_f450` with diagnostics enabled. Each step returns to native PX4 Position mode before ending, and the runner waits **3 seconds between successful steps**. The manifest records each step's analysis profile.
 
-That delay is not a vehicle reset, landing, arming action, or a flight-readiness check. Position can drift between steps, and each controller restarts its fixed absolute NED reference. Confirm the required initial condition and watch the study; do not treat it as a guarantee of independent identical starting states.
+The 3-second settle does not reset the aircraft: position can drift, while every controller restarts its absolute NED reference. Monitor the starting state between steps.
 
-Each launch has a process group. Ctrl-C stops the launch tree and preserves per-step logs and the manifest. It can interrupt a live controller stream: recover the aircraft through prepared flight controls and verify mode/arming state before stopping services. A completed controller is not proof the recorder exited cleanly.
+Ctrl-C stops the launch process tree while preserving logs and the manifest. If interrupted during flight, recover through pilot control and confirm PX4 mode/arming before shutdown.
 
 <!-- Preserve existing section links. -->
 <span id="next"></span>
 
 ## Compare the completed study
 
-Analyze each bag with `px4_analyze`, then compare the compatible recorded Offboard flights together using `px4_compare`. Use the **actual directory printed by the runner**, check all expected steps and metadata, and follow [Comparing SE(3) controllers](../analysis/comparison.md). Output defaults to the study's `comparison/` directory when its finalized bags share the expected parent and manifest. The [complete example](../experiments/complete-example.md) shows how to find the completed study directory.
+Analyze each bag with `px4_analyze`, then compare the compatible recorded Offboard flights together using `px4_compare`. Use the **actual directory printed by the runner**, check all expected steps and metadata, and follow [Controller comparison](../analysis/comparison.md). Output defaults to the study's `comparison/` directory when its finalized bags share the expected parent and manifest. The [complete example](../experiments/complete-example.md) shows how to find the completed study directory.

@@ -42,7 +42,7 @@ $$
 \end{aligned}
 $$
 
-Inactive callbacks still advance the last sample timestamp. The loop publishes only when Offboard is active, a finite held target is available, and the required state is ready. Both outgoing messages retain the incoming `timestamp_sample` alongside their publication timestamp. See [se3/node.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/node.cpp).
+Inactive callbacks still advance the last sample timestamp. The loop publishes only when Offboard is active, a finite held target is available, and the required state is ready. Both outgoing messages retain the incoming `timestamp_sample` alongside their publication timestamp. See [se3/node.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/offboard_controllers/src/se3/node.cpp).
 
 ## P/I/D and feedforward
 
@@ -127,4 +127,4 @@ ros2 launch offboard_controllers se3.launch.py \
 
 Inspect P/I/D/feedforward contributions, old/new integrator state, raw versus filtered yaw torque, sample intervals, allocator residuals, and motors. Increasing gains can raise requested torque without increasing available torque. Transport latency and dropped messages can change the experiment even with identical formulas.
 
-The toolkit calculation is [px4/rate_controller.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/px4/rate_controller.cpp); field/timing publication is [runtime/publication.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/runtime/publication.cpp).
+The toolkit calculation is [px4/rate_controller.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/offboard_controllers/src/px4/rate_controller.cpp); field/timing publication is [runtime/publication.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/offboard_controllers/src/se3/runtime/publication.cpp).

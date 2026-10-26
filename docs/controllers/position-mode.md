@@ -1,31 +1,37 @@
 <span id="position-mode-and-switching-to-offboard"></span>
+<span id="position-mode"></span>
 
-# Position Mode
+# PX4 Position mode
 
-In **PX4 Position mode**, PX4 stabilizes the aircraft and uses position/velocity feedback while pilot stick input requests motion. A pilot normally provides stick input through an RC transmitter or joystick. In the reference simulation, MAVProxy provides repeatable virtual-joystick input.
+PX4 Position mode runs native position/velocity control. In SITL, the toolkit's MAVProxy helper supplies virtual-joystick input for a repeatable reference flight.
 
 <span id="native-position-mode-reference-experiment"></span>
 
 ## Reference flight
 
-Use a prepared SITL environment with `GCS=mavproxy`, valid PX4 state, no competing controller, and an initially landed/disarmed simulated aircraft. In a **second repository-root shell**:
+Use a prepared SITL environment with `GCS=mavproxy`, valid PX4 state, no competing controller, and an initially landed/disarmed aircraft. In a separate Ubuntu repository-root shell:
 
 ```bash
 source ros2/runtime_env.sh
 ros2 launch px4_position_mode position_takeoff_hover.launch.py
 ```
 
-The [reference example](https://github.com/ANCL/px4-dev-toolkit/tree/main/ros2/src/px4_position_mode/src/takeoff_hover) performs readiness checks, Position-mode selection, arm, climb, and a 20-second hover. By default, `finish:=hold` exits the ROS helper **without landing or disarming**; MAVProxy keeps the virtual joystick centered and PX4 stays in Position mode. For the original takeoff-hover-land reference run, use `finish:=land`:
+The helper checks readiness, selects Position mode, arms, climbs, and holds with centered sticks for **10 seconds**. See its [lifecycle](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/px4_position_mode/src/takeoff_hover/lifecycle.cpp).
+
+`height:=1.0` is the default relative climb from the measured starting altitude, not an absolute NED position target. The launch accepts finite heights greater than 0 and at most 5 m. With `finish:=hold` (default), the ROS helper exits after hovering; MAVProxy remains centered and PX4 stays armed in Position mode. Confirm measured position and heading before using this to prepare an independent controller.
+
+For a complete takeoff-hover-land reference:
 
 ```bash
-ros2 launch px4_position_mode position_takeoff_hover.launch.py finish:=land
+ros2 launch px4_position_mode position_takeoff_hover.launch.py \
+  height:=1.0 finish:=land record:=true
 ```
 
-Add `record:=true` to record the selected sequence. Neither option calculates an external position feedback law. `finish:=hold` leaves an armed aircraft in flight; land and disarm explicitly before stopping SITL.
+`finish:=land` sends PX4's land command, then waits for disarmed state, with a 30-second landing/disarm deadline. `record:=true` records the selected sequence. A timeout or interruption is not proof of landing; check the aircraft's actual state.
 
-<!-- Keep the previous staging anchor for existing links. -->
+<!-- Preserve the previous staging anchor. -->
 <span id="position-mode-staging-helper"></span>
 
-To prepare an airborne SITL aircraft for an independent controller, use
-[Offboard Staging](offboard-staging.md). It is a separate workflow, not part of
-the reference flight.
+## Preparing for Offboard
+
+`finish:=hold` leaves PX4 armed in Position mode. Continue with [Offboard control](../operations/offboard.md) or use [Offboard Staging](offboard-staging.md) for a handoff-aware preparation helper.

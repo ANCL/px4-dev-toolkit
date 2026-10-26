@@ -25,7 +25,7 @@ segments:
   circle_10: {type: circle, duration: 20.0, center: [0.0, 0.0, -1.0], radius: 1.0, turns: 3.0}
 
   figure_eight: {type: figure_eight, duration: 30.0, center: [0.0, 0.0, -1.0], x_amplitude: 0.75, y_amplitude: 1.2, turns: 3.0}
-  helix_05: {type: helix, duration: 20.0, center: [0.0, 0.0, -1.0], radius: 1.0, height: -0.5, turns: 3.0}
+  helix_10: {type: helix, duration: 20.0, center: [0.0, 0.0, -1.0], radius: 1.0, height: -0.5, turns: 3.0}
   helix_return: {type: line, duration: 8.0, position: [0.0, 0.0, -1.0]}
 
   yaw_90: {type: yaw, duration: 4.0, heading: 1.5707963267948966}
@@ -41,7 +41,7 @@ trajectories:
   circle_r05: {segments: [hold_2s, circle_entry_05, circle_05, return, hold_2s]}
   circle_r10: {segments: [hold_2s, circle_entry_10, circle_10, return, hold_2s]}
   figure_eight_tracking: {segments: [hold_2s, figure_eight, hold_2s]}
-  helix_r05: {segments: [hold_2s, circle_entry_05, helix_05, helix_return, hold_2s]}
+  helix_r10: {segments: [hold_2s, circle_entry_10, helix_10, helix_return, hold_2s]}
   yaw_sweep: {segments: [hold_2s, yaw_90, hold_2s, yaw_0, hold_2s]}
   full_excitation:
     segments: [hold_2s, step_x, hold_2s, return,

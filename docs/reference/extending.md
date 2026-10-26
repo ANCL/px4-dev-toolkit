@@ -1,51 +1,51 @@
 <!-- Preserve existing section links. -->
-<span id="extending-the-toolkit"></span>
 <span id="extension-map"></span>
-
 <span id="adding-to-the-toolkit"></span>
+
 # Extending the toolkit
 
-Start with the closest working example. Keep controller logic, vehicle data, trajectories, runtime services, and analysis in their owning components; use the [configuration map](configuration.md) before adding new settings.
+Choose the component to extend. [Configuration](configuration.md) maps existing settings to their owners.
 
-## Add a controller
+## Choose an extension
 
-Follow [Developing a controller](developing-a-controller.md) for package/node integration, pure calculations, mode transitions, topics, recording, and verification. Offboard position is a small reference; SE(3) shows several command levels and diagnostics. A new controller need not use the same gains, timing, or F450 fixture.
+- **[Vehicles](adding-a-vehicle.md):** vehicle YAML, mass, frames, geometry, and calibration.
+- **[Controllers](developing-a-controller.md):** ROS or native PX4 controller implementation and integration.
+- **Other components:** follow the sections below.
 
-## Add a vehicle
+<span id="add-a-controller"></span>
+<span id="add-a-vehicle"></span>
 
-[Adding a vehicle](adding-a-vehicle.md) explains schema, physical measurements, frame conversion, and mode requirements. Record only verified facts. A valid YAML is not a flight-validation result, and additional rotors can require an adapter change rather than more configuration.
+## Other extension points
 
-## Add a trajectory
+### Add a trajectory
 
-Prefer composing existing named segments in [trajectories.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/trajectories.yaml). A new segment type requires both a sampler in toolkit-level `trajectory_generator/src/analytic/` and YAML parser support in `trajectory_generator/src/config/yaml.cpp`, plus verification of derivatives, units, endpoints, and boundary behavior. Keep the [documented NED and time conventions](../controllers/trajectories.md).
+Add a segment in [trajectories.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/trajectories.yaml). A new segment type needs an analytic sampler in `trajectory_generator/src/analytic/` and parser support in `trajectory_generator/src/config/yaml.cpp`. For onboard use, also update compiler serialization and the firmware loader/sampler. Check derivatives, units, segment joins, and [NED/time conventions](../controllers/trajectories.md).
 
-## Add recording topics
+### Add recording topics
 
-Use the package's recording list and symbolic [PX4 topic catalog](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/px4_topics.def). Toolkit diagnostic topics may be direct absolute names where the recording helper permits them. Record the signals the experiment needs, and explain which are required versus optional in analysis.
+Add topic symbols in [config/px4_topics.def](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/px4_topics.def) and select them through `config/recording/` profiles. Toolkit diagnostic topics may use absolute names. Update required/optional topic declarations in the analysis profile.
 
-## Add a sequence
+### Add a sequence
 
-Create a YAML under `config/sequences/` selecting existing launches and arguments. Use the [six-step handoff study](../workflows/sequences.md) for recording paths, manifests, and settle semantics. Do not duplicate controller gains or vehicle physics in the sequence.
+Add a YAML definition under `config/sequences/` with launch steps and arguments. The [handoff study](../workflows/sequences.md) illustrates recording paths, manifests, and settle time.
 
 <!-- Preserve existing section links. -->
 <span id="extend-comparison-analysis"></span>
 
-## Add an analysis profile
+### Add an analysis profile
 
-Profiles live in [analysis/profiles](https://github.com/ANCL/px4-dev-toolkit/tree/main/analysis/profiles). Define `PROFILE_NAME`, required/optional topics, `analyze`, and reporting; register it in [`PROFILES`](https://github.com/ANCL/px4-dev-toolkit/blob/main/analysis/profiles/__init__.py#L14). Every recorded bag's `experiment.json` identifies its profile. Reuse bag loading and shared signal/statistics helpers.
+Profiles live in [analysis/profiles](https://github.com/ANCL/px4-dev-toolkit/tree/0b668261e04732ef97e2965dbe8f5c1ba56730f0/analysis/profiles). Define `PROFILE_NAME`, required/optional topics, `analyze`, and reporting; register it in [`PROFILES`](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/analysis/profiles/__init__.py#L17). Every recorded bag's `experiment.json` identifies its profile. Reuse bag loading and shared signal/statistics helpers.
 
-Comparison support requires an explicit definition of comparable quantities and time origin. `px4_compare` currently accepts SE(3) only; registering a new single-run profile does not automatically create valid comparison semantics.
+For `px4_compare`, implement `comparison_signals` with a reference source, common quantities, time origin, and compatible saved trajectories. ULog comparison has its own onboard analysis path.
 
 <!-- Preserve existing section links. -->
 <span id="add-a-user-facing-tool"></span>
 <span id="add-a-ros-2-package"></span>
 <span id="add-or-update-an-external-source"></span>
 
-## Add a tool, package, or external source
+### Add a tool, package, or external source
 
-Put user-facing commands in `tools/` and internal helpers with their component. Resolve repository configuration without duplicating it, validate arguments, and stop any process trees the command creates. For a new ROS package, provide normal package/CMake metadata and choose its dependencies; ensure it is included in the appropriate build profile.
-
-Pin external repositories in the appropriate `config/sources/*.repos` scope. Ordinary controller development does not require changing pinned upstream PX4.
+Place user-facing commands in `tools/` and component helpers beside their implementation. New ROS packages need package/CMake metadata and the appropriate build-profile inclusion. Pin external sources under `config/sources/*.repos`.
 
 <!-- Preserve existing section links. -->
 <span id="before-committing-an-extension"></span>
@@ -60,4 +60,4 @@ In a **native development checkout at the repository root**:
 git diff --check
 ```
 
-Inspect affected launch arguments and configuration. When behavior changes, validate an appropriate simulation in a properly prepared environment. Document the exercised environment, observed result, and remaining physical-flight validation.
+Test changed interfaces and behavior in the applicable runtime. Record the environment and observed results.

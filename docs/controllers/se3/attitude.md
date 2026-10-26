@@ -23,7 +23,7 @@ R_d&=[b_{1d}\ b_{2d}\ b_{3d}].
 \end{aligned}
 $$
 
-$R_d$ maps desired FRD axes into NED. The [foundations](foundations.md#desired-attitude-from-force-and-heading) explain degeneracy and the frame conventions. The runtime converts $R_d$ to a normalized scalar-first quaternion $q_d=(w,x,y,z)$, using trace/major-diagonal branches to avoid an unstable single formula near 180° rotations.
+$R_d$ maps desired FRD axes into NED. The [foundations](../../mathematics/geometric-control.md#desired-attitude-from-force-and-heading) explain degeneracy and the frame conventions. The runtime converts $R_d$ to a normalized scalar-first quaternion $q_d=(w,x,y,z)$, using trace/major-diagonal branches to avoid an unstable single formula near 180° rotations.
 
 ## Collective projection and message
 
@@ -38,7 +38,7 @@ $$
 
 `VehicleAttitudeSetpoint.q_d` contains the FRD-to-NED quaternion. `thrust_body=(0,0,-u_T)` is dimensionless; negative FRD Z means upward thrust. `yaw_sp_move_rate` contains desired trajectory yaw rate in rad/s. Only `OffboardControlMode.attitude` is enabled.
 
-Hover scale $h$ is `px4_allocator.hover_thrust` in the vehicle YAML. It is a calibration, not mass or a physical force constant. PX4's response also depends on its attitude/rate tuning and allocator configuration. Projection/clipping can reduce available force during attitude error; no direct toolkit rotational feedback law is executed in this mode.
+Hover scale $h$ comes from `px4_allocator.hover_thrust` in vehicle YAML. Collective projection/clipping can reduce thrust during attitude error. PX4 runs attitude/rate feedback.
 
 ## Timing, run, and diagnosis
 
@@ -49,10 +49,10 @@ In a **separate repository-root shell**, with a matching, already airborne SITL 
 ```bash
 source ros2/runtime_env.sh
 ros2 launch offboard_controllers se3.launch.py \
-  vehicle:=gz_f450 trajectory:=line_tracking handoff:=attitude \
+  vehicle:=gz_f450 trajectory:=line_x handoff:=attitude \
   publish_diagnostics:=true record:=true
 ```
 
-Inspect desired versus measured attitude, force command, normalized collective, downstream rate commands, and motor limits. Missing hover data is rejected; do not borrow another vehicle's value to bypass that check. Zero-force/degenerate heading and the model limitations in foundations remain applicable.
+Inspect desired/measured attitude, force command, normalized collective, downstream rates, and motor limits. The law rejects invalid hover calibration and degenerate force/heading geometry.
 
-Read [attitude_reference.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/attitude_reference.cpp), [wrench.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/px4/wrench.cpp), and [publication.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/runtime/publication.cpp).
+Read [attitude_reference.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/offboard_controllers/src/se3/control/attitude_reference.cpp), [wrench.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/offboard_controllers/src/px4/wrench.cpp), and [publication.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/offboard_controllers/src/se3/runtime/publication.cpp).

@@ -1,9 +1,9 @@
 <span id="complete-sitl-experiment"></span>
 # SITL experiment
 
-Run a PX4 reference flight, an SE(3) Offboard flight, and a recorded six-step handoff study. The commands assume **native Ubuntu SITL**, F450, and MAVProxy; Docker users run them in the corresponding [container shells](../installation/docker.md).
+Run a PX4 reference flight, an Offboard SE3 flight, and a recorded six-step handoff study. The commands assume **native Ubuntu SITL**, F450, and MAVProxy; Docker users run them in the corresponding [container shells](../installation/docker.md).
 
-Check mode, arming, and state between flights. A finished controller is not proof the aircraft is landed or ready for another run.
+Check actual PX4 mode, arming, and position before each subsequent flight.
 
 ## 1. Start SITL
 
@@ -21,7 +21,7 @@ source ros2/runtime_env.sh
 ./tools/topic_rates
 ```
 
-Stop the rate display with Ctrl-C. Verify valid position/status and the intended simulated vehicle using the [first simulation checks](../getting-started/first-simulation.md#2-check-communication-and-state). Keep terminal 1 attached to logs or detach tmux without stopping it.
+Check valid vehicle state using [First simulation](../getting-started/first-simulation.md#2-check-communication-and-state).
 
 ## 2. Record the reference flight
 
@@ -31,26 +31,30 @@ With the aircraft initially landed/disarmed and no competing controller, in **te
 ros2 launch px4_position_mode position_takeoff_hover.launch.py finish:=land record:=true
 ```
 
-Wait for takeoff, hover, landing, and confirmed disarm. The recorder exits after the node. Inspect the printed bag path and metadata before moving on. This bag uses the `position_takeoff_hover` analysis profile; it is not a SE(3) comparison bag.
+Wait for takeoff, hover, landing, and confirmed disarm. The recorder exits after the node. Inspect the printed bag path and metadata before moving on. This bag uses the `position_takeoff_hover` analysis profile; it uses a different lifecycle from the Offboard comparison bags.
 
-## 3. Run SE(3) Offboard
+<span id="3-run-se3-offboard"></span>
 
-Check that the reference flight has ended and the simulated vehicle is ready again. If it failed, restore a known landed/disarmed state before proceeding. In **terminal 2**:
+## 3. Run Offboard SE3
+
+With the previous flight complete and the aircraft landed/disarmed, in **terminal 2**:
 
 ```bash
-ros2 launch px4_position_mode offboard_takeoff_handoff.launch.py
+ros2 launch px4_position_mode position_takeoff_hover.launch.py height:=1.0 finish:=hold
 ```
 
-Wait for the [Offboard Staging](../controllers/offboard-staging.md) hold phase. In **terminal 3 at the repository root**, start one independent controller:
+Wait for the helper's takeoff and hover to finish, leaving the aircraft armed in Position mode. Check the actual PX4 local estimate before launching the controller: `line_x` starts at **NED `[0, 0, -1]` m, yaw `0` rad**. The helper commands a relative climb, so its completion alone does not prove that absolute pose; use pilot controls to establish the intended position and heading. The separate [Offboard staging helper](../controllers/offboard-staging.md) defaults to −2 m and also does not align X/Y/yaw. Do not hand over from that default hover without reconciling the start.
+
+In **terminal 3 at the repository root**, start one independent controller only after this check:
 
 ```bash
 source ros2/runtime_env.sh
 ros2 launch offboard_controllers se3.launch.py \
-  vehicle:=gz_f450 trajectory:=line_tracking handoff:=acceleration \
+  vehicle:=gz_f450 trajectory:=line_x handoff:=acceleration \
   publish_diagnostics:=true record:=true
 ```
 
-The staging helper exits after confirmed takeover. SE(3) follows the configured absolute NED line trajectory and returns to Position mode, then recording shuts down. It does not land/disarm. An Offboard-position demonstration is an alternative controller example, described on its [own page](../controllers/offboard-position.md); do not run both together.
+Offboard SE3 follows the absolute NED line trajectory, returns to Position mode, and finalizes the bag. Land separately. For the alternative position-reference example, see [Offboard Position](../controllers/offboard-position.md).
 
 <span id="4-inspect-and-analyze-the-finalized-bag"></span>
 ## 4. Analyze the bag
@@ -63,11 +67,11 @@ test -n "$bag_path" && ros2 bag info "$bag_path"
 test -n "$bag_path" && ./tools/px4_analyze "$bag_path"
 ```
 
-Check that this is the run just recorded, especially if older bags exist. `analysis/summary.txt` and available PNG plots are written **inside that bag**. Establish confirmed Offboard entry/return and topic completeness first, then inspect reference versus measured position, errors, rates, collective, and motor limits. The [analysis guide](../analysis/analysis.md) provides the interpretation and labeled plot slot.
+Confirm the selected bag belongs to this run. `analysis/summary.txt` and PNG figures appear inside the bag. Check Offboard entry/return, topic completeness, and tracking in the [analysis guide](../analysis/analysis.md).
 
 ## 5. Run the six-step handoff study
 
-End the separate demonstration, [land/disarm using the MAVProxy SITL procedure](../environments/sitl.md#land-and-reset-the-simulated-vehicle), and restore the required initial condition. Prepare the aircraft with the staging helper again; only begin the study once it is holding in Position mode. The study uses the configured F450 vehicle.
+End the separate demonstration, [land/disarm using the MAVProxy SITL procedure](../environments/sitl.md#land-and-reset-the-simulated-vehicle), and restore the required initial condition. Repeat the `height:=1.0 finish:=hold` preparation above, then check the measured absolute **NED `[0, 0, -1]` m and yaw `0` rad** required by `full_excitation`. Only begin once the F450 is holding at that intended start in Position mode; the sequence does not reposition it before its first handoff.
 
 In a **separate repository-root shell**:
 
@@ -76,7 +80,7 @@ source ros2/runtime_env.sh
 ./tools/run_sequence config/sequences/se3/handoff_comparison.yaml
 ```
 
-The runner records Offboard Position followed by the five SE(3) `full_excitation` flights, returning to native Position mode between steps and waiting 3 s. It does not land, reset, or arm between steps. Monitor state and space for the complete path. Read [Running a series of experiments](../workflows/sequences.md) for interruption and manifests.
+The runner records Offboard Position and five Offboard SE3 `full_excitation` flights, with Position-mode return and a 3-second settle between steps. It does not reset or land between flights. See [Sequences](../workflows/sequences.md) for step definitions, recovery, and manifests.
 
 <span id="6-compare-finalized-study-bags"></span>
 ## 6. Compare the study
@@ -95,7 +99,7 @@ mapfile -t study_bags < <(find "$study_path/bags" -mindepth 2 -maxdepth 2 -name 
 test "${#study_bags[@]}" -eq 6 && ./tools/px4_compare "${study_bags[@]}"
 ```
 
-The command filters finalized bag directories rather than expanding unrelated files. The six comparable Offboard bags produce `$study_path/comparison/summary.txt` and PNG figures. Verify the six metadata identities before interpreting overlays; [comparison](../analysis/comparison.md) aligns time to PX4-confirmed Offboard entry and explains which metrics are meaningful.
+The six finalized bags produce `$study_path/comparison/summary.txt` and PNG overlays. Check each bag's metadata; [Comparison](../analysis/comparison.md) explains alignment and metrics.
 
 ## 7. Land and stop SITL
 

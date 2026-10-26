@@ -1,11 +1,13 @@
 <!-- Preserve existing section links. -->
 <span id="docker-installation-sitl"></span>
 
-# Docker installation
+<span id="docker-installation"></span>
 
-The maintained Docker image provides a prebuilt PX4 SITL environment with Gazebo Harmonic, ROS 2 Jazzy, the Micro XRCE-DDS Agent, MAVProxy, controller examples, recording, and analysis. It is intended for simulation on a Linux host. It does not include the Vicon and serial services for physical hardware; see [Companion-computer installation](companion.md) for those services.
+# Docker SITL
 
-The example below runs **headless**: Gazebo simulates the aircraft and sensors, but does not open a 3D window. You can still run flights, inspect PX4/ROS 2 messages, and record data.
+The Docker image provides PX4 SITL, Gazebo Harmonic, ROS 2 Jazzy, MAVProxy, controller tools, recording, and analysis on a Linux host.
+
+The example uses headless Gazebo; [graphical simulation](#graphical-simulation) requires host display integration.
 
 ## Run the published image
 
@@ -20,7 +22,7 @@ docker run --rm -it --name px4-sitl --network host \
   ghcr.io/ancl/px4-dev-toolkit-sitl:latest bash
 ```
 
-The shell opens inside the container at `/opt/px4-dev-toolkit`. The image includes compiled PX4 and ROS 2 packages; you do not need to build them for this example. The container runs as UID/GID 1000, so the host `bags/` and `log/` directories must be writable by that user.
+The container opens at `/opt/px4-dev-toolkit` with PX4 and ROS 2 already built. The image user has UID/GID 1000; ensure it can write the mounted `bags/` and `log/` directories.
 
 **In the first container shell**, start the simulator and support services:
 
@@ -28,7 +30,7 @@ The shell opens inside the container at `/opt/px4-dev-toolkit`. The image includ
 ./tools/sitl start headless
 ```
 
-The command attaches to the `px4-sitl` tmux session containing PX4/Gazebo, the DDS agent, and MAVProxy. Switch windows with **Ctrl-b, then n**, or detach with **Ctrl-b, then d**. Detaching does not stop the services. The default MAVProxy frontend is a terminal program, not the Gazebo 3D viewer or QGroundControl.
+`start` attaches to the `px4-sitl` session with PX4/Gazebo, DDS, MAVProxy, and MAVLink Router. Detaching leaves the services running.
 
 <span id="verification"></span>
 
@@ -49,13 +51,11 @@ source ros2/runtime_env.sh
 ./tools/topic_rates
 ```
 
-The rate display checks that ROS 2 is receiving messages; stop it with **Ctrl-c**. Verify the expected PX4/Gazebo and DDS processes and live topic data. A running service or a visible topic name alone does not establish that the vehicle is ready to fly. Continue with [First simulation](../getting-started/first-simulation.md) for the Position-mode demonstration and state checks.
+Check that PX4/Gazebo and DDS are running and that topics have samples. Continue with [First simulation](../getting-started/first-simulation.md).
 
 ## Save recordings and logs
 
-The example bind-mounts the container's `bags/` and `log/` to the host directories created at the start. Flight bags and logs remain on the host after the container exits; other files written only inside the container are removed by `--rm`. MAVProxy logs are stored under `log/mavproxy/`.
-
-The image's default user has UID/GID 1000. If recording cannot create files in the mounted folders, check their host ownership and permissions before rerunning it.
+The bind-mounted `bags/` and `log/` persist on the host; `--rm` removes other container-local files on exit. MAVProxy writes to `log/mavproxy/`. For write failures, check host directory ownership.
 
 ## Build from a checkout instead
 
@@ -68,15 +68,15 @@ docker compose -f docker/compose.yaml build sitl
 docker compose -f docker/compose.yaml run --rm --name px4-sitl sitl bash
 ```
 
-This is an alternative to `docker pull`/`docker run`, not an additional step. The Compose setup uses **named volumes** for `bags/` and `log/`, rather than the working directory's host folders, and mounts the runtime configuration read-only. Once inside the container, use the same `./tools/sitl start headless` command and second-terminal `docker exec` procedure described above. Do not run the published-image and Compose examples simultaneously under the same container name.
+Compose replaces the published-image `docker run` example. It uses named volumes for `bags/` and `log/` and mounts runtime configuration read-only. Inside the container, follow the same SITL and second-shell commands.
 
 ## Graphical simulation
 
-The default command starts Gazebo without its 3D window. If you want the Gazebo GUI, configure host-to-container display access following the official [PX4 Gazebo Container GUI guide](https://docs.px4.io/main/en/simulation/gazebo_container_gui). That guide uses PX4's own container images, so adapt its display-related Docker options to this toolkit's image; the toolkit does not configure host-specific display forwarding for you.
+For the Gazebo GUI, configure host-to-container display access using the [PX4 Gazebo Container GUI guide](https://docs.px4.io/main/en/simulation/gazebo_container_gui), adapting its Docker options to the toolkit image.
 
-After the host and container display are configured, use `./tools/sitl start` instead of `./tools/sitl start headless`. A working window also depends on suitable graphics/OpenGL support. For native desktop simulation, see [Native SITL installation](native.md).
+After display forwarding is configured, use `./tools/sitl start` for the GUI. See [Native SITL](native.md) for direct desktop simulation.
 
-The Gazebo 3D window is separate from ground-control software. This image starts MAVProxy by default; it does not include QGroundControl.
+MAVProxy is the default ground-control frontend in the published image.
 
 <span id="further-reading"></span>
 
@@ -89,6 +89,6 @@ Once the simulated aircraft is **landed and disarmed**, run from the second cont
 ./tools/sitl status
 ```
 
-The status should report the toolkit services as stopped. Exit the second container shell, detach from tmux if necessary (**Ctrl-b, then d**), and exit the first container shell. With `docker run --rm`, Docker then removes the container while leaving the bind-mounted bags and logs on the host.
+The status should report the toolkit services as stopped. Exit the second container shell, leave the tmux session, and exit the first container shell. With `docker run --rm`, Docker then removes the container while leaving the bind-mounted bags and logs on the host.
 
-For the implementation, see the [Dockerfile](https://github.com/ANCL/px4-dev-toolkit/blob/main/docker/Dockerfile), [Compose configuration](https://github.com/ANCL/px4-dev-toolkit/blob/main/docker/compose.yaml), and [entrypoint](https://github.com/ANCL/px4-dev-toolkit/blob/main/docker/entrypoint.sh).
+For the implementation, see the [Dockerfile](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/docker/Dockerfile), [Compose configuration](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/docker/compose.yaml), and [entrypoint](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/docker/entrypoint.sh).

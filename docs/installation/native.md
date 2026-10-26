@@ -1,11 +1,11 @@
 <!-- Preserve existing section links. -->
 <span id="supported-host"></span>
 
-# Native SITL installation
+<span id="native-sitl-installation"></span>
 
-Use this page to install PX4 **software-in-the-loop** directly on **Ubuntu 24.04 (Noble)**. It installs **ROS 2 Jazzy Desktop**, **Gazebo Harmonic (Sim 8)**, PX4 SITL, MAVProxy, and the toolkit's ROS 2 controllers and analysis tools. Gazebo 8.15.0 was recorded during validation; see [tested tool versions](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/versions.env).
+# Native SITL
 
-This is the simulation environment, not the physical companion-computer installation. For Vicon reception and serial DDS, use [Companion-computer installation](companion.md). For a prebuilt SITL environment, use [Docker](docker.md).
+Install PX4 SITL, Gazebo Harmonic, ROS 2 Jazzy Desktop, MAVProxy, controllers, and analysis tools on **Ubuntu 24.04**. Tested versions are pinned in [config/versions.env](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/versions.env).
 
 <!-- Preserve existing section links. -->
 <span id="clone"></span>
@@ -22,14 +22,14 @@ cd px4-dev-toolkit
 ./px4/build_sitl.sh
 ```
 
-The installer installs host dependencies through `sudo`, fetches the **SITL** pinned repositories (including PX4, `px4_msgs`, Micro XRCE-DDS Agent, and MAVProxy), installs MAVProxy, and builds the SITL ROS 2 workspace. The separate `build_sitl.sh` compiles the configured PX4 SITL target; it does **not** start Gazebo or fly the vehicle. The process can take substantial time and disk space on a fresh machine.
+The installer fetches pinned SITL sources and builds the ROS 2 workspace, MAVLink transfer tools, and analysis dependencies. `./px4/build_sitl.sh` builds the configured PX4 SITL target separately.
 
 <!-- Preserve existing section links. -->
 <span id="source-pin-behavior"></span>
 
 ## Pinned external sources
 
-The complete simulation source manifest is [config/sources/sitl.repos](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/sources/sitl.repos). Its PX4 pin is `9af25b30f067c36269e94a96797be7943dd4f8e1`.
+The [SITL source manifest](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/sources/sitl.repos) pins `ANCL/PX4-Autopilot` to `5dd32eb1e7ab8b79b8ece462ce5f22cd75272c56`.
 
 `setup/fetch_sources.sh sitl` preserves existing full source sets rather than resetting them. If only part of a pinned source set exists, fetching stops rather than mixing revisions. Resolve partial checkouts deliberately; see [Installation troubleshooting](../reference/troubleshooting.md#installation).
 
@@ -52,7 +52,7 @@ source ros2/runtime_env.sh
 ros2 pkg list
 ```
 
-The runtime helper must be sourced, not executed. The ROS build command does not launch the simulator or arm an aircraft.
+The runtime helper must be sourced, not executed. Launch the simulator separately using `./tools/sitl start`.
 
 <!-- Preserve existing section links. -->
 <span id="verification"></span>
@@ -68,4 +68,4 @@ From the repository root:
 ./tools/sitl status
 ```
 
-Before the first launch a stopped session is expected. Continue with [First simulation](../getting-started/first-simulation.md) to start Gazebo and PX4, verify DDS communication, and run the Position-mode reference flight.
+Continue with [First simulation](../getting-started/first-simulation.md).

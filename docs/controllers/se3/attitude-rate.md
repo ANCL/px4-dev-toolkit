@@ -6,13 +6,13 @@ The toolkit computes an FRD body-rate request and collective thrust. PX4 retains
 
 ## Desired rate and feedback command
 
-The common force $A$ determines $R_d$. [Analytic force/basis derivatives](foundations.md#analytic-force-derivatives), using desired jerk and yaw rate, determine
+The common force $A$ determines $R_d$. [Analytic force/basis derivatives](../../mathematics/geometric-control.md#analytic-force-derivatives), using desired jerk and yaw rate, determine
 
 $$
 \Omega_d=\bigl(R_d^\top\dot R_d\bigr)^\vee.
 $$
 
-This is the angular velocity of the desired attitude in the **desired** FRD frame. Map it to current-body axes and add feedback:
+Map the desired-frame angular velocity into the current FRD frame and add feedback:
 
 $$
 \begin{aligned}
@@ -46,6 +46,6 @@ ros2 launch offboard_controllers se3.launch.py \
   publish_diagnostics:=true record:=true
 ```
 
-Compare desired attitude and its mapped angular velocity to the commanded body rate, then compare commanded to measured rate. The first difference shows attitude feedback; the second shows PX4 rate-loop response. Increasing attitude gain changes requested rate, without increasing actuator capability. Singular force/heading and imperfect model derivatives limit the feedforward.
+Compare desired/mapped rate, commanded rate, and measured rate to separate attitude feedback from PX4 rate tracking. Singular force/heading geometry limits analytic feedforward.
 
-Read [attitude_control.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/attitude_control.cpp), [attitude_reference.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/attitude_reference.cpp), and [publication.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/runtime/publication.cpp).
+Read [attitude_control.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/offboard_controllers/src/se3/control/attitude_control.cpp), [attitude_reference.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/offboard_controllers/src/se3/control/attitude_reference.cpp), and [publication.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/offboard_controllers/src/se3/runtime/publication.cpp).

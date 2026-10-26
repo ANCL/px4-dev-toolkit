@@ -1,60 +1,49 @@
 # Adding a vehicle
 
-Vehicle YAML describes physical and PX4-specific facts about one aircraft/model. Controller gains belong elsewhere. Create `config/vehicles/<vehicle>.yaml`, trace each value to measurement or exact upstream source, and select only modes supported by the available data.
+Add `config/vehicles/<vehicle>.yaml` for the aircraft's physical parameters and PX4 allocator calibration. Use the [existing vehicle files](https://github.com/ANCL/px4-dev-toolkit/tree/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/vehicles) as schema examples.
 
-## 1. Identify the facts and source
+## 1. Define the vehicle data
 
-Use the [existing files](https://github.com/ANCL/px4-dev-toolkit/tree/main/config/vehicles) as schema references. `gz_f450` has source-backed mass and hover-thrust data; `gz_fy690s` deliberately omits unvalidated hover thrust. Use the mass and geometry of the aircraft being added.
-
-Record the source revision, airframe/model, total mass, coordinate frames, units, and calibration conditions. Treat simulator source data and measurements of a real vehicle as different evidence.
-
-## 2. Match data to the command level
-
-| Configuration | Required vehicle data |
-|---|---|
-| Acceleration | Positive finite `plant.mass_kg` |
-| Attitude / attitude rate | Mass and positive finite `px4_allocator.hover_thrust` |
-| Geometric normalized / PX4 rate | Mass and curated hover thrust |
-
-The acceleration handoff requires mass. Attitude, body-rate, and the documented thrust/torque controllers also require a validated normalized hover-thrust coefficient. A mass value alone cannot enable modes requiring missing hover-thrust calibration.
-
-The following **schema fragment** uses the actual FY690S mass. It illustrates an acceleration-only data subset; it is not calibration data for a new real aircraft:
+Define the aircraft identity, frame, and measured mass. For example, this is the file structure with placeholders for vehicle-specific values:
 
 ```{ .yaml .no-copy }
 vehicle:
-  name: gz_fy690s
-  type: hexarotor
+  name: <vehicle_name>
+  type: <aircraft_type>
 plant:
-  frame: FLU
-  mass_kg: 3.70411
+  frame: FRD
+  mass_kg: <total_mass_kg>
 ```
 
-Mass loading reads `plant.mass_kg`; descriptive metadata preserves provenance. The complete checked-in file contains additional source-backed data. For another aircraft, derive its own values rather than copying these.
+Add available calibration and geometry fields using the existing files as a schema reference.
 
-## 3. Validate vehicle parameters
+<div class="px4-table-scroll" markdown="1">
 
-Use `plant.mass_kg` for total vehicle mass in kilograms. The controller expects a positive finite value, and vehicle metadata should identify the aircraft/model and the source of its parameters.
+| Data | What to establish |
+|---|---|
+| `vehicle` | Aircraft identity, model and provenance |
+| `plant.mass_kg` | Positive, finite **total** mass in kilograms |
+| `plant.frame` | Frame used for physical plant quantities (`FLU` or `FRD`) |
+| `px4_allocator.hover_thrust` | Positive, finite normalized hover-thrust calibration consistent with the active PX4 configuration, when available |
+| Inertia and center of mass | Source-backed mass distribution and reference point; inertia must be positive definite |
+| Propulsion and allocator geometry | Rotor positions, thrust axes, yaw-moment signs/ratios, actuator-thrust curve and matching PX4 allocation parameters |
 
-For attitude, body-rate, geometric-normalized, and PX4-rate control, provide `px4_allocator.hover_thrust`, a positive finite coefficient consistent with the active PX4 vehicle configuration. Do not copy the F450 coefficient to another aircraft without verification.
+</div>
 
-Vehicle files may retain additional source-backed geometry, inertia, and propulsion data, but the five documented SE(3) configurations do not use that information to compute a physical body-moment command.
+Use the detailed propulsion/allocator keys in `gz_f450` when those parameters are available. [Offboard SE3](../controllers/se3.md#vehicle-support) specifies the required fields for each handoff.
 
-## 4. Build, select, and check
+## 2. Check frames and geometry
 
-With a toolkit checkout, vehicle YAML is read on controller launch; restart the controller after edits. Rebuild in a **native repository-root development shell** when changing controller code:
+`plant.frame` and `propulsion.frame` can be FLU or FRD; the loader converts physical vectors and inertia to FRD. `px4_allocator.frame` must be FRD. In particular, the inertia conversion is
 
-```bash
-./ros2/build.sh sitl
-```
+\[
+J_{FRD}=C J_{FLU} C^T,\qquad C=\operatorname{diag}(1,-1,-1).
+\]
 
-For a **prepared matching SITL aircraft**, select the existing FY690S acceleration-capable file in a **separate repository-root runtime shell**:
+Convert values when changing frames. Check rotor indices and geometry signs, thrust-curve monotonicity and invertibility, and correspondence with the active PX4 allocator. The current physical-wrench adapter supports **four rotors**; see [Geometric (Physical)](../controllers/se3/geometric-physical.md#vehicle-data-and-limits).
 
-```bash
-source ros2/runtime_env.sh
-ros2 launch offboard_controllers se3.launch.py \
-  vehicle:=gz_fy690s trajectory:=hover handoff:=acceleration
-```
+Match the parameters against the active simulator model or aircraft and PX4 configuration.
 
-This command selects controller data; it does not select the Gazebo model or rewrite PX4 parameters. Configure/build the matching runtime separately before running it. Do not execute it against an F450 merely because the node accepts the YAML.
+## 3. Load and check
 
-Check startup validation, frame signs, recorded mode/state and allocator/motor responses, and model/calibration agreement. Schema success and simulation compatibility are preliminary checks; physical flight requires the actual [hardware preparation](../environments/hardware.md).
+Check mass, inertia, units, frame conversions, rotor geometry, and calibration against the selected aircraft. The ROS Offboard controller reads vehicle YAML at startup; restart it after edits. Native PX4 SE3 uses firmware parameters, not this YAML. See [Offboard SE3](../controllers/se3.md#run) for selection and [Companion computer](../environments/hardware.md#before-flight) for physical-flight checks.

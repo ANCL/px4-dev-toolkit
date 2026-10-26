@@ -5,7 +5,7 @@
 <span id="configuration-files"></span>
 # Configuration
 
-Use this reference to find where a setting belongs. Physical facts, controller tuning, requested motion, and runtime connectivity have separate files so a change has a clear meaning.
+Find the file that owns a setting and when changes take effect.
 
 <!-- Preserve existing section links. -->
 <span id="ownership-map"></span>
@@ -16,20 +16,26 @@ Use this reference to find where a setting belongs. Physical facts, controller t
 
 ## Where to change a setting
 
+<div class="px4-table-scroll" markdown="1">
+
 | Setting | Canonical file or directory |
 |---|---|
-| Shared ROS distribution | [config/runtime/common.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/common.env) |
-| PX4 target/model/world, estimator overrides, GCS, UDP agent, session | [config/runtime/sitl.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/sitl.env) |
-| Serial agent, Vicon server/object, frames/transforms, timestamps, session | [config/runtime/hardware.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/hardware.env) |
-| Mass, inertia, COM, propulsion, allocator facts, hover scale | [config/vehicles](https://github.com/ANCL/px4-dev-toolkit/tree/main/config/vehicles) |
-| SE(3) gains, rate reproduction parameters, outer/warmup/retry timing | [controller.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/config/se3/controller.yaml) |
-| Trajectory segments and names | [trajectories.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/trajectories.yaml) |
-| Position-mode staging settings | [offboard.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_position_mode/config/offboard.yaml) |
-| Ordered launch study | [config/sequences](https://github.com/ANCL/px4-dev-toolkit/tree/main/config/sequences) |
-| PX4 topic symbols | [config/px4_topics.def](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/px4_topics.def) |
-| Recorded topic selection | Package `config/recording/` and Position-reference `recording_topics.txt` |
-| External repository revisions | [config/sources](https://github.com/ANCL/px4-dev-toolkit/tree/main/config/sources) |
-| Validated host/tools and managed application versions | [config/versions.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/versions.env) |
+| Shared ROS distribution | [config/runtime/common.env](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/runtime/common.env) |
+| SITL model, estimator, GCS and DDS | [config/runtime/sitl.env](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/runtime/sitl.env) |
+| Hardware links, Vicon and transforms | [config/runtime/hardware.env](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/runtime/hardware.env) |
+| Vehicle mass, inertia and propulsion | [config/vehicles](https://github.com/ANCL/px4-dev-toolkit/tree/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/vehicles) |
+| Offboard SE3 gains and timing | [controller.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/offboard_controllers/config/se3/controller.yaml) |
+| Onboard SE3 parameters | [config/controllers/onboard/se3](https://github.com/ANCL/px4-dev-toolkit/tree/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/controllers/onboard/se3); real hardware template requires measured values |
+| MAVLink Router | [config/mavlink-router.conf](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/mavlink-router.conf), `tools/mavlink_router` |
+| Trajectory segments and names | [trajectories.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/trajectories.yaml) |
+| Offboard staging | [offboard.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/ros2/src/px4_position_mode/config/offboard.yaml) |
+| Ordered launch study | [config/sequences](https://github.com/ANCL/px4-dev-toolkit/tree/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/sequences) |
+| PX4 topic symbols | [config/px4_topics.def](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/px4_topics.def) |
+| Recorded topic selection | Shared [config/recording](https://github.com/ANCL/px4-dev-toolkit/tree/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/recording): `common.txt` plus the selected profile |
+| External repository revisions | [config/sources](https://github.com/ANCL/px4-dev-toolkit/tree/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/sources) |
+| Tested tool versions | [config/versions.env](https://github.com/ANCL/px4-dev-toolkit/blob/0b668261e04732ef97e2965dbe8f5c1ba56730f0/config/versions.env) |
+
+</div>
 
 <!-- Preserve existing section links. -->
 <span id="runtime-configuration"></span>
@@ -42,18 +48,22 @@ Use this reference to find where a setting belongs. Physical facts, controller t
 
 Environment wrappers source their `.env` files when invoked. Changing a file does not update an already-running tmux process. Stop/restart at an appropriate time to apply service changes; do not stop a flight's required communication as a configuration shortcut.
 
-The standard SE(3) launch reads source controller, vehicle, and trajectory YAML from the toolkit checkout, then applies launch selections. Restart the controller after changing this YAML; no ROS rebuild is needed. A standalone installation without the checkout uses packaged YAML. The [vehicle guide](adding-a-vehicle.md) distinguishes controller-data selection from simulator/PX4 airframe selection.
+The standard ROS 2 Offboard SE3 launch reads source controller, vehicle, and trajectory YAML from the toolkit checkout, then applies launch selections. Restart the controller after changing this YAML; no ROS rebuild is needed. A standalone installation without the checkout uses packaged YAML. The [vehicle guide](adding-a-vehicle.md) distinguishes controller-data selection from simulator/PX4 airframe selection.
 
-Sequences select launches and their arguments; the runner overrides recording output for its study. It does not change gains or calibrations. Each finalized recording contains the selected experiment configuration in experiment.json. Analysis uses that snapshot rather than current source YAML.
+Onboard parameter profiles do not update themselves from ROS YAML. `./tools/onboard_params load se3 gz_f450` explicitly changes live PX4 parameters while disarmed and verifies each readback; it is not a transaction that rolls back earlier writes on failure. Launchers never apply a profile. Verify a successful load before takeoff and review persistence separately in [Onboard control](../operations/onboard.md).
+
+Trajectory YAML changes likewise do not update a previously uploaded `.traj`: compile and upload again before its next onboard use. Coordinates stay absolute PX4 local NED; changing the vehicle's local origin changes what those numbers mean.
+
+Sequences select launches and their arguments; the runner overrides recording output for its study. It does not change gains or calibrations. Controller launch-owned recordings snapshot their selected experiment configuration in `experiment.json`, so analysis can use recorded settings rather than current source YAML. Independent `tools/px4_record` recordings contain only profile/topic metadata; preserve the plan and configuration artifacts separately. See [Recording](../workflows/recording.md) for the two contracts.
 
 <!-- Preserve existing section links. -->
 <span id="external-sources-and-versions"></span>
 
 ## Missing data and source pins
 
-Missing hover calibration or physical propulsion data deliberately limits supported modes. Do not invent values to pass validation. Gains belong in controller tuning rather than vehicle files; Vicon host/device identifiers belong in the site-specific runtime configuration rather than public walkthroughs.
+Vehicle data requirements are listed under [Offboard SE3](../controllers/se3.md#vehicle-support). Native SE3 reads PX4 parameters rather than ROS vehicle YAML. Set Vicon addresses and devices in `config/runtime/hardware.env`.
 
-`config/sources/*.repos` specifies what exact revisions to fetch. `config/versions.env` records tested tools and managed download pins; it is not a declaration that arbitrary installed versions were automatically verified. Each environment has a complete source manifest: see [Native SITL](../installation/native.md#pinned-external-sources) and [Companion computer](../installation/companion.md#install-on-the-companion-computer).
+`config/sources/*.repos` pins fetched repositories; `config/versions.env` records tool versions and managed download pins. See [Native SITL](../installation/native.md#pinned-external-sources) and [Companion installation](../installation/companion.md#install-on-the-companion-computer).
 
 <!-- Preserve existing section links. -->
 <span id="next"></span>

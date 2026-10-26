@@ -18,15 +18,15 @@ hide:
     <div class="px4-home-media-grid">
       <figure class="px4-home-media-item">
         <div class="px4-home-media-frame px4-home-media-frame--sim">
-          <img src="assets/hero-gazebo-placeholder.svg" width="640" height="360" alt="Schematic Gazebo simulation with a quadrotor inside a modeled three-dimensional environment">
+          <img src="assets/simulation.gif" width="640" height="360" alt="Gazebo SITL quadrotor flying a circular trajectory">
         </div>
-        <figcaption><strong>Gazebo SITL</strong><span>Schematic illustration of the simulation environment</span></figcaption>
+        <figcaption><strong>Gazebo SITL</strong><span>Circular trajectory in Gazebo SITL</span></figcaption>
       </figure>
       <figure class="px4-home-media-item">
         <div class="px4-home-media-frame px4-home-media-frame--lab">
-          <img src="assets/hero-f450-placeholder.svg" width="640" height="360" alt="Schematic quadrotor inside a motion-capture flight laboratory with ceiling cameras">
+          <img src="assets/experiment.gif" width="640" height="360" alt="Real quadrotor flying a circular trajectory in the laboratory">
         </div>
-        <figcaption><strong>Companion-computer environment</strong><span>Schematic illustration of a motion-capture laboratory</span></figcaption>
+        <figcaption><strong>Physical experiment</strong><span>Circular trajectory in the laboratory</span></figcaption>
       </figure>
     </div>
   </section>

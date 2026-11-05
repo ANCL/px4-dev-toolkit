@@ -22,14 +22,14 @@ cd px4-dev-toolkit
 ./px4/build_sitl.sh
 ```
 
-The installer fetches pinned SITL sources and builds the ROS 2 workspace, MAVLink transfer tools, and analysis dependencies. `./px4/build_sitl.sh` builds the configured PX4 SITL target separately.
+The installer fetches the configured PX4 ref and pinned other SITL sources, then builds the ROS 2 workspace, MAVLink transfer tools, and analysis dependencies. `./px4/build_sitl.sh` builds the configured PX4 SITL target separately.
 
 <!-- Preserve existing section links. -->
 <span id="source-pin-behavior"></span>
 
 ## Pinned external sources
 
-The [SITL source manifest](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/sources/sitl.repos) pins `ANCL/PX4-Autopilot` to `5dd32eb1e7ab8b79b8ece462ce5f22cd75272c56`.
+The PX4 repository and branch (or commit) are selected in [config/sources/px4.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/sources/px4.env). The [SITL source manifest](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/sources/sitl.repos) continues to pin the other external sources.
 
 `setup/fetch_sources.sh sitl` preserves existing full source sets rather than resetting them. If only part of a pinned source set exists, fetching stops rather than mixing revisions. Resolve partial checkouts deliberately; see [Installation troubleshooting](../../reference/troubleshooting.md#installation).
 

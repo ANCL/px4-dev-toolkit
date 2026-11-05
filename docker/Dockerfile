@@ -67,6 +67,7 @@ FROM bootstrap AS sitl
 
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} setup/fetch_sources.sh setup/
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} config/sources/sitl.repos config/sources/sitl.repos
+COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} config/sources/px4.env config/sources/px4.env
 RUN ./setup/fetch_sources.sh sitl
 
 COPY --chown=${TOOLKIT_UID}:${TOOLKIT_GID} setup/install_px4_dependencies.sh setup/

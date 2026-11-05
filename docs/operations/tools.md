@@ -41,13 +41,16 @@ The [SITL](sitl.md) and [companion](companion.md) guides list the services and c
 
 ## Communication paths
 
-**MAVLink Router** is a background transport service, independent of both
+**MAVLink transport** is a background service, independent of both
 ground control and DDS. In SITL it uses PX4's API stream at `127.0.0.1:14540`;
 MAVProxy uses the separate GCS stream at port 14550. The router supplies local
 UDP endpoints 14661 for the PX4 shell and 14662 for parameter/trajectory tools.
-On hardware it owns the configured MAVLink serial device, separate from the
-DDS serial device. Optional `MAVLINK_QGC_OUT` adds GCS forwarding. Use one
-toolkit router with these local ports at a time.
+On hardware an IP-filtered relay receives MAVLink UDP telemetry on local port
+14550 (unless configured otherwise) and sends commands to the configured remote
+IP and port 14555. No separate MAVLink serial connection is used.
+`MAVLINK_QGC_OUT` must remain empty: QGC receives MAVLink telemetry on its
+own workstation. The hardware relay filters other drones by the configured
+remote MAVLink IP. It needs exclusive access to UDP 14550 on the toolkit host.
 
 **uXRCE-DDS** transports PX4 state and ROS 2 controller setpoints through the
 agent (UDP in SITL, serial in the hardware profile). Source the ROS runtime in

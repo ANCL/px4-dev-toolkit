@@ -193,7 +193,7 @@ start_stack() {
     fi
 
     # Dedicated PX4 MAVLink transport and interactive shell.
-    tmux new-window -t "${TMUX_SESSION}:" -n mavlink-router \
+    tmux new-window -t "${TMUX_SESSION}:" -n mavlink \
         "${ROOT}/tools/mavlink_router hardware"
 
     tmux new-window -t "${TMUX_SESSION}:" -n px4-shell \
@@ -222,7 +222,7 @@ vicon_processes() {
 }
 
 mavlink_processes() {
-    pgrep -af '[m]avlink-routerd' 2>/dev/null || true
+    pgrep -af '[m]avlink_udp_relay.py' 2>/dev/null || true
 }
 
 mocap_bridge_processes() {
@@ -291,7 +291,7 @@ status_stack() {
         mocap_bridge_processes
 
     show_component_status \
-        "MAVLink Router" \
+        "MAVLink link" \
         "always" \
         mavlink_processes
 }

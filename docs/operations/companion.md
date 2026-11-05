@@ -32,7 +32,9 @@ flowchart TB
     B -->|VehicleOdometry| X["ROS 2<br/>DDS Agent"]
     X <-->|serial| P["PX4"]
     C["Offboard controller"] <--> X
-    P <-->|separate MAVLink serial| MR["MAVLink Router"]
+    P <-->|MAVLink| K["Wi-Fi telemetry bridge"]
+    K <-->|MAVLink UDP| MR["IP-filtered MAVLink relay"]
+    K <-->|Wi-Fi| Q["QGroundControl on pilot PC"]
     MR <--> S["PX4 MAVLink Shell<br/>parameter / trajectory tools"]
 ```
 
@@ -54,12 +56,13 @@ configured, otherwise publication time. See the
 Use [config/runtime/hardware.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/hardware.env)
 for the actual serial device and baud rate, Vicon server and object topic,
 frame names, world transform, and timestamp behavior. Set these values for your laboratory and aircraft. The launcher
-requires `serial` transport when it starts the agent. Configure
-`MAVLINK_MASTER` and `MAVLINK_BAUD` for a separate PX4 MAVLink device; the router
-rejects use of the same device as DDS. `MAVLINK_QGC_OUT` optionally forwards to
-a QGroundControl UDP destination. Ground control is started independently.
+requires `serial` transport when it starts the DDS agent. The independent MAVLink
+transport uses MAVLink UDP (`MAVLINK_REMOTE_IP`, `MAVLINK_REMOTE_PORT`,
+`MAVLINK_LISTEN_PORT`) rather than a MAVLink serial device. `MAVLINK_QGC_OUT`
+must be left empty; QGC receives MAVLink telemetry directly on another host.
+Ground control is started independently.
 
-Before starting, check that both serial devices exist and are accessible, the
+Before starting, check the DDS device if enabled, connectivity to the remote MAVLink endpoint, the
 DDS settings match PX4's XRCE client, the Vicon server is reachable, and the
 selected rigid body and coordinate transform describe the intended aircraft.
 
@@ -80,13 +83,13 @@ The default `px4-hardware` tmux session contains the following services:
 - `mocap` — Vicon reception and `px4_mocap_bridge`, via `mocap.launch.py`.
 - `xrce-dds` — serial Micro XRCE-DDS Agent, when `START_XRCE_AGENT=true`
   (the current default).
-- `mavlink-router` — dedicated MAVLink connection to PX4, independent of DDS.
+- `mavlink` — single-vehicle MAVLink UDP relay, independent of DDS.
 - `px4-shell` — interactive PX4 MAVLink Shell through the router.
 
 `start` attaches to the existing session if present; detaching leaves services running. The [launcher](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/hardware) starts mocap and communication services.
 
 The `px4-shell` window is a **PX4 command terminal**, not Ubuntu Bash. Commands
-there act on the connected flight controller. The router uses local UDP port
+there act on the connected flight controller. The hardware relay uses local UDP port
 14661 for this shell and 14662 for parameter/trajectory tools. See [Tools and terminals](tools.md).
 
 

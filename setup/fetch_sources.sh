@@ -63,8 +63,28 @@ else
 fi
 
 if [[ "${profile}" == "sitl" ]]; then
-    echo "Initializing PX4 nested submodules..."
-    git -C "${ROOT}/px4/PX4-Autopilot" submodule update --init --recursive
+    # PX4 is selected centrally; the other repositories remain vcs-pinned.
+    source "${ROOT}/config/sources/px4.env"
+    PX4_DIR="${ROOT}/px4/PX4-Autopilot"
+
+    [[ -n "${PX4_REPO:-}" && -n "${PX4_REF:-}" ]] || {
+        echo "ERROR: PX4_REPO and PX4_REF must be configured." >&2
+        exit 1
+    }
+
+    if [[ ! -e "${PX4_DIR}" ]]; then
+        mkdir -p "$(dirname "${PX4_DIR}")"
+        git clone "${PX4_REPO}" "${PX4_DIR}"
+        git -C "${PX4_DIR}" fetch origin "${PX4_REF}"
+        git -C "${PX4_DIR}" checkout --detach FETCH_HEAD
+    elif [[ ! -d "${PX4_DIR}/.git" ]]; then
+        echo "ERROR: PX4 source path is not a Git checkout: ${PX4_DIR}" >&2
+        exit 1
+    else
+        echo "PX4 source already exists; keeping its current commit."
+    fi
+
+    git -C "${PX4_DIR}" submodule update --init --recursive
 fi
 
 echo "${profile} source repositories ready."

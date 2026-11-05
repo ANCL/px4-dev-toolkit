@@ -9,10 +9,10 @@ ROUTER="${ROOT}/.venv/mavlink/bin/mavlink-routerd"
 CONFIG="${ROOT}/config/mavlink-router.conf"
 MODE="${1:-}"
 
-[[ -x "${ROUTER}" ]] || {
+if [[ "${MODE}" == "sitl" && ! -x "${ROUTER}" ]]; then
     echo "Install MAVLink tools: ./setup/install_mavlink.sh" >&2
     exit 1
-}
+fi
 
 ARGS=(
     -c "${CONFIG}"
@@ -29,52 +29,34 @@ case "${MODE}" in
     hardware)
         source "${ROOT}/config/runtime/hardware.env"
 
-        DEVICE="${MAVLINK_MASTER:-auto}"
-        BAUD="${MAVLINK_BAUD:-115200}"
+        # Receive telemetry from the selected remote MAVLink IP only.
+        # Send PX4 commands to the remote UDP client port. The other endpoints
+        # remain private to this host for the shell and transfer tools.
+        REMOTE_IP="${MAVLINK_REMOTE_IP:-}"
+        REMOTE_PORT="${MAVLINK_REMOTE_PORT:-14555}"
+        LISTEN_PORT="${MAVLINK_LISTEN_PORT:-14550}"
 
-        [[ "${BAUD}" =~ ^[1-9][0-9]*$ ]] || {
-            echo "Invalid MAVLINK_BAUD" >&2
+        [[ "${REMOTE_IP}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "Invalid MAVLINK_REMOTE_IP" >&2
             exit 1
         }
-
-        if [[ "${DEVICE}" == "auto" ]]; then
-            shopt -s nullglob
-            CANDIDATES=()
-
-            for device in /dev/serial/by-id/*; do
-                case "${device##*/}" in
-                    *PX4*|*Pixhawk*|*pixhawk*|*Cube*|*cube*)
-                        if [[ "$(readlink -f "${device}")" != \
-                              "$(readlink -f "${XRCE_AGENT_DEVICE:-/dev/null}")" ]]; then
-                            CANDIDATES+=("${device}")
-                        fi
-                        ;;
-                esac
-            done
-
-            ((${#CANDIDATES[@]} == 1)) || {
-                echo "Set MAVLINK_MASTER to the PX4 MAVLink serial device." >&2
+        for port in "${REMOTE_PORT}" "${LISTEN_PORT}"; do
+            [[ "${port}" =~ ^[1-9][0-9]{0,4}$ ]] && (( port <= 65535 )) || {
+                echo "Invalid MAVLink UDP port: ${port}" >&2
                 exit 1
             }
-            DEVICE="${CANDIDATES[0]}"
-        fi
+        done
 
-        [[ -e "${DEVICE}" ]] || {
-            echo "Missing MAVLink device: ${DEVICE}" >&2
+        [[ -z "${MAVLINK_QGC_OUT:-}" ]] || {
+            echo "MAVLINK_QGC_OUT is not supported by the IP-filtered MAVLink link." >&2
+            echo "QGC receives the telemetry broadcast separately on another host." >&2
             exit 1
         }
 
-        if [[ "$(readlink -f "${DEVICE}")" == \
-              "$(readlink -f "${XRCE_AGENT_DEVICE:-/dev/null}")" ]]; then
-            echo "MAVLink and XRCE-DDS cannot share the same device." >&2
-            exit 1
-        fi
-
-        if [[ -n "${MAVLINK_QGC_OUT:-}" ]]; then
-            ARGS+=(-e "${MAVLINK_QGC_OUT}")
-        fi
-
-        SOURCE="${DEVICE}:${BAUD}"
+        # Only packets originating from the selected MAVLink endpoint reach the
+        # local tools. Ignore other drones on the same laboratory network.
+        exec python3 "${ROOT}/tools/runtime/mavlink_udp_relay.py" \
+            "${REMOTE_IP}" "${REMOTE_PORT}" "${LISTEN_PORT}"
         ;;
 
     *)

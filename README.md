@@ -2,7 +2,7 @@
 
 A PX4 and ROS 2 environment for developing and studying flight control in Gazebo simulation and on physical multirotors.
 
-The toolkit brings together reproducible runtime setup, controller examples, experiment recording, and flight-data analysis. Simulation and companion-computer installations are independent, and external source revisions are pinned.
+The toolkit brings together reproducible runtime setup, controller examples, experiment recording, and flight-data analysis. Simulation and companion-computer installations are independent. PX4 uses a centrally selected source ref; other external source revisions are pinned.
 
 **[Full documentation](https://ancl.github.io/px4-dev-toolkit/)** · **[Get started](https://ancl.github.io/px4-dev-toolkit/get-started/)** · **[Operations](https://ancl.github.io/px4-dev-toolkit/operations/)** · **[Controllers](https://ancl.github.io/px4-dev-toolkit/controllers/)** · **[Experiments](https://ancl.github.io/px4-dev-toolkit/experiments/sitl-example/)**
 

@@ -5,8 +5,8 @@ set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_DIR="${ROOT}/.venv/mavlink"
+source "${ROOT}/config/sources/px4.env"
 PIN="5e38c7a32391a1ba75cde05c61825257ad617411"
-PX4_PIN="5dd32eb1e7ab8b79b8ece462ce5f22cd75272c56"
 SOURCE="${HOME}/.cache/px4-dev-toolkit/mavlink-router"
 
 sudo apt-get update
@@ -22,9 +22,24 @@ python3 -m venv "${ENV_DIR}"
     "pyserial==3.5" \
     "PyYAML==6.0.2"
 
-# Use the upstream PX4 shell client from our pinned firmware revision.
+# Use the installed PX4 revision when present; otherwise resolve the selected
+# remote branch (the companion does not install PX4 firmware sources).
+if [[ -d "${ROOT}/px4/PX4-Autopilot/.git" ]]; then
+    PX4_REV="$(git -C "${ROOT}/px4/PX4-Autopilot" rev-parse HEAD)"
+else
+    PX4_REV="$(git ls-remote "${PX4_REPO}" "refs/heads/${PX4_REF}" | awk 'NR == 1 { print $1 }')"
+    [[ -n "${PX4_REV}" ]] || PX4_REV="${PX4_REF}"
+fi
+
+PX4_SLUG="${PX4_REPO#https://github.com/}"
+PX4_SLUG="${PX4_SLUG%.git}"
+[[ "${PX4_SLUG}" != "${PX4_REPO}" ]] || {
+    echo "ERROR: PX4_REPO must be a github.com HTTPS URL." >&2
+    exit 1
+}
+
 curl --fail --location --silent --show-error \
-    "https://raw.githubusercontent.com/ANCL/PX4-Autopilot/${PX4_PIN}/Tools/mavlink_shell.py" \
+    "https://raw.githubusercontent.com/${PX4_SLUG}/${PX4_REV}/Tools/mavlink_shell.py" \
     --output "${ENV_DIR}/bin/mavlink_shell.py"
 
 "${ENV_DIR}/bin/python" -m py_compile \

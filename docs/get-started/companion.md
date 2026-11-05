@@ -47,7 +47,7 @@ installed YAML copies.
 
 Edit [config/runtime/hardware.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/hardware.env) for your actual setup. Check the serial device and baud rate against the PX4 uXRCE-DDS client, and configure the Vicon server, rigid-body topic, frames, mapping transform, and timestamp behavior.
 
-The current hardware launcher supports a **serial** DDS-agent connection. MAVLink uses a separate device configured by `MAVLINK_MASTER` and `MAVLINK_BAUD`; it cannot share `XRCE_AGENT_DEVICE`. Prefer an explicit stable `/dev/serial/by-id/…` device. The `auto` setting accepts exactly one matching PX4 USB device after excluding the DDS device. `MAVLINK_QGC_OUT` optionally forwards MAVLink to QGroundControl; the launcher does not start a hardware GCS.
+The current DDS agent uses its separately configured serial link. **MAVLink uses UDP over Wi-Fi**, configured with `MAVLINK_REMOTE_IP`, `MAVLINK_REMOTE_PORT` and `MAVLINK_LISTEN_PORT`. QGroundControl uses its own UDP telemetry connection; leave `MAVLINK_QGC_OUT` empty. The hardware launcher does not start a GCS. DDS remains a separate configured connection and is not provided by MAVLink UDP.
 
 Confirm both serial devices are accessible, the Vicon server publishes the intended rigid body, and the configured transforms match your laboratory setup.
 

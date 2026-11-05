@@ -63,7 +63,7 @@ Sequences select launches and their arguments; the runner overrides recording ou
 
 Vehicle data requirements are listed under [Offboard SE3](../controllers/offboard/se3/index.md#vehicle-support). Native SE3 reads PX4 parameters rather than ROS vehicle YAML. Set Vicon addresses and devices in `config/runtime/hardware.env`.
 
-`config/sources/*.repos` pins fetched repositories; `config/versions.env` records tool versions and managed download pins. See [Native SITL](../get-started/sitl/ubuntu.md#pinned-external-sources) and [Companion installation](../get-started/companion.md#install-on-the-companion-computer).
+`config/sources/px4.env` selects the PX4 repository and ref for new installations; `config/sources/*.repos` pins the other fetched repositories. Existing PX4 checkouts are not reset automatically. `config/versions.env` records tool versions and managed download pins. See [Native SITL](../get-started/sitl/ubuntu.md#pinned-external-sources) and [Companion installation](../get-started/companion.md#install-on-the-companion-computer).
 
 <!-- Preserve existing section links. -->
 <span id="next"></span>

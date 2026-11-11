@@ -12,7 +12,9 @@ After installing either option, begin with [First simulation](first-simulation.m
 
 ## Companion computer — physical hardware
 
-**[Companion-computer installation](companion.md)** installs ROS 2 Jazzy, the Vicon receiver, mocap conversion, and the serial DDS agent on Ubuntu 24.04. Configure the aircraft firmware and flight systems separately.
+**[Companion-computer installation](companion.md)** installs ROS 2 Jazzy, the Vicon receiver, mocap conversion, and the serial DDS agent on Ubuntu 24.04.
+
+**[PX4 firmware](firmware.md)** explains how to build and flash custom flight-controller firmware from an Ubuntu workstation using the terminal.
 
 For setup checks and flight preparation, use the [Companion Computer guide](../operations/companion.md).
 

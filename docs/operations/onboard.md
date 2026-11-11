@@ -8,7 +8,7 @@ Onboard controllers execute inside PX4 firmware. This procedure covers preparati
 
 Start the selected [SITL](sitl.md) or [companion environment](companion.md), then confirm that PX4, its state estimate, and the operator's controls are ready. The toolkit runtime commands run in an Ubuntu repository shell; use the shell inside the running container for Docker SITL.
 
-Before arming:
+Before arming, install and verify the correct [PX4 firmware](../get-started/firmware.md) on physical hardware:
 
 1. Confirm that the installed firmware includes and has started the chosen controller. Starting a module and selecting its flight mode are separate actions.
 2. Load the controller and vehicle parameters required for this aircraft.

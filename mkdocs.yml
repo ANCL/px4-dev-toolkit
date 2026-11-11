@@ -66,6 +66,7 @@ nav:
           - Ubuntu: get-started/sitl/ubuntu.md
           - Docker: get-started/sitl/docker.md
       - Companion: get-started/companion.md
+      - Firmware: get-started/firmware.md
       - First simulation: get-started/first-simulation.md
   - Operations:
       - Overview: operations/index.md

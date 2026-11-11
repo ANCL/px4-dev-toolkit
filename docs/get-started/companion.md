@@ -14,7 +14,7 @@ cd px4-dev-toolkit
 ./setup/install.sh hardware
 ```
 
-The installer sets up ROS 2 Base, MAVLink Router and transfer tools, Vicon receiver, and the hardware ROS packages from [config/sources/hardware.repos](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/sources/hardware.repos). PX4 firmware is installed separately on the aircraft. Analyze recorded bags and ULogs on an analysis workstation.
+The installer sets up ROS 2 Base, MAVLink Router and transfer tools, Vicon receiver, and the hardware ROS packages from [config/sources/hardware.repos](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/sources/hardware.repos). [PX4 firmware](firmware.md) is built and flashed separately onto the flight controller. Analyze recorded bags and ULogs on an analysis workstation.
 
 `setup/fetch_sources.sh hardware` preserves complete existing source checkouts and refuses partially populated sets. See [installation troubleshooting](../reference/troubleshooting.md#installation) if fetching stops.
 

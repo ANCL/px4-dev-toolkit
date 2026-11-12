@@ -28,8 +28,8 @@ flowchart TB
     P <--> M["MAVLink GCS stream · 14550"]
     M <--> GCS["MAVProxy or QGroundControl"]
     P <--> MR["MAVLink Router · API stream 14540"]
-    MR <--> CLI["Parameter / FTP tools · 14662"]
-    P --> N["Native SE3 + stored trajectory"]
+    MR <--> CLI["PX4 shell · 14661"]
+    P --> N["Native SE3 + built-in trajectories"]
     R --> B["Bag + metadata"]
     B --> A["Analysis"]
 ```
@@ -53,13 +53,12 @@ flowchart TB
     X <--> P["PX4 flight controller"]
     P <--> MR["MAVLink Router · separate serial link"]
     MR <--> SH["PX4 MAVLink shell"]
-    MR <--> CLI["Parameter / FTP tools"]
-    MR -. optional .-> GCS["Ground control"]
-    P --> N["Native SE3 + stored trajectory"]
+        MR -. optional .-> GCS["Ground control"]
+    P --> N["Native SE3 + built-in trajectories"]
     R --> B["Recorded data"]
 ```
 
-In simulation, PX4 uses configured Gazebo/external-vision aiding and IMU. On hardware, the mocap bridge converts ENU/FLU pose to NED/FRD `VehicleOdometry`. MAVLink transfer and XRCE-DDS use separate links. See [SITL](../operations/sitl.md) and [Companion computer](../operations/companion.md) for runtime setup.
+In simulation, PX4 uses configured Gazebo/external-vision aiding and IMU. On hardware, the mocap bridge converts ENU/FLU pose to NED/FRD `VehicleOdometry`. The MAVLink command link and XRCE-DDS use separate communication paths. See [SITL](../operations/sitl.md) and [Companion computer](../operations/companion.md) for runtime setup.
 
 <!-- Preserve existing section links. -->
 <span id="reading-the-source-code"></span>
@@ -77,7 +76,6 @@ In simulation, PX4 uses configured Gazebo/external-vision aiding and IMU. On har
 | Shared trajectory mathematics | [`trajectory_generator/`](https://github.com/ANCL/px4-dev-toolkit/tree/main/trajectory_generator) | C++ sampler and YAML adapter |
 | ROS 2 Offboard SE3 controller | [se3/node.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/node.cpp) | [`Se3::execute_handoff()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/runtime/control.cpp#L23), pure `control/`, trajectories |
 | Native onboard control | [pinned PX4 SE3 runtime](https://github.com/ANCL/PX4-Autopilot/blob/5dd32eb1e7ab8b79b8ece462ce5f22cd75272c56/src/modules/se3_control/Runtime.cpp) | Mode registration, hold and rate output |
-| Parameter / trajectory transfer | `tools/onboard_params`, `tools/trajectory`, `tools/transfer/` | MAVLink transfers and acknowledgements |
 | Record an experiment | [recording.py](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_control_common/px4_control_common/recording.py) | [`launch_experiment()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_control_common/px4_control_common/recording.py#L150) and topic selection |
 | Run a study | [tools/run_sequence](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/run_sequence) | [`load_sequence()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/config.py#L43), [`run_step()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/execution.py#L50), manifests |
 | Analyze/compare | [analysis](https://github.com/ANCL/px4-dev-toolkit/tree/main/analysis) | Signals, profiles and plots |
@@ -97,7 +95,7 @@ In simulation, PX4 uses configured Gazebo/external-vision aiding and IMU. On har
 
 `px4_bringup` provides agent/GCS launchers. `px4_control_common` provides recording and the virtual-joystick client. `px4_position_mode` contains the reference flight and independent-Offboard staging examples. `offboard_controllers` contains position-reference/SE(3) nodes, trajectory YAML loading, vehicle loading, and rate reproduction. `px4_mocap_bridge` combines Vicon launch with pose conversion.
 
-The analytic core of `trajectory_generator/` owns reference sampling through snap without ROS or PX4 dependencies; its separate configuration layer reads YAML. Offboard nodes load shared YAML and start trajectory time at confirmed Offboard entry. For onboard use, the toolkit compiler writes a `.traj` plan, MAVLink FTP uploads it, and the firmware's `src/lib/trajectory/` samples it after an explicit request. Firmware mode selection first captures the actual pose for holding.
+The analytic core of `trajectory_generator/` owns reference sampling through snap without ROS or PX4 dependencies; its separate configuration layer reads YAML. Offboard nodes load shared YAML and start trajectory time at confirmed Offboard entry. For native control, PX4's independent `src/lib/trajectory/` catalog is configured through `TRJ_*` parameters and sampled on the flight controller. Firmware mode selection first captures the actual pose for holding.
 
 Native SE3 registers a Commander external-mode slot **inside PX4** and publishes body rates and normalized thrust at a nominal 100 Hz. PX4 retains rate control and allocation. Its implementation is described under [Onboard SE3](../controllers/onboard/se3.md); the ROS controller is described under [Offboard SE3](../controllers/offboard/se3/index.md).
 
@@ -124,9 +122,9 @@ The toolkit separates an implemented interface from a configuration that has bee
 
 | Environment | Confirmed evidence | Still requires verification |
 |---|---|---|
-| Native SITL (`gz_f450`) | Onboard SE3 selected, held position, and executed `full_excitation` successfully | Different aircraft, trajectories, and controller configurations |
+| Native SITL (`gz_f450`) | Onboard SE3 selected, held position, and started the figure-eight; hold and handback confirmed | Different aircraft, trajectories, and controller configurations |
 | Docker SITL | SITL image built and its packaged tools passed command/dependency checks | Complete live Docker simulation and controller-flight sequence |
-| Physical companion / PX4 | Native module, shell and transfer paths are implemented | Actual aircraft tuning, state estimation, control handoff, recovery procedures, and physical flight |
+| Physical companion / PX4 | Native module, shell and parameter paths are implemented | Actual aircraft tuning, state estimation, control handoff, recovery procedures, and physical flight |
 
 </div>
 

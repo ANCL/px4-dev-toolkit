@@ -12,8 +12,8 @@ namespace offboard_controllers::px4_wrench
 // Projected-thrust contract:
 //
 // Inputs:
-//   desired force in NED [N], current FRD->NED attitude, vehicle mass [kg],
-//   and PX4 hover-thrust calibration.
+//   desired specific force B = A/m in NED [m/s^2], current FRD->NED
+//   attitude, and PX4 hover-thrust calibration.
 //
 // Logic:
 //   project force onto current FRD body -Z and normalize against hover thrust.
@@ -22,9 +22,8 @@ namespace offboard_controllers::px4_wrench
 //   positive collective magnitude in [0, 1]. Publishers apply PX4's negative
 //   body-Z VehicleThrustSetpoint sign.
 double normalized_projected_collective_thrust(
-  const math::Vector3 & force,
+  const math::Vector3 & specific_force,
   const math::RotationMatrix & attitude,
-  double mass,
   double hover_thrust);
 
 // Rotation -> quaternion contract:

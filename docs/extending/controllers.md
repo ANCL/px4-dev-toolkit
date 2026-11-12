@@ -53,4 +53,4 @@ Native modules register their flight mode and arming check with Commander and im
 
 Define outputs, readiness, entry/exit, reference timing, and faults for the new module. [Onboard control](../operations/onboard.md) covers the operator workflow.
 
-Integrate parameter profiles, transfer tools, recording topics, and analysis as needed. For new embedded trajectory formats, update the compiler and firmware loader/sampler together.
+Define native controller parameters and trajectories inside PX4 firmware. Keep ROS Offboard trajectory configuration independent; integrate recording topics and analysis as needed.

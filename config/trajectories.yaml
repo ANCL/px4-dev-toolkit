@@ -1,4 +1,5 @@
-# Shared absolute PX4 local NED trajectories for Offboard and onboard control.
+# ROS 2 Offboard trajectories in absolute PX4 local NED.
+# Native PX4 SE3 trajectories are configured independently using TRJ_* parameters.
 # X north, Y east, Z positive down. All named experiments begin/end at
 # [0, 0, -1.0] and yaw 0; never shift the reference to the measured pose.
 # Heights and horizontal dimensions require a verified clear flight volume.
@@ -11,8 +12,8 @@ segments:
   hold_2s: {type: hold, duration: 2.0}
   hold_10s: {type: hold, duration: 10.0}
 
-  step_x: {type: step, duration: 4.0, position: [0.2, 0.0, -1.0]}
-  step_y: {type: step, duration: 4.0, position: [0.0, 0.2, -1.0]}
+  step_x: {type: step, duration: 4.0, position: [1.0, 0.0, -1.0]}
+  step_y: {type: step, duration: 4.0, position: [0.0, 1.0, -1.0]}
   line_x: {type: line, duration: 4.0, position: [0.5, 0.0, -1.0]}
   line_y: {type: line, duration: 4.0, position: [0.0, 0.5, -1.0]}
   line_z: {type: line, duration: 4.0, position: [0.0, 0.0, -1.25]}
@@ -22,10 +23,10 @@ segments:
   circle_entry_05: {type: line, duration: 5.0, position: [0.5, 0.0, -1.0]}
   circle_entry_10: {type: line, duration: 10.0, position: [1.0, 0.0, -1.0]}
   circle_05: {type: circle, duration: 12.0, center: [0.0, 0.0, -1.0], radius: 0.5, turns: 3.0}
-  circle_10: {type: circle, duration: 20.0, center: [0.0, 0.0, -1.0], radius: 1.0, turns: 3.0}
+  circle_10: {type: circle, duration: 24.0, center: [0.0, 0.0, -1.0], radius: 1.0, turns: 3.0}
 
-  figure_eight: {type: figure_eight, duration: 30.0, center: [0.0, 0.0, -1.0], x_amplitude: 0.75, y_amplitude: 1.2, turns: 3.0}
-  helix_10: {type: helix, duration: 20.0, center: [0.0, 0.0, -1.0], radius: 1.0, height: -0.5, turns: 3.0}
+  figure_eight: {type: figure_eight, duration: 60.0, center: [0.0, 0.0, -1.0], x_amplitude: 0.75, y_amplitude: 1.2, turns: 3.0}
+  helix_10: {type: helix, duration: 24.0, center: [0.0, 0.0, -1.0], radius: 1.0, height: -0.5, turns: 3.0}
   helix_return: {type: line, duration: 8.0, position: [0.0, 0.0, -1.0]}
 
   yaw_90: {type: yaw, duration: 4.0, heading: 1.5707963267948966}

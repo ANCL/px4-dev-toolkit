@@ -2,7 +2,7 @@
 
 Accept telemetry only from the configured remote IP, excluding packets from
 other vehicles on the same network. Forward telemetry to the local shell
-and transfer tools; return their MAVLink commands to the remote UDP endpoint.
+and return its MAVLink commands to the remote UDP endpoint.
 """
 
 import ipaddress
@@ -10,8 +10,7 @@ import socket
 import sys
 
 SHELL_PORT = 14661
-TRANSFER_PORT = 14662
-LOCAL_CLIENTS = (SHELL_PORT, TRANSFER_PORT)
+LOCAL_CLIENTS = (SHELL_PORT,)
 
 
 def main():
@@ -30,7 +29,7 @@ def main():
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as transport:
         transport.bind(("0.0.0.0", listen_port))
         print(f"MAVLink remote: {radio_ip}:{radio_port}; listening on UDP {listen_port}", flush=True)
-        print("Local shell: 127.0.0.1:14661; transfers: 127.0.0.1:14662", flush=True)
+        print("Local shell: 127.0.0.1:14661", flush=True)
 
         while True:
             payload, source = transport.recvfrom(65535)

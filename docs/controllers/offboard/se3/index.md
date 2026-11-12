@@ -6,6 +6,8 @@
 
 The ROS 2 SE(3) controller tracks a named trajectory and sends PX4 one of four command levels. Each level changes the feedback loops retained by PX4. [Onboard SE3](../../onboard/se3.md) is a separate native firmware mode.
 
+The matching native and Offboard body-rate paths use mass-normalized translation gains directly (kx/m and kv/m) and a specific-force reference B = A/m. Vehicle mass is introduced only where the Offboard physical-wrench adapter or a physical-force diagnostic requires newtons. Both body-rate paths clamp the requested rates at their final output boundary; match `rate_limit_rad_s` in ROS to native `SE3_RATE_MAX` for comparisons. The trajectories, estimates and update timing must also match.
+
 The geometric reference assumes an underactuated multirotor with one collective thrust axis. Position and heading determine a compatible attitude; this is not independent control of arbitrary position and attitude.
 
 <span id="runtime-flow"></span>

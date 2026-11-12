@@ -34,7 +34,7 @@ flowchart TB
     X <--> R["ROS 2<br/>Nodes + recorder"]
 ```
 
-MAVLink serves ground control, parameter transfers, and trajectory uploads. uXRCE-DDS transports ROS state and setpoints. [Tools](tools.md) identifies the command environments.
+MAVLink serves ground control and the PX4 shell. uXRCE-DDS transports ROS state and setpoints. [Tools](tools.md) identifies the command environments.
 
 <!-- Preserve existing section links. -->
 <span id="cli"></span>

@@ -61,7 +61,7 @@ Check the resulting file:
 ls -lh build/px4_fmu-v6c_default/px4_fmu-v6c_default.px4
 ```
 
-This board configuration includes the native `se3_control` and `trajectory_manager` modules. A successful build is not proof that the firmware was flashed or that the vehicle is ready to fly.
+This board configuration includes native `se3_control` and its built-in trajectory sampler. A successful build is not proof that the firmware was flashed or that the vehicle is ready to fly.
 
 ## 4. Flash through USB
 
@@ -85,7 +85,7 @@ After the flight controller reboots, reconnect using the normal PX4 shell interf
 ver hw
 ver git
 se3_control status
-trajectory list
+param show TRJ_F8_T
 ```
 
 Confirm the hardware identity and expected firmware revision, then confirm the onboard module is present. On hardware, an included module may not be automatically started; if SE3 is stopped, `se3_control start` is a **disarmed-only** registration action. Check `se3_control status` again before attempting to select its flight mode.

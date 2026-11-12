@@ -246,7 +246,8 @@ void Se3::update() {
   const se3::Reference controller_reference = to_se3_reference(trajectory_reference);
 
   const se3::TranslationalOutput output =
-      se3::translation::compute(vehicle_state_.state(), controller_reference, mass_, kx_, kv_);
+      se3::translation::compute(vehicle_state_.state(), controller_reference,
+                                kx_over_mass_, kv_over_mass_);
 
   execute_handoff(controller_reference, output);
 

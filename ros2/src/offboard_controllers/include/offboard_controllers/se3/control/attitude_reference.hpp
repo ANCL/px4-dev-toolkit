@@ -6,7 +6,7 @@
 
 namespace offboard_controllers::se3::attitude_reference {
 
-// Generate desired FRD-to-NED attitude from force [N] and yaw [rad].
+// Generate desired attitude from specific force B = A/m [m/s^2] and yaw [rad].
 RotationMatrix compute_orientation(const Vector3& force, double yaw);
 
 // Add analytic desired body angular velocity [rad/s] in the desired FRD frame.

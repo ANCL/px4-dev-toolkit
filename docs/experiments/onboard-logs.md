@@ -20,7 +20,7 @@ repository shell. Wait for metadata finalization before analysis.
 The output is `bags/onboard_se3/<timestamp>/` with `metadata.yaml` and
 `experiment.json`. Start before selecting the onboard mode and stop after landing. The standalone
 metadata identifies the profile and topics; retain a separate copy of the
-parameter profile, trajectory YAML/compiled plan, and firmware identity.
+native `SE3_*`/`TRJ_*` parameter values and firmware revision.
 
 Recording profiles extend `config/recording/common.txt` with controller-specific topics. ROS Offboard launches also use these lists with `record:=true`.
 

@@ -1,81 +1,54 @@
-PX4 onboard SE3 example — command contexts
-=========================================
+PX4 native SE3 — command contexts
+=================================
 
-Use the complete workflow in operations/onboard.md and the interface reference
-in operations/tools.md. These commands are separate steps, not an unattended
-flight script. Physical flight validation is not established.
+See docs/operations/onboard.md for the full procedure.
+These commands are not an unattended flight script.
 
-UBUNTU REPOSITORY SHELL ($)
---------------------------
-# Start the installed environment (choose one):
+UBUNTU TOOLKIT SHELL ($)
+-----------------------
 ./tools/sitl start
-# On a configured physical companion instead: ./tools/hardware start
+# On the configured companion: ./tools/hardware start
 
-# Local catalog/compilation does not connect to PX4:
-./tools/trajectory list
-./tools/trajectory compile full_excitation
-
-# With the correct PX4 connected and DISARMED, apply the simulator profile:
-./tools/onboard_params load se3 gz_f450
-# gz_f450 requires SYS_AUTOSTART=4022. Do not use it for a physical aircraft.
-# A hardware .parm must contain verified vehicle values; .parm.example is not
-# loadable and starting the runtime never applies a profile automatically.
-
-# Compile and upload over independent MAVLink FTP, DISARMED:
-./tools/trajectory upload full_excitation
-# The baseline helix_r05 entry is inconsistent, so --all fails validation.
-# Cleanup is optional and DELETES local/remote .traj catalog files:
-# ./tools/trajectory clean
-
-# In a dedicated repository shell, start DDS recording before mode selection:
+# Independent DDS recording, started before mode selection:
 source ros2/runtime_env.sh
 ./tools/px4_record onboard_se3
-# This remains in the foreground. After landing use Ctrl-C, or in another shell:
-# ./tools/px4_record status
-# ./tools/px4_record stop
 
-PX4 SHELL (pxh> in SITL; hardware px4-shell window is a MAVLink Shell)
--------------------------------------------------------------------
-# Inspect the initialized module, catalog, and native logger:
+PX4 SHELL (pxh> / nsh>)
+----------------------
+# Inspect the built-in SE3 module and trajectory settings:
 se3_control status
-trajectory list
+param show TRJ_HOME_Z
+param show TRJ_HOME_YAW
+param show TRJ_F8_T
 logger status
 
-# After pilot-controlled Position-mode takeoff and verified stable hover:
+# Take off using the prepared pilot/SITL procedure.
+# Only proceed when airborne, stable, and the intended NED origin is verified.
+# Optional example, if intended and suitable: param set TRJ_HOME_Z -2.5
 se3_control select
 se3_control status
-# Require accepted mode entry and holding; verify absolute plan origin/heading.
-trajectory start full_excitation
+# Require active=1, faulted=0, holding
+se3_control trajectory figure_eight_tracking
 se3_control status
-# Optional interruption captures the measured current pose in SE3 mode:
-# se3_control hold
+# To interrupt: se3_control hold
 
-# Follow the operating procedure to return to pilot control and land.
-# Do not stop environment services or disarm an airborne aircraft.
-# After landed/disarmed, inspect/finalize native logging if needed:
-logger status
-# logger stop
+# Return through the pilot's Position-mode control.
+# In SITL: commander mode posctl
+# Confirm Position mode; land and disarm.
 
-ANALYSIS WORKSTATION — UBUNTU REPOSITORY SHELL ($)
--------------------------------------------------
-# After ROS-bag finalization, on a host with analysis dependencies:
+ANALYSIS WORKSTATION ($)
+------------------------
 source ros2/runtime_env.sh
 ./tools/px4_analyze bags/onboard_se3/<recording-directory>
-# Obtain completed ULogs manually using PX4/QGroundControl facilities:
+# Analyze a separately obtained finalized PX4 ULog:
 ./tools/px4_analyze /path/to/flight.ulg --profile onboard_se3
-# For multi-run logs select the actual run ID:
-# ./tools/px4_analyze /path/to/flight.ulg --profile onboard_se3 --run-id 1
 
-CONNECTION AND DATA NOTES
--------------------------
-- MAVLink Router owns the PX4 MAVLink connection independently of the GCS/DDS.
-- It serves the PX4 shell at local port 14661 and transfer clients at 14662.
-- Hardware MAVLink and DDS must use separate serial devices.
-- Only one toolkit router can use these same local ports on a host at a time.
-- Upload does not arm, change mode, or execute a plan.
-- Mode selection captures/holds entry pose; explicit trajectory start uses
-  absolute PX4 local NED coordinates immediately, without alignment/proximity guard.
-- Completion holds the final reference; it does not land or disarm.
-- ULog run IDs, phases, and plan CRCs are not present in the standalone DDS bag.
-- File sizes in FTP listings are bytes, not flight durations; ULog dropouts are
-  missing log data. Preserve log/configuration identity when copying recordings.
+NOTES
+-----
+- No .traj files, YAML compilation or MAVLink FTP upload are involved.
+- Native trajectories are firmware-defined and configured with TRJ_* parameters.
+- ROS 2 Offboard trajectories remain separately configured in config/trajectories.yaml.
+- The onboard catalog is absolute PX4 local NED; no pose alignment occurs.
+- The mode captures measured pose on entry and on explicit hold.
+- The MAVLink link supports the PX4 shell; native parameters are managed within PX4.
+- DDS recordings and ULogs contain different native execution metadata.

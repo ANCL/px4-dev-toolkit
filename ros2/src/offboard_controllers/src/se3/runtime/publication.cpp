@@ -281,7 +281,9 @@ se3::Vector3 Se3::angular_acceleration_feedforward_current_body(
 void Se3::publish_translation_diagnostics(const se3::TranslationalOutput& output) {
   publish_vector_diagnostic(commanded_acceleration_pub_, output.acceleration);
 
-  publish_vector_diagnostic(force_command_pub_, output.force_vector);
+  // Keep the existing force diagnostic in newtons; convert only at the
+  // observational boundary, not within the normalized controller.
+  publish_vector_diagnostic(force_command_pub_, mass_ * output.specific_force);
 }
 
 void Se3::publish_desired_attitude_rate_diagnostics(const se3::DesiredAttitudeRate& desired) {

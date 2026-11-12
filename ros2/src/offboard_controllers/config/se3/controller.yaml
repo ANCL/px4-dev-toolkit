@@ -1,16 +1,19 @@
 se3:
   ros__parameters:
-    # Geometric SE(3) translational gains normalized by vehicle mass:
-    #   kx = mass * kx_over_mass
-    #   kv = mass * kv_over_mass
+    # Use mass-normalized position/velocity gains directly throughout
+    # the SE3 geometric cascade (no physical-gain conversion).
     #
     # kx_over_mass has units [1/s^2]; kv_over_mass has units [1/s].
-    kx_over_mass: 6.0
-    kv_over_mass: 5.0
+    kx_over_mass: 4.0
+    kv_over_mass: 3.0
 
     # Cascaded attitude-error -> FRD body-rate gain [1/s], used by the
     # attitude_rate handoff and the outer attitude law of px4_rate.
     attitude_gain: [6.5, 6.5, 2.8]
+
+    # Match the PX4 native SE3 per-axis body-rate limit [rad/s].
+    # Applied after geometric attitude-to-rate control at the output boundary.
+    rate_limit_rad_s: 3.0
 
     # PX4 multicopter rate-controller parameters reproduced from
     # 9af25b30f067c36269e94a96797be7943dd4f8e1. These are controller tuning

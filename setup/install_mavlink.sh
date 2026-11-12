@@ -19,8 +19,7 @@ python3 -m venv "${ENV_DIR}"
 "${ENV_DIR}/bin/python" -m pip install \
     --disable-pip-version-check \
     "pymavlink==2.4.49" \
-    "pyserial==3.5" \
-    "PyYAML==6.0.2"
+    "pyserial==3.5"
 
 # Use the installed PX4 revision when present; otherwise resolve the selected
 # remote branch (the companion does not install PX4 firmware sources).
@@ -69,6 +68,6 @@ if [[ ! -x "${ENV_DIR}/bin/mavlink-routerd" ]]; then
 fi
 
 "${ENV_DIR}/bin/python" -c \
-    'import pymavlink, serial, yaml; print("MAVLink Python ready")'
+    'import pymavlink, serial; print("MAVLink Python ready")'
 
 echo "MAVLink shell and router installed."

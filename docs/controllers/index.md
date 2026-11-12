@@ -63,4 +63,4 @@ For `thrust_and_torque`, choose [Geometric (Normalized)](offboard/se3/geometric-
 
 ## Plan the experiment
 
-Both controllers use [absolute PX4 local NED trajectories](../experiments/trajectories.md). Offboard streams references from ROS 2; onboard samples uploaded plans in PX4. See [Recording](../experiments/recording.md), [Analysis](../experiments/analysis.md), and [Validation scope](../reference/architecture.md#validation-scope).
+Both controllers use [absolute PX4 local NED trajectories](../experiments/trajectories.md). Offboard loads toolkit YAML and streams references through DDS; onboard uses built-in PX4 trajectories configured with `TRJ_*` parameters. See [Recording](../experiments/recording.md), [Analysis](../experiments/analysis.md), and [Validation scope](../reference/architecture.md#validation-scope).

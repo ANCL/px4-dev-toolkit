@@ -35,7 +35,7 @@ flowchart TB
     P <-->|MAVLink| K["Wi-Fi telemetry bridge"]
     K <-->|MAVLink UDP| MR["IP-filtered MAVLink relay"]
     K <-->|Wi-Fi| Q["QGroundControl on pilot PC"]
-    MR <--> S["PX4 MAVLink Shell<br/>parameter / trajectory tools"]
+    MR <--> S["PX4 MAVLink Shell"]
 ```
 
 **Vicon** supplies the aircraft's measured pose. The bridge converts ROS
@@ -90,7 +90,7 @@ The default `px4-hardware` tmux session contains the following services:
 
 The `px4-shell` window is a **PX4 command terminal**, not Ubuntu Bash. Commands
 there act on the connected flight controller. The hardware relay uses local UDP port
-14661 for this shell and 14662 for parameter/trajectory tools. See [Tools and terminals](tools.md).
+14661 for this shell. Native parameter configuration uses PX4 or QGroundControl. See [Tools and terminals](tools.md).
 
 
 <!-- Preserve existing section links. -->

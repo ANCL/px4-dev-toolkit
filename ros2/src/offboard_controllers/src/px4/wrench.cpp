@@ -12,24 +12,19 @@ namespace offboard_controllers::px4_wrench
 {
 
 double normalized_projected_collective_thrust(
-  const math::Vector3 & force,
+  const math::Vector3 & specific_force,
   const math::RotationMatrix & attitude,
-  double mass,
   double hover_thrust)
 {
-  // Lee SE(3) collective thrust before actuator limits:
-  //   f = -A . R e3
-  // RotationMatrix::b3 is the current body z-axis R e3 in NED.
-  const double physical_thrust =
-    -(
-      force.x * attitude.b3.x +
-      force.y * attitude.b3.y +
-      force.z * attitude.b3.z);
+  // Lee's projection expressed as a collective acceleration [m/s^2].
+  // The body z-axis is the third FRD->NED rotation column.
+  const double collective_acceleration =
+    -(specific_force.x * attitude.b3.x +
+      specific_force.y * attitude.b3.y +
+      specific_force.z * attitude.b3.z);
 
   const double normalized_thrust =
-    hover_thrust *
-    physical_thrust /
-    (mass * kStandardGravity);
+    hover_thrust * collective_acceleration / kStandardGravity;
 
   // PX4 VehicleThrustSetpoint is a normalized body-axis thrust setpoint.
   // Limit the multicopter collective magnitude here; the publisher applies

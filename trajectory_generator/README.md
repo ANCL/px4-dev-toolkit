@@ -8,8 +8,8 @@ and analytic sampling for the PX4 development toolkit.
   zero first-through-fourth derivatives at smooth segment endpoints.
 - **Reference:** local PX4 NED position, velocity, acceleration, jerk, snap,
   yaw, yaw rate and yaw acceleration. It is *not* a full 6-DoF attitude reference.
-- **Configuration:** `config/trajectories.yaml` is the single toolkit-owned
-  definition. The `trajectory_generator_yaml` target loads it on the host.
+- **Configuration:** `config/trajectories.yaml` defines ROS 2 Offboard
+  trajectories. Native PX4 trajectories use firmware `TRJ_*` parameters. The `trajectory_generator_yaml` target loads it on the host.
 - **Core:** `trajectory_generator` needs neither YAML nor ROS/PX4 headers.
   `Sequence::sample(t, origin)` evaluates an already prepared sequence.
 

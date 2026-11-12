@@ -44,13 +44,10 @@ struct TranslationalOutput {
   // because the PX4 acceleration handoff expects a kinematic setpoint.
   Vector3 acceleration{};
 
-  // Geometric SE(3) translational control vector A [N] in NED:
-  //
-  //   A = -k_x e_x - k_v e_v - m g e3 + m x_ddot_d
-  //
-  // The desired thrust direction is b3_d = -A / ||A||. This is a physical
-  // force-like control vector, not a PX4-normalized thrust command.
-  Vector3 force_vector{};
+  // Specific-force vector B = A/m in NED [m/s^2]:
+  //   B = a_d - (kx/m)e_x - (kv/m)e_v - g e3
+  // Desired thrust direction is b3_d = -B/||B||.
+  Vector3 specific_force{};
 };
 
 struct DesiredAttitudeRate {

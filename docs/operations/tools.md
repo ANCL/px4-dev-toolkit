@@ -13,7 +13,7 @@ Run toolkit commands from the repository root. In Docker, run Docker commands on
 | Terminal | Open it | Use it for |
 |---|---|---|
 | Ubuntu shell | Repository root | `./tools/…`, ROS 2 launches, recording and analysis |
-| PX4 in SITL | `px4` tmux window | Native PX4 commands, including `se3_control` and `trajectory` |
+| PX4 in SITL | `px4` tmux window | Native PX4 commands, including `se3_control` |
 | PX4 on hardware | `px4-shell` tmux window or `./tools/px4_shell` | Native commands on the flight controller |
 | Ground control | SITL MAVProxy/QGC; hardware GCS | Pilot inputs, status and mode changes |
 
@@ -44,7 +44,7 @@ The [SITL](sitl.md) and [companion](companion.md) guides list the services and c
 **MAVLink transport** is a background service, independent of both
 ground control and DDS. In SITL it uses PX4's API stream at `127.0.0.1:14540`;
 MAVProxy uses the separate GCS stream at port 14550. The router supplies local
-UDP endpoints 14661 for the PX4 shell and 14662 for parameter/trajectory tools.
+UDP endpoint 14661 for the PX4 shell.
 On hardware an IP-filtered relay receives MAVLink UDP telemetry on local port
 14550 (unless configured otherwise) and sends commands to the configured remote
 IP and port 14555. No separate MAVLink serial connection is used.
@@ -61,7 +61,7 @@ source ros2/runtime_env.sh
 ./tools/topic_rates vehicle_local_position vehicle_status_v1 --duration 5
 ```
 
-`topic_rates` measures host callback arrivals after a 1-second warmup; these are not controller update rates. The hardware mocap bridge provides estimator observations, and trajectory uploads use MAVLink FTP.
+`topic_rates` measures host callback arrivals after a 1-second warmup; these are not controller update rates. The hardware mocap bridge provides estimator observations.
 
 SITL's default MAVProxy loads a software joystick used by the repeatable
 Position-mode takeoff/staging demonstrations. QGroundControl is an optional
@@ -76,8 +76,6 @@ The **Ubuntu repository shell** provides the following toolkit commands; command
 
 | Tool | Purpose | Procedure |
 |---|---|---|
-| `./tools/onboard_params` | Apply and verify a named PX4 parameter profile while disarmed | [Onboard control](onboard.md#prepare-before-takeoff) |
-| `./tools/trajectory` | List/compile YAML plans, upload them over MAVLink FTP, or explicitly clean plan files | [Trajectories](../experiments/trajectories.md#compile-and-upload-an-onboard-plan) |
 | `./tools/px4_record` | Independently record PX4 DDS telemetry to a ROS bag | [Onboard logging](../experiments/onboard-logs.md) |
 | `./tools/px4_analyze` | Analyze a finalized ROS bag or PX4 ULog | [Analysis](../experiments/analysis.md) |
 | `./tools/px4_compare` | Compare supported recorded ROS flights | [Comparison](../experiments/comparison.md) |
@@ -85,9 +83,10 @@ The **Ubuntu repository shell** provides the following toolkit commands; command
 
 </div>
 
-Parameter loading is **not transactional**: check readbacks after failures. `./tools/trajectory clean` deletes both compiled local plans and uploaded plans. The `gz_f450` parameter profile is for SITL. Follow [Onboard control](onboard.md#se3-example-native-f450-sitl) for the flight procedure.
+Configure native `SE3_*` and `TRJ_*` parameters directly in PX4. See
+[Onboard control](onboard.md#se3-example-native-f450-sitl) for the flight procedure.
 
-In the **PX4 shell**, use native `se3_control` and `trajectory` commands. See [Onboard](onboard.md) and [Offboard](offboard.md) operation.
+In the **PX4 shell**, use native `se3_control` commands. See [Onboard](onboard.md) and [Offboard](offboard.md) operation.
 
 ## Recording and analysis tools
 

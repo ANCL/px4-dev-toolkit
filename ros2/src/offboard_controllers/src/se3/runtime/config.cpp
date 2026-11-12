@@ -122,6 +122,7 @@ Se3::Se3() : Node("se3") {
 
   const double kv_over_mass =
       declare_parameter<double>("kv_over_mass", std::numeric_limits<double>::quiet_NaN());
+  const double rate_limit_rad_s = declare_parameter<double>("rate_limit_rad_s", 3.0);
 
   const se3::Vector3 attitude_gain = vector3_parameter(
       declare_parameter<std::vector<double>>("attitude_gain", std::vector<double>{}),
@@ -224,6 +225,10 @@ Se3::Se3() : Node("se3") {
     throw std::invalid_argument("SE3 kv_over_mass must be finite and positive.");
   }
 
+  if (!std::isfinite(rate_limit_rad_s) || rate_limit_rad_s <= 0.0) {
+    throw std::invalid_argument("SE3 rate_limit_rad_s must be finite and positive.");
+  }
+
   if (geometric_physical_k_r.x <= 0.0 || geometric_physical_k_r.y <= 0.0 ||
       geometric_physical_k_r.z <= 0.0 || geometric_physical_k_omega.x <= 0.0 ||
       geometric_physical_k_omega.y <= 0.0 || geometric_physical_k_omega.z <= 0.0) {
@@ -249,13 +254,10 @@ Se3::Se3() : Node("se3") {
   configured_trajectory_ = std::make_unique<trajectory::ConfiguredTrajectory>(
       trajectory::load_trajectory(trajectory_config, trajectory_name_));
 
-  // Validate physical gains after conversion from mass-normalized
-  // ROS parameters; finite inputs can still overflow on multiplication.
-  kx_ = mass * kx_over_mass;
-  kv_ = mass * kv_over_mass;
-  if (!std::isfinite(kx_) || kx_ <= 0.0 || !std::isfinite(kv_) || kv_ <= 0.0) {
-    throw std::invalid_argument("SE3 physical translation gains must be finite and positive.");
-  }
+  // Use normalized gains directly, matching native PX4 SE3.
+  kx_over_mass_ = kx_over_mass;
+  kv_over_mass_ = kv_over_mass;
+  rate_limit_rad_s_ = rate_limit_rad_s;
 
   require_nonnegative_gain(attitude_gain, "attitude_gain");
   require_nonnegative_gain(normalized_attitude_gain, "normalized_attitude_gain");

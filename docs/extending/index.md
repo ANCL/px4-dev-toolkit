@@ -19,7 +19,7 @@ Choose the component to extend. [Configuration](../reference/configuration.md) m
 
 ### Add a trajectory
 
-Add a segment in [trajectories.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/trajectories.yaml). A new segment type needs an analytic sampler in `trajectory_generator/src/analytic/` and parser support in `trajectory_generator/src/config/yaml.cpp`. For onboard use, also update compiler serialization and the firmware loader/sampler. Check derivatives, units, segment joins, and [NED/time conventions](../experiments/trajectories.md).
+Add a segment in [trajectories.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/trajectories.yaml). A new segment type needs an analytic sampler in `trajectory_generator/src/analytic/` and parser support in `trajectory_generator/src/config/yaml.cpp`. This YAML and generator are ROS Offboard-owned; new native trajectories are implemented separately in the PX4 firmware catalog. Check derivatives, units, segment joins, and [NED/time conventions](../experiments/trajectories.md).
 
 ### Add recording topics
 

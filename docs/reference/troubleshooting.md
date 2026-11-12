@@ -42,7 +42,7 @@ source ros2/runtime_env.sh
 
 Inspect `START_XRCE_AGENT`, transport/port agreement, PX4 XRCE client, and selected environment. Topic discovery and sample delivery are different checks. Make sure the controller shell is inside the same container when using Docker.
 
-MAVLink Router is a separate tmux service. A healthy GCS or DDS stream does not prove parameter/FTP connectivity: inspect `mavlink-router` and its transfer endpoint `127.0.0.1:14662`. On hardware, confirm its serial device differs from the XRCE device. The hardware `px4-shell` uses router port `14661`.
+MAVLink Router is a separate tmux service. A healthy GCS or DDS stream does not prove PX4-shell connectivity: inspect the MAVLink router and shell endpoint `127.0.0.1:14661`. On hardware, confirm the MAVLink and XRCE links are independently configured. The hardware `px4-shell` uses router port `14661`.
 
 For simulation staging that waits without climbing, check MAVProxy and the virtual-joystick module, PX4 Position mode, readiness, and reported phase. Selecting QGroundControl does not provide the MAVProxy-backed virtual input used by those examples.
 
@@ -91,10 +91,10 @@ After interruption, check the actual mode and arming state before restarting. Se
 | Symptom | Check | Next action |
 |---|---|---|
 | SE3 has not registered | `se3_control status` in PX4; correct firmware build and disarmed startup | SITL starts it at boot; a physical firmware image must separately include and start the module |
-| Selection rejected | Explicit parameter load/readback, enabled controller, state freshness, airborne/armed state | Prepare the controller while disarmed, then follow the pilot handoff in [Onboard control](../operations/onboard.md) |
-| SE3 holds instead of moving | Active mode and `trajectory status` | Selection intentionally captures the entry pose; movement requires explicit `trajectory start <name>` |
+| Selection rejected | Configured `SE3_*` parameters, state freshness, airborne/armed state | Prepare the controller while disarmed, then follow the pilot handoff in [Onboard control](../operations/onboard.md) |
+| SE3 holds instead of moving | Active mode and `se3_control status` | Selection intentionally captures the entry pose; movement requires explicit `se3_control trajectory <name>` |
 | A reference jumps when started | Actual local NED position/yaw versus absolute plan start | Return to pilot control; check frame/origin and prepare the intended start. Firmware does not align the plan or enforce proximity to its start |
-| Physical parameter profile unavailable | Only a commented `f450_02.parm.example` exists | Supply measured vehicle-specific parameters in separate vehicle preparation; the example is not a tested profile |
+| Native parameters differ between vehicles | PX4 `SE3_*`, `TRJ_*`, and `MPC_THR_HOVER` values | Set and verify suitable airframe-specific parameters in PX4; do not reuse SITL tuning blindly |
 
 </div>
 

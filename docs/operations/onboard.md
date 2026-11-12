@@ -2,65 +2,79 @@
 
 # Onboard control
 
-Onboard controllers execute inside PX4 firmware. This procedure covers preparation, takeoff, mode selection, trajectory execution, and return using [Onboard SE3](../controllers/onboard/se3.md). [Tools](tools.md) explains the command terminals; ROS controllers use [Offboard control](offboard.md).
+Onboard controllers run in PX4 firmware. Native SE3 owns its execution clock,
+trajectory selection, and current-position hold. The toolkit supplies the
+environment, logging, and analysis; no trajectory
+files are uploaded. ROS 2 controllers use [Offboard control](offboard.md).
 
 ## Prepare before takeoff
 
-Start the selected [SITL](sitl.md) or [companion environment](companion.md), then confirm that PX4, its state estimate, and the operator's controls are ready. The toolkit runtime commands run in an Ubuntu repository shell; use the shell inside the running container for Docker SITL.
+Start the chosen [SITL](sitl.md) or [companion](companion.md) environment.
+Confirm the PX4 firmware contains SE3, the estimator is valid, and the pilot
+can switch back to Position mode.
 
-Before arming, install and verify the correct [PX4 firmware](../get-started/firmware.md) on physical hardware:
+Native SE3 gains and trajectory settings are PX4 firmware parameters.
+Use `param show`, `param set` and `param save` in the PX4 shell, or QGroundControl,
+to inspect and configure the aircraft while disarmed.
 
-1. Confirm that the installed firmware includes and has started the chosen controller. Starting a module and selecting its flight mode are separate actions.
-2. Load the controller and vehicle parameters required for this aircraft.
-3. Prepare and inspect any reference or trajectory used by that controller. Trajectory upload and flight-mode selection are separate actions.
-4. Check the local coordinate frame, planned flight volume, pilot handback controls, and recording setup. An absolute trajectory does not move its origin to the aircraft's current position.
-
+Native trajectories are configured with `TRJ_*` PX4 parameters, independently
+of `config/trajectories.yaml` (which is for ROS 2 Offboard).
 
 ## Take off, select, execute, and return
 
-Take off under pilot control and establish a stable Position-mode hover. Keep the pilot's Position-mode control available for handback.
+Take off under pilot control and establish a stable Position-mode hover.
+Then select SE3 and confirm PX4 actually entered the mode, not just that a
+request was published. Entry captures and holds the measured position and
+heading; it does not start motion.
 
-Request the controller mode, then confirm PX4 entered it and the controller reports active control. For the current native SE3 mode, entry captures and holds the measured position and heading. A separately staged trajectory does not start on entry.
+Start a named native trajectory explicitly. It uses absolute local NED
+coordinates and does **not** shift its origin to the current hover. Completion
+holds the final commanded pose, while `se3_control hold` captures the current
+measured pose.
 
-Start the reference explicitly and monitor tracking and controller status. SE3 stays active and holds the final commanded pose on completion; `se3_control hold` instead captures and holds the measured pose.
-
-Return to Position mode with the pilot's configured mode control, verify the transition, then land and disarm using the normal pilot procedure. In the documented MAVProxy simulation, use the [SITL landing procedure](sitl.md#land-and-reset-the-simulated-vehicle). Stop environment services only after landing and disarming.
+To return, select Position mode using the pilot's configured control and
+confirm it. Only then land and disarm. For SITL, use
+[Landing](sitl.md#land-and-reset-the-simulated-vehicle).
 
 ## SE3 example: native F450 SITL
 
-Example: `gz_f450` SITL with the `full_excitation` trajectory. [Validation scope](../reference/architecture.md#validation-scope) lists the tested environments.
+The following commands are entered in the **PX4 shell** (`pxh>`), not Ubuntu.
 
-### 1. Configure and upload while disarmed
-
-Start SITL using the [environment guide](sitl.md). In a **second repository-root Ubuntu shell**, run:
-
-```bash
-./tools/onboard_params load se3 gz_f450
-./tools/trajectory upload full_excitation
-```
-
-The parameter command applies `config/controllers/onboard/se3/gz_f450.parm` through MAVLink and requires `SYS_AUTOSTART=4022`. Check its acknowledgements/readbacks and final result before continuing. A failed load may have applied earlier parameters; inspect and resolve that failure before flight.
-
-Upload compiles `config/trajectories.yaml` into `generated/trajectories/full_excitation.traj` and transfers it to `/fs/microsd/trajectories/` over MAVLink FTP. Both commands require disarm.
-
-The pinned SITL startup already starts `se3_control` and registers its mode, even though `SE3_ENABLE` defaults to zero. In the **PX4 terminal** (`px4` tmux window), inspect:
+### 1. Inspect the native configuration
 
 ```text
 se3_control status
-trajectory list
+param show TRJ_HOME_X
+param show TRJ_HOME_Y
+param show TRJ_HOME_Z
+param show TRJ_HOME_YAW
+param show TRJ_F8_T
 ```
 
-Look for a registered Commander mode ID and `enabled=1`. `active=0` is expected before selecting the mode. `full_excitation.traj` should appear in the onboard catalog. Registration makes SE3 available for selection after takeoff.
+On supported targets, SE3 registers at boot and its default `SE3_ENABLE`
+is `1`. A registered mode is initially inactive.
 
-### 2. Take off and check the absolute reference
+### 2. Take off and verify the start pose
 
-Use pilot controls to take off in Position mode and settle near the plan's start: **PX4 local NED `[0, 0, -1.0]` m, yaw `0` rad**. Confirm those values in the actual PX4 estimate and inspect the plan's full maneuver volume before starting it. See [Trajectories](../experiments/trajectories.md) for segment meanings and absolute coordinates.
+```text
+commander takeoff
+listener vehicle_local_position
+```
 
-PX4 does **not** check proximity to this start pose when accepting the trajectory-start command. Starting from another position or heading creates an immediate tracking demand; the controller neither translates the plan to the current hover nor automatically aligns the aircraft first.
+Wait for a stable hover in a valid Position flight mode. The simulator's
+default takeoff may reach NED Z about `-2.5`, while `TRJ_HOME_Z` defaults
+to `-1.0`. Match the intended trajectory's absolute altitude and yaw to
+the verified flight volume before execution; for example:
 
-### 3. Select SE3 and verify the hold
+```text
+param set TRJ_HOME_Z -2.5
+```
 
-In the **PX4 terminal**:
+The number is an **example**, not an automatic measurement. Confirm local
+X/Y and yaw as well. The firmware intentionally has no proximity/alignment
+guard on a trajectory start.
+
+### 3. Select SE3 and confirm holding
 
 ```text
 se3_control select
@@ -68,48 +82,41 @@ se3_control status
 commander status
 ```
 
-Confirm Commander entered SE3 and `se3_control status` reports `active=1`, `faulted=0`, and `trajectory: holding`. Entry captures the measured pose; motion starts in the next step.
+Require `active=1`, `faulted=0`, and `trajectory: holding` before proceeding.
 
-If selection is rejected or the controller remains inactive, inspect its [readiness requirements](../controllers/onboard/se3.md#readiness-and-faults). Do not continue with trajectory execution until the mode and active state are confirmed.
-
-### 4. Explicitly start and monitor movement
-
-In the **same PX4 terminal**:
+### 4. Start and monitor
 
 ```text
-trajectory start full_excitation
+se3_control trajectory figure_eight_tracking
 se3_control status
 ```
 
-`trajectory start` loads the named file and starts execution while SE3 is active and holding. Check for `trajectory: running`. `trajectory status` describes the staged plan; `se3_control status` reports execution state.
-
-The supplied plan returns to its start pose, then finishes in SE3 hold. Land and disarm after pilot handback.
-
-### 5. Interrupt or give control back
-
-To stop the current reference execution and hold the measured position/heading **within SE3**, use:
+The new firmware uses its built-in catalog; `se3_control trajectory <name>`
+is the only trajectory start interface. To interrupt movement:
 
 ```text
 se3_control hold
 se3_control status
 ```
 
-For pilot handback, select Position mode with the pilot's mode control. In SITL, the following **PX4 terminal** command also requests Position mode:
+### 5. Return to Position and land
 
 ```text
 commander mode posctl
 commander status
-se3_control status
+commander land
 ```
 
-Confirm Position mode and SE3 `active=0`, then land and disarm. Do not stop the controller module or terminate simulator services as a way to end an airborne experiment.
+Confirm Position mode, then wait for landing/disarm. Do not stop the
+controller module or companion/simulator services while airborne.
 
-## Applying the workflow to a companion computer
+## Hardware companion
 
-On hardware, use the [companion environment](companion.md) and `px4-shell` window or `./tools/px4_shell` for PX4 commands.
+Use the [companion environment](companion.md) and `./tools/px4_shell`
+or the hardware `px4-shell` window. Confirm the installed firmware
+includes/starts SE3 and registers its Commander mode. Hardware requires validated aircraft-specific PX4 parameters, estimator,
+actuator and hover-thrust calibration. The toolkit does not provide a hardware
+SE3 parameter profile.
 
-Confirm that the aircraft firmware contains the native controller and trajectory modules. SITL boot registration does not prove that a hardware firmware build starts the module. If it is present but stopped, `se3_control start` is a disarmed-only registration step; check its status before takeoff.
-
-The repository supplies only a **commented hardware template**, `config/controllers/onboard/se3/f450_02.parm.example`. It is not a usable tuned flight profile. A validated `.parm` file, measured vehicle data, matching estimator/airframe configuration, and an established pilot procedure are prerequisites for physical flight. The `gz_f450` simulation profile is not a hardware tuning recommendation.
-
-For recording and the distinction between PX4 ULog and ROS bags, continue with [Onboard flight logging](../experiments/onboard-logs.md).
+For recording and independent ULog/ROS bag analysis, see
+[Onboard logging](../experiments/onboard-logs.md).

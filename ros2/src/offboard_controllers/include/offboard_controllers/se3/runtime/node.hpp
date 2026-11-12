@@ -72,7 +72,7 @@ private:
   void update();
 
   // Handoff-specific control computation
-  double projected_collective_thrust(const se3::Vector3& force) const;
+  double projected_collective_thrust(const se3::Vector3& specific_force) const;
   void execute_handoff(const se3::Reference& reference,
                        const se3::TranslationalOutput& output);
 
@@ -134,11 +134,11 @@ private:
   bool return_to_position_requested_{false};
   rclcpp::Time position_return_last_request_at_{0, 0, RCL_ROS_TIME};
 
-  // Physical translation gains [N/m] and [N s/m] are computed
-  // once from the configured mass and mass-normalized gains.
+  // Mass enters only when the physical output or diagnostics need newtons.
   double mass_{std::numeric_limits<double>::quiet_NaN()};
-  double kx_{std::numeric_limits<double>::quiet_NaN()};
-  double kv_{std::numeric_limits<double>::quiet_NaN()};
+  double kx_over_mass_{std::numeric_limits<double>::quiet_NaN()};
+  double kv_over_mass_{std::numeric_limits<double>::quiet_NaN()};
+  double rate_limit_rad_s_{std::numeric_limits<double>::quiet_NaN()};
   se3::Vector3 attitude_gain_{};
   se3::Vector3 normalized_attitude_gain_{};
   se3::Vector3 normalized_angular_velocity_gain_{};

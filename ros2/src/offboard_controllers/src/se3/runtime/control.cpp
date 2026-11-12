@@ -2,6 +2,8 @@
 
 #include <offboard_controllers/se3/runtime/node.hpp>
 
+#include <algorithm>
+
 #include <offboard_controllers/se3/control/attitude_control.hpp>
 #include <offboard_controllers/se3/control/attitude_reference.hpp>
 #include <offboard_controllers/se3/control/force_dynamics.hpp>
@@ -10,9 +12,9 @@
 
 namespace offboard_controllers {
 
-double Se3::projected_collective_thrust(const se3::Vector3& force) const {
-  return px4_wrench::normalized_projected_collective_thrust(force, vehicle_state_.state().attitude,
-                                                            mass_, hover_thrust_);
+double Se3::projected_collective_thrust(const se3::Vector3& specific_force) const {
+  return px4_wrench::normalized_projected_collective_thrust(
+      specific_force, vehicle_state_.state().attitude, hover_thrust_);
 }
 
 // The runtime selects which mathematical stages execute for each
@@ -42,33 +44,46 @@ void Se3::execute_handoff(const se3::Reference& reference,
 
   if (handoff_ == "attitude") {
     const se3::RotationMatrix desired_attitude =
-        se3::attitude_reference::compute_orientation(output.force_vector, reference.yaw);
+        se3::attitude_reference::compute_orientation(output.specific_force, reference.yaw);
 
     publish_desired_attitude_diagnostic(desired_attitude);
 
-    publish_attitude_setpoint(desired_attitude, output.force_vector, reference.yaw_rate);
+    publish_attitude_setpoint(desired_attitude, output.specific_force, reference.yaw_rate);
 
     return;
   }
 
   const se3::Vector3 force_derivative =
       se3::force_dynamics::first_derivative(
-          vehicle_state_.state(), reference, output.force_vector, mass_, kx_, kv_);
+          vehicle_state_.state(), reference, output.specific_force,
+          kx_over_mass_, kv_over_mass_);
+
+  const se3::Vector3 force_second_derivative = se3::force_dynamics::second_derivative(
+      vehicle_state_.state(), reference, output.specific_force, force_derivative,
+      kx_over_mass_, kv_over_mass_);
+
+  const se3::DesiredAttitudeDynamics desired = se3::attitude_reference::compute_dynamics(
+      output.specific_force, force_derivative, force_second_derivative, reference.yaw,
+      reference.yaw_rate, reference.yaw_acceleration);
 
   if (handoff_ == "attitude_rate" || direct_controller_ == "px4_rate") {
-    const se3::DesiredAttitudeRate desired = se3::attitude_reference::compute_rate(
-        output.force_vector, force_derivative, reference.yaw, reference.yaw_rate);
-
-    publish_desired_attitude_rate_diagnostics(desired);
+    const se3::DesiredAttitudeRate desired_rate{desired.attitude, desired.angular_velocity};
+    publish_desired_attitude_rate_diagnostics(desired_rate);
 
     const se3::Vector3 body_rate_setpoint =
         se3::attitude_control::compute_rate(
-            vehicle_state_.state().attitude, desired, attitude_gain_);
+            vehicle_state_.state().attitude, desired_rate, attitude_gain_);
 
-    publish_vector_diagnostic(body_rate_setpoint_diagnostic_pub_, body_rate_setpoint);
+    // Match native PX4's final per-axis body-rate saturation. Keep the
+    // geometric law itself unconstrained for consistent diagnostics/tests.
+    const se3::Vector3 limited_rate{
+        std::clamp(body_rate_setpoint.x, -rate_limit_rad_s_, rate_limit_rad_s_),
+        std::clamp(body_rate_setpoint.y, -rate_limit_rad_s_, rate_limit_rad_s_),
+        std::clamp(body_rate_setpoint.z, -rate_limit_rad_s_, rate_limit_rad_s_)};
+    publish_vector_diagnostic(body_rate_setpoint_diagnostic_pub_, limited_rate);
 
     if (handoff_ == "attitude_rate") {
-      publish_rate_setpoint(body_rate_setpoint, output.force_vector);
+      publish_rate_setpoint(limited_rate, output.specific_force);
 
       return;
     }
@@ -77,9 +92,9 @@ void Se3::execute_handoff(const se3::Reference& reference,
     // outer stage computes and holds the body-rate/collective setpoint; the
     // reproduced PX4 inner rate loop runs from each
     // VehicleAngularVelocity callback using its timestamp_sample.
-    px4_rate_setpoint_ = body_rate_setpoint;
+    px4_rate_setpoint_ = limited_rate;
 
-    px4_rate_collective_thrust_ = projected_collective_thrust(output.force_vector);
+    px4_rate_collective_thrust_ = projected_collective_thrust(output.specific_force);
 
     px4_rate_setpoint_valid_ =
         math::is_finite(px4_rate_setpoint_) && std::isfinite(px4_rate_collective_thrust_);
@@ -92,13 +107,6 @@ void Se3::execute_handoff(const se3::Reference& reference,
     return;
   }
 
-  const se3::Vector3 force_second_derivative = se3::force_dynamics::second_derivative(
-      vehicle_state_.state(), reference, output.force_vector, force_derivative, mass_, kx_, kv_);
-
-  const se3::DesiredAttitudeDynamics desired = se3::attitude_reference::compute_dynamics(
-      output.force_vector, force_derivative, force_second_derivative, reference.yaw,
-      reference.yaw_rate, reference.yaw_acceleration);
-
   publish_desired_attitude_dynamics_diagnostics(desired);
 
   if (direct_controller_ == "geometric_physical") {
@@ -107,9 +115,10 @@ void Se3::execute_handoff(const se3::Reference& reference,
         physical_wrench_configuration_.inertia_frd, geometric_physical_k_r_,
         geometric_physical_k_omega_);
 
-    // Lee's collective force f = -A . (R e3), with body Z in NED.
+    // The physical adapter requires newtons. Convert once, at its boundary.
+    // All upstream geometric calculations use the same B = A/m as native SE3.
     const double requested_collective_thrust =
-        -math::dot(output.force_vector, vehicle_state_.state().attitude.b3);
+        -mass_ * math::dot(output.specific_force, vehicle_state_.state().attitude.b3);
 
     const physical_wrench_adapter::Output adapted = physical_wrench_adapter::adapt(
         physical_wrench_configuration_.adapter, requested_collective_thrust, physical_moment);
@@ -130,7 +139,7 @@ void Se3::execute_handoff(const se3::Reference& reference,
 
     publish_geometric_normalized_diagnostics(direct_output);
 
-    publish_normalized_wrench_setpoint(-projected_collective_thrust(output.force_vector),
+    publish_normalized_wrench_setpoint(-projected_collective_thrust(output.specific_force),
                                        direct_output.normalized_torque);
 
     return;

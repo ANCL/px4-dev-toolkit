@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Own exactly one PX4 MAVLink connection and route it to local clients.
 # 14661: interactive PX4 shell
-# 14662: independent parameter and trajectory CLI
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -17,7 +16,6 @@ fi
 ARGS=(
     -c "${CONFIG}"
     -e 127.0.0.1:14661
-    -e 127.0.0.1:14662
 )
 
 case "${MODE}" in
@@ -67,6 +65,5 @@ esac
 
 echo "PX4 MAVLink source: ${SOURCE}"
 echo "Shell: 127.0.0.1:14661"
-echo "Transfers: 127.0.0.1:14662"
 
 exec "${ROUTER}" "${ARGS[@]}" "${SOURCE}"

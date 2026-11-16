@@ -22,7 +22,7 @@ cd px4-dev-toolkit
 ./px4/build_sitl.sh
 ```
 
-The installer fetches the configured PX4 ref and pinned other SITL sources, then builds the ROS 2 workspace, MAVLink transfer tools, and analysis dependencies. `./px4/build_sitl.sh` builds the configured PX4 SITL target separately.
+The installer fetches the configured PX4 ref and pinned other SITL sources, then builds the ROS 2 workspace and installs analysis dependencies. `./px4/build_sitl.sh` builds the configured PX4 SITL target separately.
 
 <!-- Preserve existing section links. -->
 <span id="source-pin-behavior"></span>

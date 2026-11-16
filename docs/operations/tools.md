@@ -14,12 +14,12 @@ Run toolkit commands from the repository root. In Docker, run Docker commands on
 |---|---|---|
 | Ubuntu shell | Repository root | `./tools/…`, ROS 2 launches, recording and analysis |
 | PX4 in SITL | `px4` tmux window | Native PX4 commands, including `se3_control` |
-| PX4 on hardware | `px4-shell` tmux window or `./tools/px4_shell` | Native commands on the flight controller |
+| PX4 on hardware | QGroundControl MAVLink Console | Native commands on the flight controller |
 | Ground control | SITL MAVProxy/QGC; hardware GCS | Pilot inputs, status and mode changes |
 
 </div>
 
-PX4 uses `pxh>` in SITL and typically `nsh>` on hardware. Ubuntu and PX4 commands are not interchangeable. The `px4-sitl` and `px4-hardware` sessions contain the named service windows; use a separate shell for manual ROS commands.
+PX4 uses `pxh>` in SITL and typically `nsh>` on hardware. Ubuntu and PX4 commands are not interchangeable. The hardware session contains only the mocap and optional DDS panels; use a separate shell for manual ROS commands.
 
 ## Start and inspect services
 
@@ -41,16 +41,11 @@ The [SITL](sitl.md) and [companion](companion.md) guides list the services and c
 
 ## Communication paths
 
-**MAVLink transport** is a background service, independent of both
-ground control and DDS. In SITL it uses PX4's API stream at `127.0.0.1:14540`;
-MAVProxy uses the separate GCS stream at port 14550. The router supplies local
-UDP endpoint 14661 for the PX4 shell.
-On hardware an IP-filtered relay receives MAVLink UDP telemetry on local port
-14550 (unless configured otherwise) and sends commands to the configured remote
-IP and port 14555. No separate MAVLink serial connection is used.
-`MAVLINK_QGC_OUT` must remain empty: QGC receives MAVLink telemetry on its
-own workstation. The hardware relay filters other drones by the configured
-remote MAVLink IP. It needs exclusive access to UDP 14550 on the toolkit host.
+**MAVLink** remains the aircraft's ground-control transport, not a
+toolkit service. SITL provides its configured MAVProxy or QGroundControl frontend
+through PX4's GCS stream; native PX4 commands use the `px4` terminal. On
+hardware, QGroundControl connects independently over the aircraft's telemetry
+link, with its MAVLink Console providing native commands.
 
 **uXRCE-DDS** transports PX4 state and ROS 2 controller setpoints through the
 agent (UDP in SITL, serial in the hardware profile). Source the ROS runtime in
@@ -70,7 +65,7 @@ aircraft use their configured pilot controls and independent GCS as required.
 
 ## Command and tool reference
 
-The **Ubuntu repository shell** provides the following toolkit commands; commands that contact PX4 require the matching environment, router connection, and vehicle state.
+The **Ubuntu repository shell** provides the following toolkit commands. ROS state and controller traffic use DDS; the removed MAVLink router is not required.
 
 <div class="px4-table-scroll" markdown="1">
 

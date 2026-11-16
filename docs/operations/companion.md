@@ -8,7 +8,7 @@
 
 # Companion computer
 
-The companion runs Vicon, ROS 2, DDS, and MAVLink services for a physical PX4 flight controller. Install the [hardware profile](../get-started/companion.md) first.
+The companion runs Vicon, ROS 2 and DDS services for a physical PX4 flight controller. Install the [hardware profile](../get-started/companion.md) first.
 
 <!-- Preserve existing section links. -->
 <span id="vicon-and-mocap-path"></span>
@@ -33,9 +33,7 @@ flowchart TB
     X <-->|serial| P["PX4"]
     C["Offboard controller"] <--> X
     P <-->|MAVLink| K["Wi-Fi telemetry bridge"]
-    K <-->|MAVLink UDP| MR["IP-filtered MAVLink relay"]
     K <-->|Wi-Fi| Q["QGroundControl on pilot PC"]
-    MR <--> S["PX4 MAVLink Shell"]
 ```
 
 **Vicon** supplies the aircraft's measured pose. The bridge converts ROS
@@ -56,15 +54,12 @@ configured, otherwise publication time. See the
 Use [config/runtime/hardware.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/hardware.env)
 for the actual serial device and baud rate, Vicon server and object topic,
 frame names, world transform, and timestamp behavior. Set these values for your laboratory and aircraft. The launcher
-requires `serial` transport when it starts the DDS agent. The independent MAVLink
-transport uses MAVLink UDP (`MAVLINK_REMOTE_IP`, `MAVLINK_REMOTE_PORT`,
-`MAVLINK_LISTEN_PORT`) rather than a MAVLink serial device. `MAVLINK_QGC_OUT`
-must be left empty; QGC receives MAVLink telemetry directly on another host.
-Ground control is started independently.
+requires `serial` transport when it starts the DDS agent. Ground control is
+independent: QGroundControl connects directly to the aircraft's existing
+telemetry link, not through a toolkit MAVLink relay.
 
-Before starting, check the DDS device if enabled, connectivity to the remote MAVLink endpoint, the
-DDS settings match PX4's XRCE client, the Vicon server is reachable, and the
-selected rigid body and coordinate transform describe the intended aircraft.
+Before starting, verify the DDS device and PX4 XRCE client settings, Vicon
+server reachability, and the intended rigid body and coordinate transform.
 
 <!-- Preserve existing section links. -->
 <span id="cli"></span>
@@ -83,14 +78,12 @@ The default `px4-hardware` tmux session contains the following services:
 - `mocap` — Vicon reception and `px4_mocap_bridge`, via `mocap.launch.py`.
 - `xrce-dds` — serial Micro XRCE-DDS Agent, when `START_XRCE_AGENT=true`
   (the current default).
-- `mavlink` — single-vehicle MAVLink UDP relay, independent of DDS.
-- `px4-shell` — interactive PX4 MAVLink Shell through the router.
 
 `start` attaches to the existing session if present; detaching leaves services running. The [launcher](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/hardware) starts mocap and communication services.
 
-The `px4-shell` window is a **PX4 command terminal**, not Ubuntu Bash. Commands
-there act on the connected flight controller. The hardware relay uses local UDP port
-14661 for this shell. Native parameter configuration uses PX4 or QGroundControl. See [Tools and terminals](tools.md).
+The toolkit does not start a MAVLink shell or GCS. Use QGroundControl's
+MAVLink Console on the independent telemetry connection for native PX4
+commands and parameters. See [Tools and terminals](tools.md).
 
 
 <!-- Preserve existing section links. -->
@@ -106,7 +99,7 @@ source ros2/runtime_env.sh
 ros2 topic list
 ```
 
-Inspect Vicon pose, converted odometry, PX4 estimator state, and the `px4-shell` connection.
+Inspect Vicon pose, converted odometry and PX4 estimator state; check telemetry and native firmware state separately in QGroundControl.
 
 <!-- Preserve existing section links. -->
 <span id="next"></span>

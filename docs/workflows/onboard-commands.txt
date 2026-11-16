@@ -50,5 +50,5 @@ NOTES
 - ROS 2 Offboard trajectories remain separately configured in config/trajectories.yaml.
 - The onboard catalog is absolute PX4 local NED; no pose alignment occurs.
 - The mode captures measured pose on entry and on explicit hold.
-- The MAVLink link supports the PX4 shell; native parameters are managed within PX4.
+- Hardware PX4 commands use QGroundControl's MAVLink Console; native parameters are managed within PX4.
 - DDS recordings and ULogs contain different native execution metadata.

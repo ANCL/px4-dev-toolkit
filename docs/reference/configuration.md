@@ -22,11 +22,10 @@ Find the file that owns a setting and when changes take effect.
 |---|---|
 | Shared ROS distribution | [config/runtime/common.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/common.env) |
 | SITL model, estimator, GCS and DDS | [config/runtime/sitl.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/sitl.env) |
-| Hardware links, Vicon and transforms | [config/runtime/hardware.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/hardware.env) |
+| Hardware DDS, Vicon and transforms | [config/runtime/hardware.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/runtime/hardware.env) |
 | Vehicle mass, inertia and propulsion | [config/vehicles](https://github.com/ANCL/px4-dev-toolkit/tree/main/config/vehicles) |
 | Offboard SE3 gains and timing | [controller.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/config/se3/controller.yaml) |
 | Onboard SE3 gains and trajectories | Native PX4 `SE3_*` / `TRJ_*` parameters and `MPC_THR_HOVER` |
-| MAVLink Router | [config/mavlink-router.conf](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/mavlink-router.conf), `tools/mavlink_router` |
 | ROS Offboard trajectory segments and names | [trajectories.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/trajectories.yaml) |
 | Native SE3 trajectory geometry and durations | PX4 firmware `TRJ_*` parameters (QGroundControl or PX4 `param` shell) |
 | Offboard staging | [offboard.yaml](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_position_mode/config/offboard.yaml) |

@@ -112,9 +112,9 @@ controller module or companion/simulator services while airborne.
 
 ## Hardware companion
 
-Use the [companion environment](companion.md) and `./tools/px4_shell`
-or the hardware `px4-shell` window. Confirm the installed firmware
-includes/starts SE3 and registers its Commander mode. Hardware requires validated aircraft-specific PX4 parameters, estimator,
+Use [QGroundControl's MAVLink Console](companion.md) over the
+independent telemetry connection for hardware PX4 commands. Confirm the
+installed firmware includes/starts SE3 and registers its Commander mode. Hardware requires validated aircraft-specific PX4 parameters, estimator,
 actuator and hover-thrust calibration. The toolkit does not provide a hardware
 SE3 parameter profile.
 

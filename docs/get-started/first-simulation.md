@@ -12,7 +12,7 @@ In **terminal 1 at the repository root**, start the desktop simulation:
 ./tools/sitl start
 ```
 
-Gazebo should show the aircraft, and tmux should contain `px4`, `xrce-dds`, `mavproxy`, and `mavlink-router` windows. For a terminal-only host, use `./tools/sitl start headless`; inspect messages instead of a Gazebo view. The tmux session keeps the named services running independently of the terminal view.
+Gazebo should show the aircraft, and tmux should contain `px4`, `xrce-dds` and `mavproxy` windows. For a terminal-only host, use `./tools/sitl start headless`; inspect messages instead of a Gazebo view. The tmux session keeps the named services running independently of the terminal view.
 
 ## 2. Check communication and state
 

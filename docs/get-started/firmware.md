@@ -79,7 +79,7 @@ A successful upload reports `Erase`, `Program`, and `Verify` at 100%, then `Rebo
 
 ## 5. Verify the installed firmware
 
-After the flight controller reboots, reconnect using the normal PX4 shell interface (on physical hardware, the toolkit provides `./tools/px4_shell` through the configured MAVLink connection). **These are PX4 shell commands, not Ubuntu commands**:
+After reboot, reconnect over USB or the existing telemetry link and open QGroundControl's MAVLink Console. **These are PX4 commands, not Ubuntu commands**:
 
 ```text
 ver hw

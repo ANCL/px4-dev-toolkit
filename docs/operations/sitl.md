@@ -28,13 +28,11 @@ config:
 flowchart TB
     G["Gazebo"] <--> P["PX4 SITL<br/>Native PX4 terminal"]
     P <-->|GCS MAVLink| M["MAVProxy or<br/>QGroundControl"]
-    P <-->|API MAVLink| MR["MAVLink Router"]
-    MR <--> T["Parameter /<br/>trajectory tools"]
     P <--> X["DDS agent<br/>UDP"]
     X <--> R["ROS 2<br/>Nodes + recorder"]
 ```
 
-MAVLink serves ground control and the PX4 shell. uXRCE-DDS transports ROS state and setpoints. [Tools](tools.md) identifies the command environments.
+MAVLink serves the selected ground-control frontend; use the native `px4` window for PX4 commands. uXRCE-DDS transports ROS state and setpoints. [Tools](tools.md) identifies the command environments.
 
 <!-- Preserve existing section links. -->
 <span id="cli"></span>
@@ -58,7 +56,6 @@ The default `px4-sitl` tmux session contains:
 - `px4` — PX4 build/launch and Gazebo connection.
 - `xrce-dds` — DDS agent, if `START_XRCE_AGENT=true`.
 - `mavproxy` or `qgroundcontrol` — the configured ground-control frontend.
-- `mavlink-router` — independent MAVLink transport for parameter, trajectory, and shell tools.
 
 `start` attaches to the tmux session and reattaches if it is already running. Open another repository shell for ROS commands.
 
@@ -80,7 +77,7 @@ source ros2/runtime_env.sh
 ./tools/topic_rates
 ```
 
-`status` reports services and session windows; inspect `mavlink-router` directly if file transfers fail. `topic_rates` measures ROS callback arrivals after a 1-second warmup, not controller execution frequency.
+`status` reports services and session windows. `topic_rates` measures ROS callback arrivals after a 1-second warmup, not controller execution frequency.
 
 <!-- Preserve existing section links. -->
 <span id="ground-control-frontend"></span>

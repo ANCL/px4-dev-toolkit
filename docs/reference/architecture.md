@@ -3,7 +3,7 @@
 <span id="software-structure"></span>
 # Architecture
 
-The toolkit separates environment services, controllers, trajectory transport, and flight-data analysis. This page maps each responsibility to its code.
+The toolkit separates environment services, controllers, trajectory generation, and flight-data analysis. This page maps each responsibility to its code.
 
 <!-- Preserve existing section links. -->
 <span id="sitl-data-flow"></span>
@@ -27,8 +27,6 @@ flowchart TB
     X <--> R["ROS 2 + recorder"]
     P <--> M["MAVLink GCS stream · 14550"]
     M <--> GCS["MAVProxy or QGroundControl"]
-    P <--> MR["MAVLink Router · API stream 14540"]
-    MR <--> CLI["PX4 shell · 14661"]
     P --> N["Native SE3 + built-in trajectories"]
     R --> B["Bag + metadata"]
     B --> A["Analysis"]
@@ -51,9 +49,8 @@ flowchart TB
     C --> R["ROS 2 + recorder"]
     R <--> X["DDS agent · serial"]
     X <--> P["PX4 flight controller"]
-    P <--> MR["MAVLink Router · separate serial link"]
-    MR <--> SH["PX4 MAVLink shell"]
-        MR -. optional .-> GCS["Ground control"]
+    P <-->|telemetry| K["Wi-Fi link"]
+    K <--> GCS["QGroundControl / MAVLink Console"]
     P --> N["Native SE3 + built-in trajectories"]
     R --> B["Recorded data"]
 ```
@@ -75,7 +72,7 @@ In simulation, PX4 uses configured Gazebo/external-vision aiding and IMU. On har
 | External position reference | [offboard_position](https://github.com/ANCL/px4-dev-toolkit/tree/main/ros2/src/offboard_controllers/src/offboard_position) | Node and control lifecycle |
 | Shared trajectory mathematics | [`trajectory_generator/`](https://github.com/ANCL/px4-dev-toolkit/tree/main/trajectory_generator) | C++ sampler and YAML adapter |
 | ROS 2 Offboard SE3 controller | [se3/node.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/node.cpp) | [`Se3::execute_handoff()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/runtime/control.cpp#L23), pure `control/`, trajectories |
-| Native onboard control | [pinned PX4 SE3 runtime](https://github.com/ANCL/PX4-Autopilot/blob/5dd32eb1e7ab8b79b8ece462ce5f22cd75272c56/src/modules/se3_control/Runtime.cpp) | Mode registration, hold and rate output |
+| Native onboard control | [PX4 SE3 runtime](https://github.com/ANCL/PX4-Autopilot/blob/lab/main/src/modules/se3_control/Runtime.cpp) | Mode registration, hold and rate output |
 | Record an experiment | [recording.py](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_control_common/px4_control_common/recording.py) | [`launch_experiment()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_control_common/px4_control_common/recording.py#L150) and topic selection |
 | Run a study | [tools/run_sequence](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/run_sequence) | [`load_sequence()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/config.py#L43), [`run_step()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/execution.py#L50), manifests |
 | Analyze/compare | [analysis](https://github.com/ANCL/px4-dev-toolkit/tree/main/analysis) | Signals, profiles and plots |

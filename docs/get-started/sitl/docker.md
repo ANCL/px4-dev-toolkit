@@ -30,7 +30,7 @@ The container opens at `/opt/px4-dev-toolkit` with PX4 and ROS 2 already built. 
 ./tools/sitl start headless
 ```
 
-`start` attaches to the `px4-sitl` session with PX4/Gazebo, DDS, MAVProxy, and MAVLink Router. Detaching leaves the services running.
+`start` attaches to the `px4-sitl` session with PX4/Gazebo, DDS and MAVProxy. Detaching leaves the services running.
 
 <span id="verification"></span>
 

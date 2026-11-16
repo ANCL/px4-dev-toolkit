@@ -42,7 +42,7 @@ source ros2/runtime_env.sh
 
 Inspect `START_XRCE_AGENT`, transport/port agreement, PX4 XRCE client, and selected environment. Topic discovery and sample delivery are different checks. Make sure the controller shell is inside the same container when using Docker.
 
-MAVLink Router is a separate tmux service. A healthy GCS or DDS stream does not prove PX4-shell connectivity: inspect the MAVLink router and shell endpoint `127.0.0.1:14661`. On hardware, confirm the MAVLink and XRCE links are independently configured. The hardware `px4-shell` uses router port `14661`.
+The native SITL `px4` window accepts PX4 shell commands. On hardware, use QGroundControl's MAVLink Console over the separate telemetry link. The toolkit's DDS agent and mocap stack do not manage this MAVLink connection; healthy DDS traffic alone does not prove that the GCS is connected.
 
 For simulation staging that waits without climbing, check MAVProxy and the virtual-joystick module, PX4 Position mode, readiness, and reported phase. Selecting QGroundControl does not provide the MAVProxy-backed virtual input used by those examples.
 

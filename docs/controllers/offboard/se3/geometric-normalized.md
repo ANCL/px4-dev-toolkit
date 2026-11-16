@@ -39,12 +39,12 @@ This normalized law has no inertia $J$ or gyroscopic term $\Omega\times(J\Omega)
 
 ## Thrust, messages, and timing
 
-Collective uses mass and hover scale:
+Collective uses specific force $B=A/m$ and the calibrated hover scale $h$, without a physical-mass conversion:
 
 $$
 \begin{aligned}
-f&=-A^\top R e_3 \\
-u_T&=\operatorname{clip}_{[0,1]}(h f/(mg)).
+u&=-B^\top R e_3 \\
+u_T&=\operatorname{clip}_{[0,1]}(h u/g).
 \end{aligned}
 $$
 

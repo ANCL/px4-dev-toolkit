@@ -1,18 +1,18 @@
 # Acceleration
 
-The toolkit calculates position/velocity feedback and sends a **NED acceleration request** to PX4. PX4 converts it to attitude/thrust and runs its lower feedback loops and control allocation. This mode requires the least vehicle data: mass.
+The toolkit calculates position/velocity feedback and sends a **NED acceleration request** to PX4. PX4 converts it to attitude/thrust and runs its lower feedback loops and control allocation. This handoff needs no physical mass in its acceleration law; the shared runtime still validates vehicle mass as part of the vehicle configuration.
 
 ## Translation law
 
 With $e_x=x-x_d$ and $e_v=v-v_d$ in NED:
 
 $$
-a_{\mathrm{cmd}}=a_d-\frac{k_x}{m}e_x-\frac{k_v}{m}e_v.
+a_{\mathrm{cmd}}=a_d-\bar k_xe_x-\bar k_ve_v.
 $$
 
 All terms are in m/s². At zero hover error the request is zero acceleration; PX4 applies gravity compensation below this interface. See the [force derivation](../../../mathematics/index.md#translation-and-gravity-compensation).
 
-`kx_over_mass` and `kv_over_mass` are the configured gains; the runtime multiplies them by vehicle mass to obtain $k_x,k_v$. It checks that mass and gains are finite and positive.
+`kx_over_mass` ($\bar k_x$) and `kv_over_mass` ($\bar k_v$) are used **directly**; no mass multiplication or division occurs in the control law. Both gains must be finite and positive. The shared vehicle configuration also requires a positive mass, which is used only at physical-output or diagnostic boundaries.
 
 ## Messages and timing
 
@@ -36,7 +36,7 @@ The outer wall timer publishes at `control_rate_hz` (100 Hz by default) after Of
 
 ## Run and inspect
 
-With a prepared airborne SITL vehicle, matching mass file, and no competing controller, in a **separate repository-root shell**:
+With a prepared airborne SITL vehicle, valid vehicle configuration, and no competing controller, in a **separate repository-root shell**:
 
 ```bash
 source ros2/runtime_env.sh

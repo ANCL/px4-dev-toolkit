@@ -6,7 +6,7 @@ The toolkit computes an FRD body-rate request and collective thrust. PX4 retains
 
 ## Desired rate and feedback command
 
-The common force $A$ determines $R_d$. [Analytic force/basis derivatives](../../../mathematics/index.md#analytic-force-derivatives), using desired jerk and yaw rate, determine
+The common specific force $B=A/m$ determines $R_d$. [Analytic force/basis derivatives](../../../mathematics/index.md#analytic-force-derivatives), using desired jerk and yaw rate, determine
 
 $$
 \Omega_d=\bigl(R_d^\top\dot R_d\bigr)^\vee.
@@ -28,12 +28,12 @@ $K_{\mathrm{att}}$ is the diagonal vector `attitude_gain`, in s⁻¹; the output
 `VehicleRatesSetpoint.roll`, `.pitch`, and `.yaw` are commanded angular rates about forward/right/down axes, not Euler angles. `thrust_body=(0,0,-u_T)` uses
 
 $$
-u_T=\operatorname{clip}_{[0,1]}\left(h\frac{-A^\top R e_3}{mg}\right).
+u_T=\operatorname{clip}_{[0,1]}\left(h\frac{-B^\top R e_3}{g}\right).
 $$
 
 `reset_integral=false` leaves PX4 integral reset decisions to its native logic. Only `OffboardControlMode.body_rate` is true. The message uses publication time in microseconds.
 
-Mass and curated hover thrust are required. Readiness checks valid position/velocity and attitude; this cascaded mode does not require a measured body-rate sample for its law. The outer timer publishes at the configured rate (100 Hz by default) after confirmed entry. It uses first force derivatives; it does not use snap-based desired angular acceleration. Shared [startup and return behavior](index.md#when-the-controller-starts-and-stops) applies.
+The shared vehicle configuration requires mass and a curated hover-thrust scale, but mass cancels from this body-rate law. The command is clamped per axis to `rate_limit_rad_s` after attitude feedback. The current runtime evaluates full desired-attitude dynamics through snap before extracting $\Omega_d$; angular-acceleration feedforward does **not** enter the published rate command. This computation uses stored measured angular velocity even though this handoff's readiness check does not require gyro receipt. The outer timer runs at `control_rate_hz` (100 Hz by default) after confirmed Offboard entry. See the shared [startup and return behavior](index.md#when-the-controller-starts-and-stops).
 
 ## Run and interpret
 

@@ -84,7 +84,7 @@ A&=m(a_{\mathrm{cmd}}-g e_3) \\
 \end{aligned}
 $$
 
-$a_{\mathrm{cmd}}$ is a kinematic acceleration request in m/s²; $A$ is a physical force in newtons and points upward at hover. The scalar gains $k_x$ and $k_v$ have units N/m and N·s/m. Dividing them by mass gives gains in s⁻² and s⁻¹. The [acceleration handoff](../controllers/offboard/se3/acceleration.md) explains which of these quantities PX4 accepts at that interface.
+$a_{\mathrm{cmd}}$ is a kinematic acceleration request in m/s²; $A$ is a physical force in newtons and points upward at hover. The scalar gains $k_x$ and $k_v$ have units N/m and N·s/m. Dividing them by mass gives gains in s⁻² and s⁻¹. The actual native and Offboard translation implementations compute $B=A/m=a_{\mathrm{cmd}}-ge_3$ directly using these normalized gains; they do not first construct and then divide physical force. The Offboard physical-wrench adapter and physical-force diagnostic multiply by mass only at their respective output boundaries. The [acceleration handoff](../controllers/offboard/se3/acceleration.md) explains which of these quantities PX4 accepts at that interface.
 
 If attitude tracks the desired thrust direction exactly and thrust is feasible, the model gives $\dot v=a_{\mathrm{cmd}}$. With attitude error or actuator limits, it need not. This difference also matters in analytic feedforward.
 

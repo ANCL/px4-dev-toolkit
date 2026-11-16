@@ -8,8 +8,8 @@ Use the common translation errors and acceleration law:
 
 $$
 \begin{aligned}
-A&=m(a_{\mathrm{cmd}}-g e_3) \\
-b_{3d}&=-A/\|A\|.
+B&=a_{\mathrm{cmd}}-g e_3 \\
+b_{3d}&=-B/\|B\|.
 \end{aligned}
 $$
 
@@ -27,12 +27,12 @@ $R_d$ maps desired FRD axes into NED. The [foundations](../../../mathematics/ind
 
 ## Collective projection and message
 
-Collective uses the **current** body axis, not the norm of desired force:
+Collective uses the **current** body axis, not the norm of the desired specific force $B=A/m$:
 
 $$
 \begin{aligned}
-f&=-A^\top R e_3 \\
-u_T&=\operatorname{clip}_{[0,1]}\left(h f/(mg)\right).
+u&=-B^\top R e_3 \\
+u_T&=\operatorname{clip}_{[0,1]}\left(h u/g\right).
 \end{aligned}
 $$
 
@@ -53,6 +53,6 @@ ros2 launch offboard_controllers se3.launch.py \
   publish_diagnostics:=true record:=true
 ```
 
-Inspect desired/measured attitude, force command, normalized collective, downstream rates, and motor limits. The law rejects invalid hover calibration and degenerate force/heading geometry.
+Inspect desired/measured attitude, specific-force direction, normalized collective, downstream rates, and motor limits. The law rejects invalid hover calibration and degenerate force/heading geometry.
 
 Read [attitude_reference.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/control/attitude_reference.cpp), [wrench.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/px4/wrench.cpp), and [publication.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/runtime/publication.cpp).

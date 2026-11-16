@@ -31,7 +31,7 @@ $$
 \Omega_{\mathrm{sp}}=R^\top R_d\Omega_d-K_{\mathrm{att}}e_R
 $$
 
-and the common hover-scaled collective $u_T$. It updates at `control_rate_hz` (100 Hz by default). Its analytic attitude rate uses desired jerk and yaw rate, without snap-based angular acceleration feedforward.
+and the common hover-scaled collective $u_T$, computed from specific force $B=A/m$. The body-rate command is limited per axis by `rate_limit_rad_s` before being held. The outer stage updates at `control_rate_hz` (100 Hz by default). The implementation evaluates full desired dynamics using jerk, snap and yaw derivatives, but only desired angular **velocity** feeds the rate command; desired angular acceleration does not.
 
 The **inner loop** runs from `VehicleAngularVelocity.timestamp_sample`, not the outer timer. It consumes `xyz` [FRD rad/s] and `xyz_derivative` [FRD rad/s²]. For successive microsecond samples:
 
@@ -108,7 +108,7 @@ The configured cutoff is 2 Hz. A zero cutoff sets $T_f=0$, giving pass-through (
 
 ## Messages and supported scope
 
-Only `OffboardControlMode.thrust_and_torque` is enabled. `VehicleThrustSetpoint.xyz=(0,0,-u_T)` uses the mass/hover-thrust projection; `VehicleTorqueSetpoint.xyz` contains normalized torque with filtered yaw. The runtime uses finite-or-zero torque publication for invalid numerical components; readiness for this path records receipt of gyro samples rather than requiring every sample to be finite.
+Only `OffboardControlMode.thrust_and_torque` is enabled. `VehicleThrustSetpoint.xyz=(0,0,-u_T)` uses the hover-thrust projection of specific force (no mass conversion); `VehicleTorqueSetpoint.xyz` contains normalized torque with filtered yaw. The runtime uses finite-or-zero torque publication for invalid numerical components; readiness for this path records receipt of gyro samples rather than requiring every sample to be finite.
 
 The reproduction targets **ANCL/PX4-Autopilot commit `9af25b30f067c36269e94a96797be7943dd4f8e1`**, specifically [rate_control.cpp](https://github.com/ANCL/PX4-Autopilot/blob/9af25b30f067c36269e94a96797be7943dd4f8e1/src/lib/rate_control/rate_control.cpp), [MulticopterRateControl.cpp](https://github.com/ANCL/PX4-Autopilot/blob/9af25b30f067c36269e94a96797be7943dd4f8e1/src/modules/mc_rate_control/MulticopterRateControl.cpp), and [AlphaFilter.hpp](https://github.com/ANCL/PX4-Autopilot/blob/9af25b30f067c36269e94a96797be7943dd4f8e1/src/lib/mathlib/math/filter/AlphaFilter.hpp).
 

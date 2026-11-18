@@ -49,31 +49,39 @@ The Offboard clock starts at confirmed Offboard entry. See
 
 ## Native PX4 trajectories
 
-The firmware owns a separate **built-in catalog** and sampler in
-`ANCL/PX4-Autopilot/src/lib/trajectory/`. Configure geometry, duration,
-start pose and yaw with PX4 `TRJ_*` parameters. No YAML compilation, `.traj`
-files, or FTP transfer are involved.
+The firmware has a separate [SE3-local trajectory catalog](https://github.com/ANCL/PX4-Autopilot/tree/lab/main/src/modules/se3_control/trajectory/).
+The four built-in names and PX4 parameters are independent of ROS 2 YAML:
 
-For example, in the PX4 shell:
+| Name | Native reference |
+|---|---|
+| `setpoint` | Absolute `TRJ_SP_X/Y/Z/YAW`; live edits are immediate steps |
+| `steps5` | Five hardcoded absolute NED points; `TRJ_STEP_HOLD` per point |
+| `circle` | `TRJ_HOME_*` center and `TRJ_CIR_R/T/TURNS` |
+| `figure8` | `TRJ_HOME_*` center and `TRJ_F8_AX/AY/T/TURNS` |
+
+`steps5` uses `(0, 0, -0.75)` → `(0.25, 0, -0.75)` →
+`(0, 0, -0.75)` → `(0, 0.25, -0.75)` → `(0, 0, -0.75)` metres.
+It does not use `TRJ_HOME_*`. Circle begins on the +X edge of its center;
+figure-eight begins at its center.
+
+After takeoff and confirmed SE3 entry, having first checked the starting
+absolute NED pose and flight volume, use the **PX4 shell**:
 
 ```text
-param show TRJ_HOME_Z
-param show TRJ_HOME_YAW
-param show TRJ_F8_T
-param set TRJ_HOME_Z -2.5
-```
-
-After takeoff and confirmed SE3 entry (`active=1`, `faulted=0`):
-
-```text
-se3_control trajectory figure_eight_tracking
+se3_control select
 se3_control status
+se3_control trajectory figure8
 ```
 
-`se3_control hold` interrupts execution and captures the measured pose. On
-completion, SE3 holds the trajectory's final commanded pose. References never
-automatically align to the aircraft's measured position; verify the start
-pose, heading and flight volume first. See [Onboard control](../operations/onboard.md).
+SE3 must be active and holding to start a trajectory. `se3_control hold`
+interrupts motion and captures the **measured** position and heading. A
+completed finite trajectory holds its final **commanded** pose. Only the
+active `setpoint` follows subsequent `TRJ_SP_*` edits; all other trajectory
+parameters are snapshotted at the start request.
+
+No separate sampler process, trajectory upload or native YAML configuration
+is required. See [Onboard SE3](../controllers/onboard/se3.md) for defaults
+and [Onboard control](../operations/onboard.md) for the procedure.
 
 ## Comparing the paths
 

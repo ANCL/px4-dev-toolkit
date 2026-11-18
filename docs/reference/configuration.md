@@ -54,7 +54,7 @@ Native parameters live in PX4, not toolkit configuration files. Set them in
 PX4's shell or QGroundControl, verify the values while disarmed, and explicitly
 save them when persistence is required. See [Onboard control](../operations/onboard.md).
 
-Changes to `config/trajectories.yaml` affect ROS Offboard controllers at their next launch. Native trajectories use independently configured firmware `TRJ_*` parameters, snapshotted on start. Both use absolute PX4 local NED; verify the coordinate origin before flight.
+Changes to `config/trajectories.yaml` affect ROS Offboard controllers at their next launch. Native trajectories use independent firmware `TRJ_*` parameters. Circle, figure-eight, and steps settings are snapshotted on request; an active `setpoint` follows live `TRJ_SP_*` edits. Both use absolute PX4 local NED; verify the coordinate origin before flight.
 
 Sequences select launches and their arguments; the runner overrides recording output for its study. It does not change gains or calibrations. Controller launch-owned recordings snapshot their selected experiment configuration in `experiment.json`, so analysis can use recorded settings rather than current source YAML. Independent `tools/px4_record` recordings contain only profile/topic metadata; preserve the native parameter values and firmware revision separately. See [Recording](../experiments/recording.md) for the two contracts.
 

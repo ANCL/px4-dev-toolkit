@@ -82,14 +82,18 @@ does not select the mode or arm the aircraft.
 | `se3_control hold` | Interrupts execution and captures the current measured pose. |
 | Selection of another mode | Stops SE3 publication; the next entry captures a new hold pose. |
 
-The firmware catalog contains `hover`, position steps/lines, two circles,
-figure-eight, helix, yaw sweep, and full excitation. Names and math reside in
-`src/lib/trajectory/`. Geometry, start pose, yaw and durations are controlled
-by native PX4 parameters; they are not loaded from Offboard YAML files.
+The firmware exposes four named trajectories: `setpoint`, `steps5`, `circle`, and
+`figure8`. All reference generation lives inside
+[`src/modules/se3_control/trajectory/`](https://github.com/ANCL/PX4-Autopilot/tree/lab/main/src/modules/se3_control/trajectory).
+There is no separate trajectory process, uploaded plan, or Offboard YAML dependency.
 
 ### Parameters and ownership
 
-All `SE3_*` and `TRJ_*` values below are **native PX4 parameters**. Their defaults come from the firmware's [parameter definitions](https://github.com/ANCL/PX4-Autopilot/blob/lab/main/src/modules/se3_control/module.yaml); the [trajectory catalog](https://github.com/ANCL/PX4-Autopilot/blob/lab/main/src/lib/trajectory/Catalog.cpp) determines which motion uses each value. They are not loaded from Offboard YAML or toolkit parameter files.
+The native `SE3_*` and `TRJ_*` defaults are defined in
+[`module.yaml`](https://github.com/ANCL/PX4-Autopilot/blob/lab/main/src/modules/se3_control/module.yaml).
+The [trajectory catalog](https://github.com/ANCL/PX4-Autopilot/blob/lab/main/src/modules/se3_control/trajectory/Catalog.cpp)
+defines the built-in references. PX4 owns these parameters independently of
+the toolkit's ROS 2 Offboard configuration.
 
 #### Controller parameters
 
@@ -107,89 +111,89 @@ The translational gains are **already mass-normalized**; SE3 does not need an `S
 
 `MPC_THR_HOVER` is a **standard PX4 parameter**, not defined by this module; inspect the value on the vehicle rather than assuming a universal default. It scales the same collective-acceleration request into normalized thrust. A higher value gives a larger normalized thrust request for the same acceleration. SE3 requires a finite value strictly between 0 and 1. Determine it from the airframe's hover-thrust calibration, not by guessing a controller gain.
 
-#### Trajectory origin and geometry
+#### Built-in trajectories
 
-All coordinates are **absolute PX4 local NED**, while size and height parameters are offsets relative to the `TRJ_HOME_*` origin. X is north, Y east, and Z positive downward.
-
-| Parameter | Default | What it changes |
-|---|---:|---|
-| `TRJ_HOME_X` | `0.0` m | Absolute reference X for every built-in trajectory. |
-| `TRJ_HOME_Y` | `0.0` m | Absolute reference Y for every built-in trajectory. |
-| `TRJ_HOME_Z` | `-1.0` m | Absolute reference height; more negative means higher. |
-| `TRJ_HOME_YAW` | `0.0` rad | Initial heading and reference heading outside yaw sweeps. |
-| `TRJ_STEP_X` | `1.0` m | Positive X step in `step_x` and `full_excitation`. |
-| `TRJ_STEP_Y` | `1.0` m | Positive Y step in `step_y` and `full_excitation`. |
-| `TRJ_LINE_X` | `0.5` m | X travel in `line_x`. |
-| `TRJ_LINE_Y` | `0.5` m | Y travel in `line_y`. |
-| `TRJ_LINE_DZ` | `-0.25` m | Relative Z travel in `line_z` and `full_excitation`; negative climbs. |
-| `TRJ_CIR05_R` | `0.5` m | Radius of `circle_r05`. |
-| `TRJ_CIR10_R` | `1.0` m | Radius of `circle_r10`. |
-| `TRJ_HELIX_R` | `1.0` m | Radius of `helix_r10`. |
-| `TRJ_HELIX_H` | `-0.5` m | Signed vertical travel over the helix; negative climbs. |
-| `TRJ_F8_AX` | `0.75` m | Figure-eight X amplitude. |
-| `TRJ_F8_AY` | `1.2` m | Figure-eight Y amplitude. |
-| `TRJ_YAW_ANG` | `1.57079632679` rad | Relative yaw-sweep angle (90° by default). |
-
-Larger distances, radii or amplitudes increase the excursion. For unchanged duration and turn count, they generally demand higher velocities and accelerations. `TRJ_HOME_*` changes **do not** align a trajectory to the current aircraft pose.
-
-#### Trajectory timing and repetition
-
-| Parameter | Default | What it changes |
-|---|---:|---|
-| `TRJ_HOVER_T` | `10.0` s | Duration of `hover`. |
-| `TRJ_HOLD_T` | `2.0` s | Holds before/between/after moves in many presets. |
-| `TRJ_STEP_T` | `4.0` s | **Dwell after an instantaneous step**; does not smooth the jump. |
-| `TRJ_LINE_T` | `4.0` s | Duration of X/Y/Z lines and full-excitation Z segments. |
-| `TRJ_RETURN_T` | `5.0` s | Return-to-home line duration for steps, lines, circles and full excitation. |
-| `TRJ_CIR05_T` | `12.0` s | Duration of the smaller circle. |
-| `TRJ_CIR10_T` | `20.0` s | Duration of the larger circle. |
-| `TRJ_F8_T` | `60.0` s | Figure-eight duration, including its full-excitation segment. |
-| `TRJ_HELIX_T` | `20.0` s | Helix curved-segment duration. |
-| `TRJ_YAW_T` | `4.0` s | Duration of each outbound/return yaw sweep. |
-| `TRJ_TURNS` | `3` | Revolutions in circles, helix and figure-eight. |
-
-For fixed geometry and turns, **increasing duration slows the commanded motion**; reducing duration makes it more aggressive. Increasing `TRJ_TURNS` at fixed duration increases angular travel and typically required speed. Circle entry lines are fixed at 5 s (`circle_r05`) and 10 s (`circle_r10`); the helix has a fixed 10 s entry and 8 s return. These fixed durations are not changed by `TRJ_LINE_T` or `TRJ_RETURN_T`.
-
-The firmware catalog has 12 names: `hover`, `step_x`, `step_y`, `line_x`, `line_y`, `line_z`, `circle_r05`, `circle_r10`, `figure_eight_tracking`, `helix_r10`, `yaw_sweep`, and `full_excitation`. Each preset uses only its relevant fields, but the firmware reads the complete native trajectory parameter set when a trajectory is requested.
-
-#### Inspect, change and save
-
-In the **PX4 shell**, while disarmed, inspect parameters first:
-
-```text
-param show SE3_KX
-param show SE3_KV
-param show SE3_RATE_MAX
-param show MPC_THR_HOVER
-param show TRJ_HOME_Z
-param show TRJ_F8_T
-```
-
-For example, after checking the flight volume and desired absolute NED start, configure a -2.5 m reference altitude and a slower 80 s figure-eight:
-
-```text
-param set TRJ_HOME_Z -2.5
-param set TRJ_F8_T 80
-param show TRJ_HOME_Z
-param show TRJ_F8_T
-param save
-```
-
-These are examples, **not automatically safe values for an aircraft**. `param set` changes a PX4 parameter; `param save` persists it across reboot. Controller parameters can affect subsequent control updates, so do not tune them during flight. `TRJ_*` settings are snapshotted **when `se3_control trajectory <name>` is requested**; edits during execution do not change that run.
-
-#### What to adjust
-
-| Observation | Parameter to examine | Trade-off |
+| Name | Reference | Configuration |
 |---|---|---|
-| Position response is slow | `SE3_KX`, `SE3_KV` | Stronger correction can improve response but can overshoot or saturate. |
-| Position overshoots or oscillates | `SE3_KV`, `SE3_KX` | More velocity damping or less position gain can help; inspect actuator limits first. |
-| Roll/pitch/yaw correction is too aggressive | `SE3_KRX/KRY/KRZ` | Smaller gains request gentler rate corrections. |
-| Body-rate command is clipped | `SE3_RATE_MAX` | A higher cap permits faster rotation but does not add actuator authority. |
-| Hover thrust is mis-scaled | `MPC_THR_HOVER` | Verify calibration and vehicle data; do not mask an actuator/model issue. |
-| Reference motion is too aggressive | `TRJ_*_T`, amplitudes, `TRJ_TURNS` | Increase duration, reduce displacement or reduce turns. |
-| Trajectory starts away from the aircraft | `TRJ_HOME_*` | Verify the absolute local-NED origin and measured start pose. |
+| `setpoint` | Absolute position and yaw; live edits are immediate steps | `TRJ_SP_X/Y/Z/YAW` |
+| `steps5` | Five fixed absolute NED points with instantaneous transitions | `TRJ_STEP_HOLD` |
+| `circle` | Centered at `TRJ_HOME_*`, starting at its +X edge | `TRJ_CIR_*`, `TRJ_HOME_*` |
+| `figure8` | Centered at `TRJ_HOME_*`, starting at the center | `TRJ_F8_*`, `TRJ_HOME_*` |
 
-Change one factor at a time and assess the response and allocator saturation in SITL before considering hardware. Native parameter settings, PX4 rate PID, estimator and allocator remain firmware-owned. Offboard gains and `config/trajectories.yaml` are independent.
+The five `steps5` positions (metres), in order, are `(0, 0, -0.75)`,
+`(0.25, 0, -0.75)`, `(0, 0, -0.75)`, `(0, 0.25, -0.75)`, and
+`(0, 0, -0.75)`. Each point is held for `TRJ_STEP_HOLD` seconds;
+the transition is an immediate step, not a timed motion. These points are
+hardcoded and independent of `TRJ_HOME_*`.
+
+#### Trajectory parameters
+
+| Parameter | Default | Purpose |
+|---|---:|---|
+| `TRJ_SP_X` | 0 m | Live X reference |
+| `TRJ_SP_Y` | 0 m | Live Y reference |
+| `TRJ_SP_Z` | -0.75 m | Live Z reference |
+| `TRJ_SP_YAW` | 0 rad | Live heading |
+| `TRJ_STEP_HOLD` | 3 s | Dwell at each fixed step |
+| `TRJ_HOME_X` | 0 m | Circle/figure-eight center X |
+| `TRJ_HOME_Y` | 0 m | Circle/figure-eight center Y |
+| `TRJ_HOME_Z` | -0.75 m | Circle/figure-eight center Z |
+| `TRJ_HOME_YAW` | 0 rad | Circle/figure-eight heading |
+| `TRJ_CIR_R` | 0.5 m | Circle radius |
+| `TRJ_CIR_T` | 20 s | Total circle duration |
+| `TRJ_CIR_TURNS` | 1 | Circle revolutions |
+| `TRJ_F8_AX` | 0.5 m | Figure-eight X amplitude |
+| `TRJ_F8_AY` | 0.5 m | Figure-eight Y amplitude |
+| `TRJ_F8_T` | 30 s | Total figure-eight duration |
+| `TRJ_F8_TURNS` | 1 | Figure-eight cycles |
+
+All coordinates are absolute PX4 local NED (Z positive downward). Circle
+starts at `(TRJ_HOME_X + TRJ_CIR_R, TRJ_HOME_Y, TRJ_HOME_Z)`; figure-eight
+starts at `(TRJ_HOME_X, TRJ_HOME_Y, TRJ_HOME_Z)`. Their time parameters
+specify the total duration across 1–10 turns/cycles. Neither reference
+shifts automatically to the measured aircraft position.
+
+#### Inspect and execute
+
+In the **PX4 shell**, inspect the configuration:
+
+```text
+se3_control list
+param show SE3_*
+param show TRJ_*
+```
+
+After airborne mode selection and confirmation of an active, holding SE3 mode:
+
+```text
+se3_control trajectory figure8
+se3_control status
+se3_control hold
+```
+
+`trajectory` takes exactly **one name**, without another `start` argument.
+A new trajectory can only start when SE3 is active and holding. Explicit
+`se3_control hold` captures the **measured** position and heading; normal
+completion of a finite trajectory holds its final **commanded** reference.
+
+An active `setpoint` reads `TRJ_SP_*` changes live from PX4 parameters:
+
+```text
+se3_control trajectory setpoint
+param set TRJ_SP_X 0.25
+se3_control hold
+```
+
+Use the example only if those absolute coordinates are safe for the current
+vehicle. Parameter edits produce **instantaneous reference steps**, not
+smoothed travel. Live setpoint execution continues until interrupted. All
+other trajectory parameters are snapshotted at the request to start a run.
+
+#### Tuning boundaries
+
+Change `SE3_*` feedback gains separately from reference geometry and timing.
+`MPC_THR_HOVER` is a standard PX4 hover-thrust calibration parameter. Inspect
+actuator/rate saturation when tuning. Defaults are not hardware-validated.
 
 ## Readiness and faults
 

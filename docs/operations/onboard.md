@@ -44,35 +44,31 @@ The following commands are entered in the **PX4 shell** (`pxh>`), not Ubuntu.
 
 ```text
 se3_control status
-param show TRJ_HOME_X
-param show TRJ_HOME_Y
-param show TRJ_HOME_Z
-param show TRJ_HOME_YAW
-param show TRJ_F8_T
+se3_control list
+param show TRJ_*
 ```
 
-On supported targets, SE3 registers at boot and its default `SE3_ENABLE`
-is `1`. A registered mode is initially inactive.
+On supported targets, SE3 registers at boot but is initially inactive.
+The four trajectory names are `setpoint`, `steps5`, `circle`, and `figure8`.
 
-### 2. Take off and verify the start pose
+### 2. Take off and verify the starting pose
 
 ```text
 commander takeoff
 listener vehicle_local_position
 ```
 
-Wait for a stable hover in a valid Position flight mode. The simulator's
-default takeoff may reach NED Z about `-2.5`, while `TRJ_HOME_Z` defaults
-to `-1.0`. Match the intended trajectory's absolute altitude and yaw to
-the verified flight volume before execution; for example:
+Wait for stable Position-mode hover. SITL may take off to NED Z near
+`-2.5` m, while `TRJ_HOME_Z` defaults to `-0.75` m. Match the
+**measured** position and intended flight volume. For example, if appropriate:
 
 ```text
 param set TRJ_HOME_Z -2.5
 ```
 
-The number is an **example**, not an automatic measurement. Confirm local
-X/Y and yaw as well. The firmware intentionally has no proximity/alignment
-guard on a trajectory start.
+Confirm X, Y, Z, and yaw. Figure-eight starts at `TRJ_HOME_*`; circle
+starts at `(TRJ_HOME_X + TRJ_CIR_R, TRJ_HOME_Y, TRJ_HOME_Z)`.
+Neither reference automatically aligns to the aircraft's measured pose.
 
 ### 3. Select SE3 and confirm holding
 
@@ -82,22 +78,29 @@ se3_control status
 commander status
 ```
 
-Require `active=1`, `faulted=0`, and `trajectory: holding` before proceeding.
+Require `active=1`, `faulted=0`, and `trajectory: holding`. Mode entry
+captures the measured pose without starting a trajectory.
 
 ### 4. Start and monitor
 
 ```text
-se3_control trajectory figure_eight_tracking
+se3_control trajectory figure8
 se3_control status
 ```
 
-The new firmware uses its built-in catalog; `se3_control trajectory <name>`
-is the only trajectory start interface. To interrupt movement:
+There is no extra `start` argument. To interrupt the current trajectory
+and hold the **measured** pose:
 
 ```text
 se3_control hold
 se3_control status
 ```
+
+For a separate live test, set `TRJ_SP_*` near the measured hover pose
+before `se3_control trajectory setpoint`. While it runs, changing those
+parameters produces immediate position/yaw reference steps. The `steps5`
+trajectory uses five fixed NED points near `(0, 0, -0.75)`, independently
+of `TRJ_HOME_*`; verify their entire flight volume before starting it.
 
 ### 5. Return to Position and land
 
@@ -108,12 +111,12 @@ commander land
 ```
 
 Confirm Position mode, then wait for landing/disarm. Do not stop the
-controller module or companion/simulator services while airborne.
+controller module or simulator/companion services while airborne.
 
 ## Hardware companion
 
-Use [QGroundControl's MAVLink Console](companion.md) over the
-independent telemetry connection for hardware PX4 commands. Confirm the
+Use QGroundControl's MAVLink Console or the PX4 MAVLink shell over an
+available hardware MAVLink connection for native commands. Confirm the
 installed firmware includes/starts SE3 and registers its Commander mode. Hardware requires validated aircraft-specific PX4 parameters, estimator,
 actuator and hover-thrust calibration. The toolkit does not provide a hardware
 SE3 parameter profile.

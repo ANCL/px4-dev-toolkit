@@ -92,7 +92,7 @@ In simulation, PX4 uses configured Gazebo/external-vision aiding and IMU. On har
 
 `px4_bringup` provides agent/GCS launchers. `px4_control_common` provides recording and the virtual-joystick client. `px4_position_mode` contains the reference flight and independent-Offboard staging examples. `offboard_controllers` contains position-reference/SE(3) nodes, trajectory YAML loading, vehicle loading, and rate reproduction. `px4_mocap_bridge` combines Vicon launch with pose conversion.
 
-The analytic core of `trajectory_generator/` owns reference sampling through snap without ROS or PX4 dependencies; its separate configuration layer reads YAML. Offboard nodes load shared YAML and start trajectory time at confirmed Offboard entry. For native control, PX4's independent `src/lib/trajectory/` catalog is configured through `TRJ_*` parameters and sampled on the flight controller. Firmware mode selection first captures the actual pose for holding.
+The analytic core of `trajectory_generator/` owns reference sampling through snap without ROS or PX4 dependencies; its separate configuration layer reads YAML. Offboard nodes load shared YAML and start trajectory time at confirmed Offboard entry. For native control, PX4's module-local `src/modules/se3_control/trajectory/` catalog is configured through `TRJ_*` parameters and sampled on the flight controller. Firmware mode selection first captures the actual pose for holding.
 
 Native SE3 registers a Commander external-mode slot **inside PX4** and publishes body rates and normalized thrust at a nominal 100 Hz. PX4 retains rate control and allocation. Its implementation is described under [Onboard SE3](../controllers/onboard/se3.md); the ROS controller is described under [Offboard SE3](../controllers/offboard/se3/index.md).
 
@@ -119,7 +119,7 @@ The toolkit separates an implemented interface from a configuration that has bee
 
 | Environment | Confirmed evidence | Still requires verification |
 |---|---|---|
-| Native SITL (`gz_f450`) | Onboard SE3 selected, held position, and started the figure-eight; hold and handback confirmed | Different aircraft, trajectories, and controller configurations |
+| Native SITL (`gz_f450`) | Simplified onboard `figure8` executed after SE3 selection (November 2026) | Live `setpoint`, `steps5`, `circle`, and physical flight validation |
 | Docker SITL | SITL image built and its packaged tools passed command/dependency checks | Complete live Docker simulation and controller-flight sequence |
 | Physical companion / PX4 | Native module, shell and parameter paths are implemented | Actual aircraft tuning, state estimation, control handoff, recovery procedures, and physical flight |
 

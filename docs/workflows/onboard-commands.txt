@@ -17,6 +17,7 @@ PX4 SHELL (pxh> / nsh>)
 ----------------------
 # Inspect the built-in SE3 module and trajectory settings:
 se3_control status
+se3_control list
 param show TRJ_HOME_Z
 param show TRJ_HOME_YAW
 param show TRJ_F8_T
@@ -28,7 +29,7 @@ logger status
 se3_control select
 se3_control status
 # Require active=1, faulted=0, holding
-se3_control trajectory figure_eight_tracking
+se3_control trajectory figure8
 se3_control status
 # To interrupt: se3_control hold
 
@@ -48,7 +49,11 @@ NOTES
 - No .traj files, YAML compilation or MAVLink FTP upload are involved.
 - Native trajectories are firmware-defined and configured with TRJ_* parameters.
 - ROS 2 Offboard trajectories remain separately configured in config/trajectories.yaml.
+- Native names: setpoint, steps5, circle and figure8.
 - The onboard catalog is absolute PX4 local NED; no pose alignment occurs.
+- steps5 uses fixed NED points; TRJ_STEP_HOLD sets each dwell.
+- TRJ_SP_* edits change an active setpoint immediately; no interpolation.
+- Other trajectory values are snapshotted at the start request.
 - The mode captures measured pose on entry and on explicit hold.
 - Hardware PX4 commands use QGroundControl's MAVLink Console; native parameters are managed within PX4.
 - DDS recordings and ULogs contain different native execution metadata.

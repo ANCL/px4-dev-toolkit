@@ -85,6 +85,9 @@ if [[ "${profile}" == "sitl" ]]; then
     fi
 
     git -C "${PX4_DIR}" submodule update --init --recursive
+
+    # PX4_REF names a branch; report the commit it resolved to.
+    echo "PX4 source: $(git -C "${PX4_DIR}" rev-parse HEAD) (configured ref ${PX4_REF})"
 fi
 
 echo "${profile} source repositories ready."

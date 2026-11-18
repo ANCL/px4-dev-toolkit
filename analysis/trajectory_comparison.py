@@ -3,8 +3,14 @@
 The same recorded PX4 state and controller topics are processed for every run.
 Only the reference source and execution-start evidence vary by recording:
   * a confirmed Offboard transition starts ROS Offboard trajectories;
-  * a native SE3 recording needs an explicit event, or a strictly validated
-    reference-fit estimate for legacy bags without the event.
+  * native SE3 ROS bags contain no execution-start event (run phase is
+    ULog-only), so their start is estimated by a strictly validated fit of
+    the recorded reference against a confirmed Offboard run.
+
+Native trajectories (PX4 TRJ_* parameters) and Offboard trajectories
+(config/trajectories.yaml) are defined independently. A native run is
+comparable only when its recorded reference matches the Offboard reference;
+otherwise the fit is rejected. The checked-in catalogs do not match.
 
 A reference fit is an *estimate*, never represented as an exact PX4 event.
 No assumptions about specific trajectory names or specific maneuver steps.
@@ -366,7 +372,7 @@ def _configuration(runs: list[RawRun]):
     known = [c for c in configurations if isinstance(c, dict)]
     if not known:
         raise ValueError("No embedded trajectory configuration to determine start/duration; "
-                         "record an explicit start event or provide a compatible reference bag")
+                         "include a recorded Offboard run with a matching reference")
     if any(c != known[0] for c in known[1:]):
         raise ValueError("Recorded trajectory configurations differ; cannot compare")
     segments = trajectory_segments(known[0])
@@ -385,7 +391,7 @@ def compare_bags(paths: list[Path], output_dir: Path) -> None:
     template = next((r for r in runs if r.origin_s is not None), None)
     if template is None:
         raise ValueError("At least one run needs confirmed trajectory-start evidence "
-                         "to align legacy recordings")
+                         "to align native SE3 recordings")
 
     from analysis.comparison import unique_labels
     profile_labels = []
@@ -442,7 +448,7 @@ def compare_bags(paths: list[Path], output_dir: Path) -> None:
     details += ["", f"Common trajectory interval: 0 .. {duration:.3f} s", ""]
     if any(r.start_evidence.startswith("inferred") for r in runs):
         details.extend([
-            "CAUTION: Legacy native start was estimated from recorded setpoints.",
+            "CAUTION: Native SE3 start was estimated from recorded setpoints.",
             "This is not an observed execution-phase event or CRC validation.",
             "Do not interpret sub-sample timing or the inferred start as exact.", "",
         ])

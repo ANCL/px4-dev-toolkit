@@ -126,6 +126,12 @@ trajectory snapshot: pair it with a compatible recorded Offboard reference
 only when the reference fit and coverage checks succeed. An ambiguous hover or
 shortened execution can be rejected. For exact native run timing, use ULog.
 
+Native trajectories (`TRJ_*` parameters) and Offboard trajectories
+(`config/trajectories.yaml`) are defined independently. The checked-in
+catalogs differ in height, entry segments, and timing, so a native run fits an
+Offboard reference only if both were deliberately configured to the same
+absolute path. Otherwise the comparison stops with a reference-mismatch error.
+
 
 ## Comparison signal provenance
 

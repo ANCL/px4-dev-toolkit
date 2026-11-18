@@ -101,6 +101,8 @@ def start(profile: str) -> None:
         raise RuntimeError(f'A recorder is already active; run {sys.argv[0]} status or stop')
     if shutil.which('ros2') is None:
         raise RuntimeError('ros2 unavailable; source ros2/runtime_env.sh before starting')
+    # Available once ros2/runtime_env.sh has sourced the built workspace.
+    from px4_control_common.recording import source_revisions
     bag_root = ROOT / 'bags' / profile
     bag_root.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
@@ -112,7 +114,7 @@ def start(profile: str) -> None:
     proc = subprocess.Popen(command, stdin=subprocess.DEVNULL, start_new_session=True)
     data = {'profile': profile, 'pid': proc.pid, 'bag': str(bag),
             'topics': topics, 'started_at': datetime.now().isoformat(),
-            'foreground': True}
+            'foreground': True, 'revisions': source_revisions(ROOT)}
     try:
         fd = os.open(str(STATE), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(fd, 'w') as file:
@@ -163,6 +165,8 @@ def write_experiment(data: dict) -> None:
     bag = Path(data['bag'])
     metadata = {'profile': data['profile'], 'config': {'recorder': 'px4_record',
                  'topics': data['topics']}, 'source': 'rosbag2'}
+    if 'revisions' in data:  # Absent only for a recorder started by an older version.
+        metadata['revisions'] = data['revisions']
     (bag / 'experiment.json').write_text(json.dumps(metadata, indent=2) + '\n')
 
 

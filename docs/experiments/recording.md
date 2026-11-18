@@ -80,6 +80,8 @@ bags/se3/<timestamp>/
 
 Launch-owned `experiment.json` records profile, configuration, and controller arguments; study runs include step identity. Independent recordings contain profile and topic-selection metadata, so retain onboard parameter and plan files separately.
 
+Both kinds also contain `revisions`: the commit, branch, and tracked-file modification state of the toolkit and, where a local checkout exists, of `px4/PX4-Autopilot`, captured when recording starts. Because PX4 follows a branch, this is the record of which firmware source a SITL run used. A companion computer has no PX4 checkout; take the flight controller's firmware revision from its ULog. A Docker image contains no toolkit Git metadata, so its toolkit entry is `null`.
+
 In a **repository-root shell with ROS sourced**, find the most recent finalized standalone Offboard SE3 bag and inspect it:
 
 ```bash

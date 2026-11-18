@@ -3,6 +3,7 @@
 from datetime import datetime
 import json
 from pathlib import Path
+import subprocess
 
 import yaml
 
@@ -61,6 +62,35 @@ def trajectory_configuration(path: Path, name: str) -> dict[str, object]:
         "default_yaw": data["default_yaw"],
         "segments": [{"name": segment, **available[segment]} for segment in names],
     }
+
+
+def _git_revision(path: Path) -> dict[str, object] | None:
+    """Commit and tracked-file modification state of one checkout, if present."""
+    def git(*args: str) -> str:
+        return subprocess.run(["git", "-C", str(path), *args], check=True,
+                              capture_output=True, text=True).stdout.strip()
+    try:
+        commit = git("rev-parse", "HEAD")
+        branch = git("rev-parse", "--abbrev-ref", "HEAD")
+        modified = bool(git("status", "--porcelain", "--untracked-files=no"))
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return {"commit": commit, "branch": branch, "modified": modified}
+
+
+def source_revisions(root: Path) -> dict[str, object]:
+    """Source revisions at recording start, for experiment.json provenance.
+
+    PX4 tracks a branch (config/sources/px4.env), so the toolkit commit alone
+    does not identify the firmware. The PX4 entry describes the local SITL
+    checkout; on a companion computer there is none, and the flight
+    controller's firmware revision must be taken from its ULog.
+    """
+    revisions = {"toolkit": _git_revision(root)}
+    px4 = root / "px4" / "PX4-Autopilot"
+    if px4.is_dir():
+        revisions["px4"] = _git_revision(px4)
+    return revisions
 
 
 def find_repo_root(launch_file: str) -> Path:
@@ -170,6 +200,7 @@ def launch_experiment(*, node, record: bool, launch_file: str,
         raise ValueError("Recorded experiments require profile and configuration metadata")
 
     root = find_repo_root(launch_file)
+    experiment = {**experiment, "revisions": source_revisions(root)}
     share = Path(get_package_share_directory(package))
     topic_root = root / "config" / "recording"
     profile_file = topic_root / (str(experiment["profile"]) + ".txt")

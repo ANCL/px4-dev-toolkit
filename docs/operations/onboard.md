@@ -39,6 +39,8 @@ confirm it. Only then land and disarm. For SITL, use
 ## SE3 example: native F450 SITL
 
 The following commands are entered in the **PX4 shell** (`pxh>`), not Ubuntu.
+A plain-text [command sheet](../workflows/onboard-commands.txt) collects the
+Ubuntu, PX4-shell, and analysis commands of this procedure in one place.
 
 ### 1. Inspect the native configuration
 

@@ -201,7 +201,16 @@ Selection is for an **armed, airborne, non-VTOL rotary-wing aircraft**, with no 
 
 Local-position and attitude timestamps must be at most **200 ms** old; gyro timestamps at most **100 ms** old. Attitude quaternion squared norm must lie strictly between `0.9` and `1.1`. The runtime explicitly excludes autostart IDs `6010` and `6002`; this exclusion is not proof that every other aircraft configuration is supported.
 
-Once active, changes to local XY, local z, or quaternion estimator reset counters latch a fault. Invalid/stale state, failed trajectory sampling, or a failed geometric calculation also stops setpoint publication and latches a fault. Recovery of a stale sample alone does not resume execution. Exit the mode and disarm before the latched fault is cleared. Commander consumes the health replies and retains mode/failsafe authority; do not interpret the runtime's readiness checks as an independently validated flight-safety system.
+Once active, any failure latches a fault until disarm; recovery of a stale sample alone does not resume execution, and Commander rejects reselecting SE3 while it is latched. Faults are handled in two classes:
+
+| Class | Causes | Response |
+|---|---|---|
+| Controller | Estimator reset-counter change (estimate still valid), invalid `SE3_*`/`MPC_THR_HOVER` configuration, trajectory sampling failure, failed geometric calculation (including non-positive collective thrust), non-finite rate/thrust command | SE3 requests **Position** mode (`VEHICLE_CMD_SET_NAV_STATE`). Commander accepts it only if Position can run. If rejected, or unacknowledged within 100 ms, SE3 reports itself unavailable immediately and PX4's native failsafe applies |
+| State | Invalid or stale position, velocity, heading, attitude or gyro data; landed; failsafe active | No mode request. SE3 reports itself unavailable immediately (re-using Commander's current health request ID) and PX4's native failsafe applies |
+
+Until Commander deselects SE3, it publishes zero body rates with `MPC_THR_HOVER` thrust instead of leaving its last command in `mc_rate_control` (only while armed and airborne). This stops rotation; it does not level the aircraft. Commander independently enforces SE3's declared requirements (attitude, angular velocity, local position), so an estimator loss triggers its failsafe regardless of SE3. In `gz_f450` SITL the measured fault-to-Position handoff is 20 ms, and the native failsafe engages 20–120 ms after a fault; with this SITL estimator configuration the fallback is Land or Descend because RTL has no global position. Commander retains mode and failsafe authority; do not interpret the runtime's readiness checks as an independently validated flight-safety system.
+
+SITL builds additionally provide `se3_control fault controller|state` for testing these paths; it requires `SYS_FAILURE_EN = 1` and is not compiled into flight-controller firmware.
 
 The module can only be stopped while disarmed. Returning to pilot control uses a mode change, not module shutdown.
 

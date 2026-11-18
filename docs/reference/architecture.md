@@ -126,3 +126,15 @@ The toolkit separates an implemented interface from a configuration that has bee
 </div>
 
 Physical flight requires the [hardware](../operations/companion.md) and [onboard](../operations/onboard.md) preparation procedures.
+
+### Automated checks
+
+A small set of automated checks covers the mathematics and configuration that flight results depend on. They are consistency checks, not flight validation.
+
+| Scope | Checks | Command |
+|---|---|---|
+| ROS 2 Offboard (`offboard_controllers/test/`) | Trajectory derivatives through snap against finite differences; desired angular velocity/acceleration against finite differences of \(R_d\); perfect-tracking force derivatives equal reference jerk/snap; Lee moment equals rigid-body dynamics at zero error; attitude-error sign; physical-wrench adapter reproduces the requested wrench and PX4's normalized mixer, and scales infeasible moments uniformly | `colcon test --packages-select offboard_controllers` then `colcon test-result --verbose` (in `ros2/`, sourced) |
+| Tooling (`tools/tests/`) | Study trajectories and vehicles resolve; standalone and launch recorders resolve each recording profile identically; source-revision metadata | `python3 -m pytest tools/tests` (repository root, `ros2/runtime_env.sh` sourced) |
+| Native SE3 (`src/modules/se3_control/Se3MathTest.cpp` in PX4) | The same derivative, attitude-reference, perfect-tracking, and sign checks for the single-precision firmware implementation | `make tests TESTFILTER=Se3Math` (in `px4/PX4-Autopilot`) |
+
+The Offboard and native implementations are checked independently against the same mathematical properties; neither is compiled against the other.

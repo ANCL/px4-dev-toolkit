@@ -195,4 +195,19 @@ install(
   DESTINATION include
 )
 
+# Focused checks of the control, trajectory and adapter mathematics:
+#   colcon test --packages-select offboard_controllers
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+
+  ament_add_gtest(test_trajectory test/test_trajectory.cpp)
+  target_link_libraries(test_trajectory trajectory_generator)
+
+  ament_add_gtest(test_se3_control test/test_se3_control.cpp)
+  target_link_libraries(test_se3_control se3_control trajectory_generator)
+
+  ament_add_gtest(test_physical_wrench_adapter test/test_physical_wrench_adapter.cpp)
+  target_link_libraries(test_physical_wrench_adapter physical_wrench_adapter)
+endif()
+
 ament_package()

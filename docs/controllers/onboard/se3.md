@@ -94,7 +94,7 @@ does not select the mode or arm the aircraft.
 |---|---|
 | `se3_control select` | Requests the SE3 navigation state; Commander may reject it. |
 | Confirmed SE3 entry | Captures measured position and heading and holds them. |
-| `se3_control trajectory <name>` | Reads current `TRJ_*` values and starts the named built-in reference on the next 100 Hz cycle, **preempting** any running trajectory. Continuous trajectories enter from the current reference without a discontinuity. |
+| `se3_control trajectory <name>` | Reads current `TRJ_*` values and starts the named built-in reference on the next 100 Hz cycle, **replacing** any running trajectory without blending. `circle` and `figure8` start from the current reference position and yaw at rest (position continuous, velocity not); `setpoint` and `steps5` step immediately. |
 | Trajectory completion | Finite trajectories return home (`TRJ_HOME_*`) and hold it, without changing mode. `setpoint` never completes. |
 | `se3_control hold` | Cancels any trajectory and captures the current measured pose. |
 | Selection of another mode | Stops SE3 publication; the next entry captures a new hold pose. |
@@ -137,7 +137,7 @@ The translational gains are **already mass-normalized**; the geometric reference
 | Name | Reference | Configuration |
 |---|---|---|
 | `setpoint` | Absolute position and yaw as an immediate step, held indefinitely; live edits are immediate steps | `TRJ_SP_X/Y/Z/YAW` |
-| `steps5` | Five fixed absolute NED steps, then a smooth return home | `TRJ_STEP_HOLD`, `TRJ_HOME_*` |
+| `steps5` | Five fixed absolute NED steps, then a straight line home | `TRJ_STEP_HOLD`, `TRJ_HOME_*` |
 | `circle` | Centered at `TRJ_HOME_*`, pattern starting at its +X edge | `TRJ_CIR_*`, `TRJ_HOME_*` |
 | `figure8` | Centered at `TRJ_HOME_*`, pattern starting at the center | `TRJ_F8_*`, `TRJ_HOME_*` |
 
@@ -145,7 +145,7 @@ The five `steps5` positions (metres), in order, are `(0, 0, -1.2)`,
 `(1, 0, -1.2)`, `(1, 1, -1.2)`, `(0, 1, -1.2)`, and `(0, 0, -0.9)`. Each
 point is held for `TRJ_STEP_HOLD` seconds. Every change, including the
 first, is an immediate step, not a timed motion. After the fifth step the
-reference returns smoothly to `TRJ_HOME_*` and holds it.
+reference returns along a straight line to `TRJ_HOME_*` and holds it.
 
 #### Trajectory parameters
 
@@ -173,12 +173,17 @@ is `TRJ_HOME + R (cos φ, sin φ, 0)`; the figure-eight is
 `TRJ_HOME + (A_X sin φ, A_Y sin 2φ, 0)`. In both, φ advances at a constant
 rate through 1–10 turns/cycles in exactly `TRJ_CIR_T`/`TRJ_F8_T`.
 
-Both are entered smoothly from the current reference: a C4 (continuous through
-snap) transition to rest on the pattern, then a phase ramp along it up to the
-nominal rate. They finish with the reverse ramp, a C4 transition home and a
-hold. Entry and return are **not** part of the configured duration.
-Transitions take the shortest duration from 2 s that keeps speed and
-acceleration within 0.6 m/s and 0.6 m/s², or 110 % of the starting values.
+Entry and return reuse two simple moves from rest to rest with ninth-order
+time scaling: a yaw rotation in place to `TRJ_HOME_YAW` (if needed), then a
+straight line from the current reference position to the pattern start (the
+circle's +X edge, or home for the figure-eight). Each move takes
+`max(2 s, distance / 0.25 m/s)` (yaw: `/ 0.25 rad/s`), peaking near
+0.62 m/s. The pattern then runs at a constant rate from its first instant,
+so the reference **velocity steps** from rest to the pattern speed at the
+start and back to rest at the end: 0.52 m/s for the default circle, 0.88 m/s
+for the default figure-eight. The circle returns home along a line; the
+figure-eight already ends at home. Entry and return are **not** part of the
+configured duration.
 
 #### Inspect and execute
 
@@ -237,7 +242,7 @@ Once active, any failure latches a fault until disarm; recovery of a stale sampl
 | Controller | Estimator reset-counter change (estimate still valid), invalid `SE3_*`/`MPC_THR_HOVER` configuration, trajectory sampling failure, failed geometric calculation (including non-positive collective thrust), non-finite rate/thrust command | SE3 requests **Position** mode (`VEHICLE_CMD_SET_NAV_STATE`). Commander accepts it only if Position can run. If rejected, or unacknowledged within 100 ms, SE3 reports itself unavailable immediately and PX4's native failsafe applies |
 | State | Invalid or stale position, velocity, heading, attitude or gyro data; landed; failsafe active | No mode request. SE3 reports itself unavailable immediately (re-using Commander's current health request ID) and PX4's native failsafe applies |
 
-Until Commander deselects SE3, it publishes zero body rates with `MPC_THR_HOVER` thrust instead of leaving its last command in `mc_rate_control` (only while armed and airborne). This stops rotation; it does not level the aircraft. Commander independently enforces SE3's declared requirements (attitude, angular velocity, local position), so an estimator loss triggers its failsafe regardless of SE3. In `gz_f450` SITL the measured fault-to-Position handoff is 20 ms, and the native failsafe engages 20–120 ms after a fault; with this SITL estimator configuration the fallback is Land or Descend because RTL has no global position. Commander retains mode and failsafe authority; do not interpret the runtime's readiness checks as an independently validated flight-safety system.
+Until Commander deselects SE3, it publishes zero body rates with `MPC_THR_HOVER` thrust instead of leaving its last command in `mc_rate_control` (only while armed and airborne). This stops rotation; it does not level the aircraft. Commander independently enforces SE3's declared requirements (attitude, angular velocity, local position), so an estimator loss triggers its failsafe regardless of SE3. In `gz_f450` SITL (November 2026) the measured handoff from the last SE3 reference to Position mode is 32–36 ms after a controller fault, and to Commander's Land failsafe 68–72 ms after a state fault; with this SITL estimator configuration the fallback is Land or Descend because RTL has no global position. Commander retains mode and failsafe authority; do not interpret the runtime's readiness checks as an independently validated flight-safety system.
 
 SITL builds additionally provide `se3_control fault controller|state|allocation` for testing these paths (`allocation`: PHYSICAL only); it requires `SYS_FAILURE_EN = 1` and is not compiled into flight-controller firmware.
 

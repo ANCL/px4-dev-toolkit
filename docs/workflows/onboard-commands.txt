@@ -53,8 +53,8 @@ NOTES
 - Native names: setpoint, steps5, circle and figure8.
 - The onboard catalog is absolute PX4 local NED; no pose alignment occurs.
 - steps5 steps through fixed NED points; TRJ_STEP_HOLD sets each dwell; it then returns home.
-- circle and figure8 enter smoothly from the current reference and return home when finished.
-- A trajectory command preempts the running trajectory; no hold is needed in between.
+- circle and figure8 first move in a straight line from the current reference to the pattern, run at a constant rate (velocity steps at the pattern start and end), and finish at home.
+- A trajectory command replaces the running trajectory without blending; no hold is needed in between.
 - TRJ_SP_* edits change an active setpoint immediately; no interpolation.
 - Other trajectory values are snapshotted at the start request.
 - The mode captures measured pose on entry and on explicit hold.

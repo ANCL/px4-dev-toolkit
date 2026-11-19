@@ -29,8 +29,9 @@ heading; it does not start motion.
 
 Start a named native trajectory explicitly. It uses absolute local NED
 coordinates and does **not** shift its origin to the current hover; circle and
-figure-eight fly smoothly from the current reference to the pattern first.
-A new `trajectory` command preempts the running one at any time. Completion
+figure-eight first move in a straight line from the current reference to the
+pattern, from rest. A new `trajectory` command replaces the running one at any
+time, without blending (see [Onboard SE3](../controllers/onboard/se3.md)). Completion
 returns to and holds `TRJ_HOME_*`, while `se3_control hold` captures the
 current measured pose.
 
@@ -62,18 +63,34 @@ commander takeoff
 listener vehicle_local_position
 ```
 
-Wait for stable Position-mode hover. SITL may take off to NED Z near
-`-2.5` m, while `TRJ_HOME_Z` defaults to `-1.2` m. Match the
-**measured** position and intended flight volume. For example, if appropriate:
+Wait for stable Position-mode hover. SITL takes off to `MIS_TAKEOFF_ALT`
+(2.5 m by default, NED Z near `-2.5` m), while `TRJ_HOME_Z` defaults to
+`-1.2` m. Match the **measured** position and intended flight volume, either
+by taking off to the trajectory altitude or by moving home, for example:
 
 ```text
-param set TRJ_HOME_Z -2.5
+param set MIS_TAKEOFF_ALT 1.2     # before takeoff
+param set TRJ_HOME_Z -2.5         # or: home at the default takeoff altitude
 ```
 
 Confirm X, Y, Z, and yaw. Both patterns are centred on `TRJ_HOME_*`; the
 circle pattern starts at `(TRJ_HOME_X + TRJ_CIR_R, TRJ_HOME_Y, TRJ_HOME_Z)`.
-The reference flies smoothly from its current value to the pattern and back
-home afterwards; it never aligns the pattern to the measured pose.
+The reference moves in a straight line from its current value to the pattern
+start, runs the pattern at a constant rate (its velocity steps at the start
+and end), and the circle returns home along a line; it never aligns the
+pattern to the measured pose.
+
+In `gz_f450` SITL every boot resets the parameters (the airframe sets
+`SYS_AUTOSTART` only as a default, so PX4 reconfigures it), and `param save`
+does not survive a restart. To fly another `SE3_CTRL` path in SITL, set it
+and restart the module while **disarmed**:
+
+```text
+param set SE3_CTRL 2
+se3_control stop
+se3_control start
+se3_control status
+```
 
 ### 3. Select SE3 and confirm holding
 

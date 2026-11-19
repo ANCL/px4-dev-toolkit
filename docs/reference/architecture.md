@@ -119,7 +119,7 @@ The toolkit separates an implemented interface from a configuration that has bee
 
 | Environment | Confirmed evidence | Still requires verification |
 |---|---|---|
-| Native SITL (`gz_f450`) | Simplified onboard `figure8` executed after SE3 selection (November 2026) | Live `setpoint`, `steps5`, `circle`, and physical flight validation |
+| Native SITL (`gz_f450`) | All three `SE3_CTRL` paths (November 2026): passive hold, live `setpoint`, `steps5`, `circle`, `figure8`, direct switching, completion and home hold, measured-pose hold, return to Position, controller/state/allocation faults; results in the [module README](https://github.com/ANCL/PX4-Autopilot/blob/lab/main/src/modules/se3_control/README.md#validation) | PHYSICAL with the default `THR_MDL_FAC = 0` holds about 0.45 m low; gyro loss, motor failure, hardware |
 | Docker SITL | SITL image built and its packaged tools passed command/dependency checks | Complete live Docker simulation and controller-flight sequence |
 | Physical companion / PX4 | Native module, shell and parameter paths are implemented | Actual aircraft tuning, state estimation, control handoff, recovery procedures, and physical flight |
 
@@ -135,6 +135,6 @@ A small set of automated checks covers the mathematics and configuration that fl
 |---|---|---|
 | ROS 2 Offboard (`offboard_controllers/test/`) | Trajectory derivatives through snap against finite differences; desired angular velocity/acceleration against finite differences of \(R_d\); perfect-tracking force derivatives equal reference jerk/snap; Lee moment equals rigid-body dynamics at zero error; attitude-error sign; physical-wrench adapter reproduces the requested wrench and PX4's normalized mixer, and scales infeasible moments uniformly | `colcon test --packages-select offboard_controllers` then `colcon test-result --verbose` (in `ros2/`, sourced) |
 | Tooling (`tools/tests/`) | Study trajectories and vehicles resolve; standalone and launch recorders resolve each recording profile identically; source-revision metadata | `python3 -m pytest tools/tests` (repository root, `ros2/runtime_env.sh` sourced) |
-| Native SE3 (`src/modules/se3_control/Se3MathTest.cpp` in PX4) | The same derivative, attitude-reference, perfect-tracking, and sign checks for the single-precision firmware implementation | `make tests TESTFILTER=Se3Math` (in `px4/PX4-Autopilot`) |
+| Native SE3 (`src/modules/se3_control/Se3MathTest.cpp` and `physical/PhysicalAllocationTest.cpp` in PX4) | The same derivative, attitude-reference, perfect-tracking, and sign checks for the single-precision firmware implementation; the four native trajectories (defaults, steps, exact turns/cycles, direct replacement); both integrals (bounds, anti-windup, resets, zero-gain equivalence); control-path ownership; physical allocation (SI effectiveness, desaturation priorities, saturation feedback, stale commands) | `make tests TESTFILTER=Se3Math` and `make tests TESTFILTER=PhysicalAllocation` (in `px4/PX4-Autopilot`) |
 
 The Offboard and native implementations are checked independently against the same mathematical properties; neither is compiled against the other.

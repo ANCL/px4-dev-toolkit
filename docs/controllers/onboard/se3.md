@@ -1,6 +1,14 @@
 # Onboard SE3
 
-Onboard SE3 is a native PX4 firmware mode for an already-flying, underactuated multicopter. It tracks a local NED position/heading reference and publishes **body-rate and normalized collective-thrust setpoints** internally. PX4 retains the rate controller, control allocator, actuator outputs, Commander mode management, and configured failsafes.
+Onboard SE3 is a native PX4 firmware mode for an already-flying, underactuated multicopter. It tracks a local NED position/heading reference with one geometric translation law and commands PX4 through one of three paths selected by `SE3_CTRL` at boot:
+
+| `SE3_CTRL` | Path | SE3 command | Downstream |
+|---|---|---|---|
+| 0 | ATTITUDE_PX4 | geometric attitude + normalized thrust | PX4 attitude and rate controllers, native allocation |
+| 1 (default) | RATE_PX4 | body rate + normalized thrust | PX4 rate controller, native allocation |
+| 2 | PHYSICAL | SI Lee wrench at the gyro rate | physical allocation in `control_allocator` with the `CA_ROTOR*` effectiveness |
+
+PX4 retains actuator outputs, Commander mode management, and configured failsafes in every path. This page details RATE_PX4; the [module README](https://github.com/ANCL/PX4-Autopilot/blob/lab/main/src/modules/se3_control/README.md) documents all three paths, the physical allocation and the integrals.
 
 The installed PX4 revision is selected by [config/sources/px4.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/sources/px4.env). The source links below follow the current `lab/main` firmware. See [Onboard control](../../operations/onboard.md) for operation, [Trajectories](../../experiments/trajectories.md) for reference definitions, and [Geometric control](../../mathematics/index.md) for the derivation.
 
@@ -30,9 +38,18 @@ Positions and velocities use PX4 local **NED**. Attitude \(R\) maps body
 **mass-normalized** gains \(\bar k_x=k_x/m\), \(\bar k_v=k_v/m\):
 
 \[
-a_c=a_d-\bar k_xe_x-\bar k_ve_v,
+a_c=a_d-\bar k_xe_x-\bar k_ve_v-\bar k_i\!\int \operatorname{sat}(e_x)\,dt,
 \qquad B=a_c-ge_3=A/m.
 \]
+
+The position integral (\(\bar k_i=\) diag(`SE3_KIXY`, `SE3_KIXY`, `SE3_KIZ`))
+removes steady position offsets in all three paths. The integrated error is
+saturated at 0.5 m per axis; the integral acceleration is bounded to 1 m/s²
+horizontally and 2 m/s² vertically. Integration is frozen while the
+normalized command or the allocator saturates. The integral is reset on mode
+entry and exit and on faults (including estimator resets), and is kept across
+trajectory commands. The analytic force derivatives include the integral's
+actual rate, so \(\Omega_d\) stays consistent with it.
 
 The firmware computes the specific force \(B\) directly in m/s².
 No vehicle mass is multiplied into or divided out of the geometric
@@ -77,9 +94,9 @@ does not select the mode or arm the aircraft.
 |---|---|
 | `se3_control select` | Requests the SE3 navigation state; Commander may reject it. |
 | Confirmed SE3 entry | Captures measured position and heading and holds them. |
-| `se3_control trajectory <name>` | Reads current `TRJ_*` values, queues a named built-in reference and starts it from absolute NED. |
-| Trajectory completion | Holds the final commanded reference without changing mode. |
-| `se3_control hold` | Interrupts execution and captures the current measured pose. |
+| `se3_control trajectory <name>` | Reads current `TRJ_*` values and starts the named built-in reference on the next 100 Hz cycle, **preempting** any running trajectory. Continuous trajectories enter from the current reference without a discontinuity. |
+| Trajectory completion | Finite trajectories return home (`TRJ_HOME_*`) and hold it, without changing mode. `setpoint` never completes. |
+| `se3_control hold` | Cancels any trajectory and captures the current measured pose. |
 | Selection of another mode | Stops SE3 publication; the next entry captures a new hold pose. |
 
 The firmware exposes four named trajectories: `setpoint`, `steps5`, `circle`, and
@@ -106,8 +123,12 @@ the toolkit's ROS 2 Offboard configuration.
 | `SE3_KRY` | `5.0` s⁻¹ | Pitch attitude-to-rate feedback. Higher requests faster pitch correction. |
 | `SE3_KRZ` | `2.0` s⁻¹ | Yaw attitude-to-rate feedback. Higher requests faster yaw correction. |
 | `SE3_RATE_MAX` | `3.0` rad/s | Per-axis body-rate limit. Lower caps commanded rotation more tightly. |
+| `SE3_KIXY` | `0.3` s⁻³ | Horizontal position-integral gain divided by mass (all paths); `0` disables it. |
+| `SE3_KIZ` | `0.6` s⁻³ | Vertical position-integral gain divided by mass (all paths); `0` disables it. |
 
-The translational gains are **already mass-normalized**; SE3 does not need an `SE3_MASS` parameter. All five gains must be finite and **strictly positive** for mode readiness, even though the parameter metadata allows zero. Increasing gains can improve responsiveness but also amplify overshoot, oscillation or rate/actuator saturation. These defaults are not hardware-validated tuning.
+PHYSICAL additionally uses `SE3_MASS` (2.0736 kg), `SE3_JXX/JYY/JZZ` (0.022078, 0.022078, 0.043301 kg m²), its attitude gains `SE3_PKR*`/`SE3_PKW*`, the attitude-integral gains `SE3_PKI_XY`/`SE3_PKI_Z` (0.5, 0.1 N m/(rad s)), and PX4's `CA_ROTOR*` geometry, `CT` (newtons at full command), `KM` and `THR_MDL_FAC`.
+
+The translational gains are **already mass-normalized**; the geometric reference uses no mass. The position and velocity gains must be finite and **strictly positive** for mode readiness, even though the parameter metadata allows zero; the integral gains must be finite and non-negative. Increasing gains can improve responsiveness but also amplify overshoot, oscillation or rate/actuator saturation. These defaults are not hardware-validated tuning.
 
 `MPC_THR_HOVER` is a **standard PX4 parameter**, not defined by this module; inspect the value on the vehicle rather than assuming a universal default. It scales the same collective-acceleration request into normalized thrust. A higher value gives a larger normalized thrust request for the same acceleration. SE3 requires a finite value strictly between 0 and 1. Determine it from the airframe's hover-thrust calibration, not by guessing a controller gain.
 
@@ -115,16 +136,16 @@ The translational gains are **already mass-normalized**; SE3 does not need an `S
 
 | Name | Reference | Configuration |
 |---|---|---|
-| `setpoint` | Absolute position and yaw; live edits are immediate steps | `TRJ_SP_X/Y/Z/YAW` |
-| `steps5` | Five fixed absolute NED points with instantaneous transitions | `TRJ_STEP_HOLD` |
-| `circle` | Centered at `TRJ_HOME_*`, starting at its +X edge | `TRJ_CIR_*`, `TRJ_HOME_*` |
-| `figure8` | Centered at `TRJ_HOME_*`, starting at the center | `TRJ_F8_*`, `TRJ_HOME_*` |
+| `setpoint` | Absolute position and yaw as an immediate step, held indefinitely; live edits are immediate steps | `TRJ_SP_X/Y/Z/YAW` |
+| `steps5` | Five fixed absolute NED steps, then a smooth return home | `TRJ_STEP_HOLD`, `TRJ_HOME_*` |
+| `circle` | Centered at `TRJ_HOME_*`, pattern starting at its +X edge | `TRJ_CIR_*`, `TRJ_HOME_*` |
+| `figure8` | Centered at `TRJ_HOME_*`, pattern starting at the center | `TRJ_F8_*`, `TRJ_HOME_*` |
 
-The five `steps5` positions (metres), in order, are `(0, 0, -0.75)`,
-`(0.25, 0, -0.75)`, `(0, 0, -0.75)`, `(0, 0.25, -0.75)`, and
-`(0, 0, -0.75)`. Each point is held for `TRJ_STEP_HOLD` seconds;
-the transition is an immediate step, not a timed motion. These points are
-hardcoded and independent of `TRJ_HOME_*`.
+The five `steps5` positions (metres), in order, are `(0, 0, -1.2)`,
+`(1, 0, -1.2)`, `(1, 1, -1.2)`, `(0, 1, -1.2)`, and `(0, 0, -0.9)`. Each
+point is held for `TRJ_STEP_HOLD` seconds. Every change, including the
+first, is an immediate step, not a timed motion. After the fifth step the
+reference returns smoothly to `TRJ_HOME_*` and holds it.
 
 #### Trajectory parameters
 
@@ -132,26 +153,32 @@ hardcoded and independent of `TRJ_HOME_*`.
 |---|---:|---|
 | `TRJ_SP_X` | 0 m | Live X reference |
 | `TRJ_SP_Y` | 0 m | Live Y reference |
-| `TRJ_SP_Z` | -0.75 m | Live Z reference |
+| `TRJ_SP_Z` | -1.0 m | Live Z reference |
 | `TRJ_SP_YAW` | 0 rad | Live heading |
-| `TRJ_STEP_HOLD` | 3 s | Dwell at each fixed step |
-| `TRJ_HOME_X` | 0 m | Circle/figure-eight center X |
-| `TRJ_HOME_Y` | 0 m | Circle/figure-eight center Y |
-| `TRJ_HOME_Z` | -0.75 m | Circle/figure-eight center Z |
-| `TRJ_HOME_YAW` | 0 rad | Circle/figure-eight heading |
-| `TRJ_CIR_R` | 0.5 m | Circle radius |
-| `TRJ_CIR_T` | 20 s | Total circle duration |
-| `TRJ_CIR_TURNS` | 1 | Circle revolutions |
-| `TRJ_F8_AX` | 0.5 m | Figure-eight X amplitude |
-| `TRJ_F8_AY` | 0.5 m | Figure-eight Y amplitude |
-| `TRJ_F8_T` | 30 s | Total figure-eight duration |
-| `TRJ_F8_TURNS` | 1 | Figure-eight cycles |
+| `TRJ_STEP_HOLD` | 5 s | Dwell at each fixed step |
+| `TRJ_HOME_X` | 0 m | Home X: pattern center, return point |
+| `TRJ_HOME_Y` | 0 m | Home Y: pattern center, return point |
+| `TRJ_HOME_Z` | -1.2 m | Home Z: pattern altitude, return point |
+| `TRJ_HOME_YAW` | 0 rad | Pattern and return heading |
+| `TRJ_CIR_R` | 1.0 m | Circle radius |
+| `TRJ_CIR_T` | 60 s | Duration of the circle turns |
+| `TRJ_CIR_TURNS` | 5 | Circle revolutions |
+| `TRJ_F8_AX` | 0.8 m | Figure-eight X amplitude |
+| `TRJ_F8_AY` | 1.2 m | Figure-eight Y amplitude |
+| `TRJ_F8_T` | 90 s | Duration of the figure-eight cycles |
+| `TRJ_F8_TURNS` | 5 | Figure-eight cycles |
 
-All coordinates are absolute PX4 local NED (Z positive downward). Circle
-starts at `(TRJ_HOME_X + TRJ_CIR_R, TRJ_HOME_Y, TRJ_HOME_Z)`; figure-eight
-starts at `(TRJ_HOME_X, TRJ_HOME_Y, TRJ_HOME_Z)`. Their time parameters
-specify the total duration across 1–10 turns/cycles. Neither reference
-shifts automatically to the measured aircraft position.
+All coordinates are absolute PX4 local NED (Z positive downward). The circle
+is `TRJ_HOME + R (cos φ, sin φ, 0)`; the figure-eight is
+`TRJ_HOME + (A_X sin φ, A_Y sin 2φ, 0)`. In both, φ advances at a constant
+rate through 1–10 turns/cycles in exactly `TRJ_CIR_T`/`TRJ_F8_T`.
+
+Both are entered smoothly from the current reference: a C4 (continuous through
+snap) transition to rest on the pattern, then a phase ramp along it up to the
+nominal rate. They finish with the reverse ramp, a C4 transition home and a
+hold. Entry and return are **not** part of the configured duration.
+Transitions take the shortest duration from 2 s that keeps speed and
+acceleration within 0.6 m/s and 0.6 m/s², or 110 % of the starting values.
 
 #### Inspect and execute
 
@@ -163,24 +190,26 @@ param show SE3_*
 param show TRJ_*
 ```
 
-After airborne mode selection and confirmation of an active, holding SE3 mode:
+After airborne mode selection and confirmation of an active SE3 mode:
 
 ```text
 se3_control trajectory figure8
 se3_control status
+se3_control trajectory circle      # switches directly, no hold needed
 se3_control hold
 ```
 
 `trajectory` takes exactly **one name**, without another `start` argument.
-A new trajectory can only start when SE3 is active and holding. Explicit
-`se3_control hold` captures the **measured** position and heading; normal
-completion of a finite trajectory holds its final **commanded** reference.
+Any trajectory may be commanded at any time while SE3 is active; it replaces
+the current one immediately. Explicit `se3_control hold` captures the
+**measured** position and heading; normal completion of a finite trajectory
+holds **home**.
 
 An active `setpoint` reads `TRJ_SP_*` changes live from PX4 parameters:
 
 ```text
 se3_control trajectory setpoint
-param set TRJ_SP_X 0.25
+param set TRJ_SP_X 0.5
 se3_control hold
 ```
 
@@ -210,12 +239,12 @@ Once active, any failure latches a fault until disarm; recovery of a stale sampl
 
 Until Commander deselects SE3, it publishes zero body rates with `MPC_THR_HOVER` thrust instead of leaving its last command in `mc_rate_control` (only while armed and airborne). This stops rotation; it does not level the aircraft. Commander independently enforces SE3's declared requirements (attitude, angular velocity, local position), so an estimator loss triggers its failsafe regardless of SE3. In `gz_f450` SITL the measured fault-to-Position handoff is 20 ms, and the native failsafe engages 20–120 ms after a fault; with this SITL estimator configuration the fallback is Land or Descend because RTL has no global position. Commander retains mode and failsafe authority; do not interpret the runtime's readiness checks as an independently validated flight-safety system.
 
-SITL builds additionally provide `se3_control fault controller|state` for testing these paths; it requires `SYS_FAILURE_EN = 1` and is not compiled into flight-controller firmware.
+SITL builds additionally provide `se3_control fault controller|state|allocation` for testing these paths (`allocation`: PHYSICAL only); it requires `SYS_FAILURE_EN = 1` and is not compiled into flight-controller firmware.
 
 The module can only be stopped while disarmed. Returning to pilot control uses a mode change, not module shutdown.
 
 ## Monitoring and evidence
 
-`se3_control status` reports its Commander/arming-check IDs, enabled/active/faulted flags, and holding/running/completed state. Check these together with PX4's actual mode and aircraft state. While active, the module publishes standard `trajectory_setpoint` position, velocity, acceleration, jerk, yaw, and yaw rate for observation/recording. The dedicated `se3_trajectory_status` uORB message adds run ID, plan CRC32, phase, elapsed time, snap, and heading acceleration. It is an onboard ULog signal and is **not** exported through the pinned DDS topic configuration. A ROS bag therefore cannot recover all native run metadata; see [Onboard flight logging](../../experiments/onboard-logs.md).
+`se3_control status` reports its Commander/arming-check IDs, enabled/active/faulted flags, and holding/running/completed state. Check these together with PX4's actual mode and aircraft state. While active, the module publishes standard `trajectory_setpoint` position, velocity, acceleration, jerk, yaw, and yaw rate for observation/recording. The dedicated `se3_trajectory_status` uORB message adds run ID, plan CRC32, trajectory ID (−1 for the measured-pose hold), plan segment, phase, elapsed time, snap, heading acceleration, and the position-integral acceleration with its freeze flag. It is an onboard ULog signal and is **not** exported through the pinned DDS topic configuration. A ROS bag therefore cannot recover all native run metadata; see [Onboard flight logging](../../experiments/onboard-logs.md).
 
 Test coverage is recorded under [Validation scope](../../reference/architecture.md#validation-scope).

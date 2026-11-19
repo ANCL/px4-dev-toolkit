@@ -54,15 +54,18 @@ The four built-in names and PX4 parameters are independent of ROS 2 YAML:
 
 | Name | Native reference |
 |---|---|
-| `setpoint` | Absolute `TRJ_SP_X/Y/Z/YAW`; live edits are immediate steps |
-| `steps5` | Five hardcoded absolute NED points; `TRJ_STEP_HOLD` per point |
-| `circle` | `TRJ_HOME_*` center and `TRJ_CIR_R/T/TURNS` |
-| `figure8` | `TRJ_HOME_*` center and `TRJ_F8_AX/AY/T/TURNS` |
+| `setpoint` | Absolute `TRJ_SP_X/Y/Z/YAW` as an immediate step, held indefinitely; live edits are immediate steps |
+| `steps5` | Five hardcoded absolute NED steps, `TRJ_STEP_HOLD` (5 s) each, then a smooth return to `TRJ_HOME_*` |
+| `circle` | `TRJ_HOME_*` center; `TRJ_CIR_R/T/TURNS` (1.0 m, 60 s, 5 turns) |
+| `figure8` | `TRJ_HOME_*` center; `TRJ_F8_AX/AY/T/TURNS` (0.8 m, 1.2 m, 90 s, 5 cycles) |
 
-`steps5` uses `(0, 0, -0.75)` → `(0.25, 0, -0.75)` →
-`(0, 0, -0.75)` → `(0, 0.25, -0.75)` → `(0, 0, -0.75)` metres.
-It does not use `TRJ_HOME_*`. Circle begins on the +X edge of its center;
-figure-eight begins at its center.
+`steps5` uses `(0, 0, -1.2)` → `(1, 0, -1.2)` → `(1, 1, -1.2)` →
+`(0, 1, -1.2)` → `(0, 0, -0.9)` metres; every change is an immediate step.
+`TRJ_HOME_*` defaults to `(0, 0, -1.2)` with yaw 0. The circle pattern begins
+on the +X edge of its center; the figure-eight pattern begins at its center.
+Both are entered smoothly (continuous through snap) from the current
+reference, run at a constant phase rate for exactly their configured
+duration, and return home; entry and return add a few seconds.
 
 After takeoff and confirmed SE3 entry, having first checked the starting
 absolute NED pose and flight volume, use the **PX4 shell**:
@@ -73,9 +76,10 @@ se3_control status
 se3_control trajectory figure8
 ```
 
-SE3 must be active and holding to start a trajectory. `se3_control hold`
-interrupts motion and captures the **measured** position and heading. A
-completed finite trajectory holds its final **commanded** pose. Only the
+Any trajectory can be started whenever SE3 is active, including while
+another one runs: the new command preempts it at once. `se3_control hold`
+cancels motion and captures the **measured** position and heading. A
+completed finite trajectory holds **home** (`TRJ_HOME_*`). Only the
 active `setpoint` follows subsequent `TRJ_SP_*` edits; all other trajectory
 parameters are snapshotted at the start request.
 

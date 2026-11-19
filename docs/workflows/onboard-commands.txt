@@ -31,6 +31,7 @@ se3_control status
 # Require active=1, faulted=0, holding
 se3_control trajectory figure8
 se3_control status
+# Switch directly at any time: se3_control trajectory circle
 # To interrupt: se3_control hold
 
 # Return through the pilot's Position-mode control.
@@ -51,7 +52,9 @@ NOTES
 - ROS 2 Offboard trajectories remain separately configured in config/trajectories.yaml.
 - Native names: setpoint, steps5, circle and figure8.
 - The onboard catalog is absolute PX4 local NED; no pose alignment occurs.
-- steps5 uses fixed NED points; TRJ_STEP_HOLD sets each dwell.
+- steps5 steps through fixed NED points; TRJ_STEP_HOLD sets each dwell; it then returns home.
+- circle and figure8 enter smoothly from the current reference and return home when finished.
+- A trajectory command preempts the running trajectory; no hold is needed in between.
 - TRJ_SP_* edits change an active setpoint immediately; no interpolation.
 - Other trajectory values are snapshotted at the start request.
 - The mode captures measured pose on entry and on explicit hold.

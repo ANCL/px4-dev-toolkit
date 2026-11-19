@@ -28,9 +28,11 @@ request was published. Entry captures and holds the measured position and
 heading; it does not start motion.
 
 Start a named native trajectory explicitly. It uses absolute local NED
-coordinates and does **not** shift its origin to the current hover. Completion
-holds the final commanded pose, while `se3_control hold` captures the current
-measured pose.
+coordinates and does **not** shift its origin to the current hover; circle and
+figure-eight fly smoothly from the current reference to the pattern first.
+A new `trajectory` command preempts the running one at any time. Completion
+returns to and holds `TRJ_HOME_*`, while `se3_control hold` captures the
+current measured pose.
 
 To return, select Position mode using the pilot's configured control and
 confirm it. Only then land and disarm. For SITL, use
@@ -61,16 +63,17 @@ listener vehicle_local_position
 ```
 
 Wait for stable Position-mode hover. SITL may take off to NED Z near
-`-2.5` m, while `TRJ_HOME_Z` defaults to `-0.75` m. Match the
+`-2.5` m, while `TRJ_HOME_Z` defaults to `-1.2` m. Match the
 **measured** position and intended flight volume. For example, if appropriate:
 
 ```text
 param set TRJ_HOME_Z -2.5
 ```
 
-Confirm X, Y, Z, and yaw. Figure-eight starts at `TRJ_HOME_*`; circle
-starts at `(TRJ_HOME_X + TRJ_CIR_R, TRJ_HOME_Y, TRJ_HOME_Z)`.
-Neither reference automatically aligns to the aircraft's measured pose.
+Confirm X, Y, Z, and yaw. Both patterns are centred on `TRJ_HOME_*`; the
+circle pattern starts at `(TRJ_HOME_X + TRJ_CIR_R, TRJ_HOME_Y, TRJ_HOME_Z)`.
+The reference flies smoothly from its current value to the pattern and back
+home afterwards; it never aligns the pattern to the measured pose.
 
 ### 3. Select SE3 and confirm holding
 
@@ -80,7 +83,7 @@ se3_control status
 commander status
 ```
 
-Require `active=1`, `faulted=0`, and `trajectory: holding`. Mode entry
+Require `active=1`, `faulted=0`, and `trajectory: measured-pose hold, holding`. Mode entry
 captures the measured pose without starting a trajectory.
 
 ### 4. Start and monitor
@@ -90,8 +93,9 @@ se3_control trajectory figure8
 se3_control status
 ```
 
-There is no extra `start` argument. To interrupt the current trajectory
-and hold the **measured** pose:
+There is no extra `start` argument. Another `se3_control trajectory <name>`
+switches directly, without a hold in between. To interrupt the current
+trajectory and hold the **measured** pose:
 
 ```text
 se3_control hold
@@ -101,8 +105,9 @@ se3_control status
 For a separate live test, set `TRJ_SP_*` near the measured hover pose
 before `se3_control trajectory setpoint`. While it runs, changing those
 parameters produces immediate position/yaw reference steps. The `steps5`
-trajectory uses five fixed NED points near `(0, 0, -0.75)`, independently
-of `TRJ_HOME_*`; verify their entire flight volume before starting it.
+trajectory steps through five fixed NED points between `(0, 0, -1.2)` and
+`(1, 1, -1.2)` (the last at `(0, 0, -0.9)`), then returns to `TRJ_HOME_*`;
+verify their entire flight volume before starting it.
 
 ### 5. Return to Position and land
 

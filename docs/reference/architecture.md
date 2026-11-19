@@ -72,7 +72,7 @@ In simulation, PX4 uses configured Gazebo/external-vision aiding and IMU. On har
 | External position reference | [offboard_position](https://github.com/ANCL/px4-dev-toolkit/tree/main/ros2/src/offboard_controllers/src/offboard_position) | Node and control lifecycle |
 | Shared trajectory mathematics | [`trajectory_generator/`](https://github.com/ANCL/px4-dev-toolkit/tree/main/trajectory_generator) | C++ sampler and YAML adapter |
 | ROS 2 Offboard SE3 controller | [se3/node.cpp](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/node.cpp) | [`Se3::execute_handoff()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/offboard_controllers/src/se3/runtime/control.cpp#L23), pure `control/`, trajectories |
-| Native onboard control | [PX4 SE3 runtime](https://github.com/ANCL/PX4-Autopilot/blob/lab/main/src/modules/se3_control/Runtime.cpp) | Mode registration, hold and rate output |
+| Native onboard control | [PX4 SE3 runtime](https://github.com/ANCL/PX4-Autopilot/blob/lab/main/src/modules/se3_control/Runtime.cpp) | Mode registration, hold and the three `SE3_CTRL` output paths |
 | Record an experiment | [recording.py](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_control_common/px4_control_common/recording.py) | [`launch_experiment()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/ros2/src/px4_control_common/px4_control_common/recording.py#L150) and topic selection |
 | Run a study | [tools/run_sequence](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/run_sequence) | [`load_sequence()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/config.py#L43), [`run_step()`](https://github.com/ANCL/px4-dev-toolkit/blob/main/tools/sequence/execution.py#L50), manifests |
 | Analyze/compare | [analysis](https://github.com/ANCL/px4-dev-toolkit/tree/main/analysis) | Signals, profiles and plots |
@@ -94,7 +94,7 @@ In simulation, PX4 uses configured Gazebo/external-vision aiding and IMU. On har
 
 The analytic core of `trajectory_generator/` owns reference sampling through snap without ROS or PX4 dependencies; its separate configuration layer reads YAML. Offboard nodes load shared YAML and start trajectory time at confirmed Offboard entry. For native control, PX4's module-local `src/modules/se3_control/trajectory/` catalog is configured through `TRJ_*` parameters and sampled on the flight controller. Firmware mode selection first captures the actual pose for holding.
 
-Native SE3 registers a Commander external-mode slot **inside PX4** and publishes body rates and normalized thrust at a nominal 100 Hz. PX4 retains rate control and allocation. Its implementation is described under [Onboard SE3](../controllers/onboard/se3.md); the ROS controller is described under [Offboard SE3](../controllers/offboard/se3/index.md).
+Native SE3 registers a Commander external-mode slot **inside PX4** and computes its reference and geometric attitude at a nominal 100 Hz. `SE3_CTRL` selects the command: attitude and normalized thrust for PX4's attitude and rate controllers (ATTITUDE_PX4), body rates and normalized thrust for PX4's rate controller (RATE_PX4, default), or an SI wrench at the gyro rate that `control_allocator` allocates with the `CA_ROTOR*` rotor model (PHYSICAL). PX4 retains actuator outputs and failsafes in every path. Its implementation is described under [Onboard SE3](../controllers/onboard/se3.md); the ROS controller is described under [Offboard SE3](../controllers/offboard/se3/index.md).
 
 
 <!-- Preserve existing section links. -->

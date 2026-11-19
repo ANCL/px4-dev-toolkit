@@ -8,11 +8,13 @@ Onboard SE3 is a native PX4 firmware mode for an already-flying, underactuated m
 | 1 (default) | RATE_PX4 | body rate + normalized thrust | PX4 rate controller, native allocation |
 | 2 | PHYSICAL | SI Lee wrench at the gyro rate | physical allocation in `control_allocator` with the `CA_ROTOR*` effectiveness |
 
-PX4 retains actuator outputs, Commander mode management, and configured failsafes in every path. This page details RATE_PX4; the [module README](https://github.com/ANCL/PX4-Autopilot/blob/lab/main/src/modules/se3_control/README.md) documents all three paths, the physical allocation and the integrals.
+PX4 retains actuator outputs, Commander mode management, and configured failsafes in every path. The reference, trajectories, position integral, lifecycle and faults below are common to all paths; the command-path diagram and the body-rate law detail RATE_PX4. The [module README](https://github.com/ANCL/PX4-Autopilot/blob/lab/main/src/modules/se3_control/README.md) documents all three paths, the physical allocation and the integrals.
 
 The installed PX4 revision is selected by [config/sources/px4.env](https://github.com/ANCL/px4-dev-toolkit/blob/main/config/sources/px4.env). The source links below follow the current `lab/main` firmware. See [Onboard control](../../operations/onboard.md) for operation, [Trajectories](../../experiments/trajectories.md) for reference definitions, and [Geometric control](../../mathematics/index.md) for the derivation.
 
 ## Control path and scheduling
+
+RATE_PX4 (`SE3_CTRL = 1`) command path:
 
 ```mermaid
 flowchart TB
@@ -24,11 +26,11 @@ flowchart TB
     A --> M["Actuator outputs"]
 ```
 
-[`Se3Runtime`](https://github.com/ANCL/PX4-Autopilot/blob/lab/main/src/modules/se3_control/Runtime.cpp) schedules a reference/control update every **10 ms** on PX4's `rate_ctrl` work queue. This is a nominal 100 Hz update schedule, not a measured timing guarantee. PX4's downstream rate controller runs from angular-velocity callbacks; its update rate is not set by SE3's 100 Hz schedule.
+[`Se3Runtime`](https://github.com/ANCL/PX4-Autopilot/blob/lab/main/src/modules/se3_control/Runtime.cpp) schedules a reference/control update every **10 ms** on PX4's `rate_ctrl` work queue. This is a nominal 100 Hz update schedule, not a measured timing guarantee. PX4's downstream rate controller runs from angular-velocity callbacks; its update rate is not set by SE3's 100 Hz schedule. In ATTITUDE_PX4, SE3 instead publishes `vehicle_attitude_setpoint` at 100 Hz to `mc_att_control`; in PHYSICAL, a gyro-triggered inner loop publishes one `se3_wrench_setpoint` per gyro sample to `control_allocator`.
 
-The mode enables only rate control and allocation in its Commander control configuration. Native position and attitude feedback controllers do not run its outer loop. `FlightModeManager` disables its flight tasks for registered external modes, so the native module owns the active trajectory reference publication.
+In RATE_PX4 the mode enables only rate control and allocation in its Commander control configuration; ATTITUDE_PX4 adds attitude control, and PHYSICAL enables only allocation. Native position and attitude feedback controllers do not run its outer loop. `FlightModeManager` disables its flight tasks for registered external modes, so the native module owns the active trajectory reference publication.
 
-SE3 publishes `vehicle_rates_setpoint` only while its own registered mode is selected, the required control flags match, and state/configuration are valid. It also publishes `vehicle_attitude_setpoint` as an observation of its exact desired rotation and thrust; that publication does not enable PX4's attitude controller.
+SE3 publishes its command (`vehicle_rates_setpoint` in RATE_PX4) only while its own registered mode is selected, the required control flags match, and state/configuration are valid. In RATE_PX4 it also publishes `vehicle_attitude_setpoint` as an observation of its exact desired rotation and thrust; that publication does not enable PX4's attitude controller.
 
 ## The active control law
 
@@ -57,7 +59,7 @@ reference. Its analytic derivatives come from jerk, snap and the nominal
 rigid-body dynamics; estimator acceleration is not numerically differentiated.
 
 The desired body z-axis is \(b_{3d}=-B/\lVert B\rVert\). The desired heading
-completes the orthonormal rotation \(R_d\). Geometric attitude feedback uses
+completes the orthonormal rotation \(R_d\). RATE_PX4 geometric attitude feedback uses
 
 \[
 e_R=\tfrac12(R_d^TR-R^TR_d)^\vee,
@@ -70,7 +72,7 @@ The desired angular-rate feedforward \(\Omega_d\) is analytical. The rate
 command is clamped per axis to `SE3_RATE_MAX` rad/s at publication.
 
 For current body z-axis \(b_3=Re_3\), the collective acceleration and
-PX4-normalized thrust are
+PX4-normalized thrust (ATTITUDE_PX4 and RATE_PX4) are
 
 \[
 u=-B\cdot b_3,
@@ -79,10 +81,11 @@ u_T=\operatorname{clip}\!\left(\texttt{MPC\_THR\_HOVER}\frac{u}{g},0,1\right),
 \qquad \texttt{thrust\_body}=[0,0,-u_T].
 \]
 
-Nonpositive or nonfinite \(u\) is rejected. PX4 runs the downstream rate PID
-and control allocator. The mass-dependent physical-wrench output is specific
-to the **ROS Offboard `geometric_physical`** controller, not this native
-body-rate path. See the [Offboard SE3 implementation](../offboard/se3/index.md).
+Nonpositive or nonfinite \(u\) is rejected. In RATE_PX4, PX4 runs the
+downstream rate PID and control allocator. PHYSICAL instead commands the thrust
+\(f=m\,u\) with `SE3_MASS` and a Lee moment in N·m at the gyro rate (module
+README). It is separate from the **ROS Offboard `geometric_physical`**
+controller; see the [Offboard SE3 implementation](../offboard/se3/index.md).
 
 ## Registration and reference lifecycle
 
@@ -231,7 +234,7 @@ actuator/rate saturation when tuning. Defaults are not hardware-validated.
 
 ## Readiness and faults
 
-Selection is for an **armed, airborne, non-VTOL rotary-wing aircraft**, with no active failsafe. The native health reply explicitly prevents arming in SE3. The runtime also requires received land-detection state, valid finite local position/velocity/heading, finite attitude and gyro state, configured positive finite gains/rate limit, and `0 < MPC_THR_HOVER < 1`.
+Selection is for an **armed, airborne, non-VTOL rotary-wing aircraft**, with no active failsafe. The native health reply explicitly prevents arming in SE3. The runtime also requires received land-detection state, valid finite local position/velocity/heading, finite attitude and gyro state, a valid configuration for the selected path (positive finite gains, plus the rate limit in RATE_PX4 and mass and inertia in PHYSICAL), and `0 < MPC_THR_HOVER < 1`.
 
 Local-position and attitude timestamps must be at most **200 ms** old; gyro timestamps at most **100 ms** old. Attitude quaternion squared norm must lie strictly between `0.9` and `1.1`. The runtime explicitly excludes autostart IDs `6010` and `6002`; this exclusion is not proof that every other aircraft configuration is supported.
 
@@ -239,10 +242,10 @@ Once active, any failure latches a fault until disarm; recovery of a stale sampl
 
 | Class | Causes | Response |
 |---|---|---|
-| Controller | Estimator reset-counter change (estimate still valid), invalid `SE3_*`/`MPC_THR_HOVER` configuration, trajectory sampling failure, failed geometric calculation (including non-positive collective thrust), non-finite rate/thrust command | SE3 requests **Position** mode (`VEHICLE_CMD_SET_NAV_STATE`). Commander accepts it only if Position can run. If rejected, or unacknowledged within 100 ms, SE3 reports itself unavailable immediately and PX4's native failsafe applies |
+| Controller | Estimator reset-counter change (estimate still valid), invalid `SE3_*`/`MPC_THR_HOVER` configuration, trajectory sampling failure, failed geometric calculation (including non-positive collective thrust), non-finite rate/thrust command; in PHYSICAL also an incompatible, non-replying or not-all-rotors allocation, or a motor failure | SE3 requests **Position** mode (`VEHICLE_CMD_SET_NAV_STATE`). Commander accepts it only if Position can run. If rejected, or unacknowledged within 100 ms, SE3 reports itself unavailable immediately and PX4's native failsafe applies |
 | State | Invalid or stale position, velocity, heading, attitude or gyro data; landed; failsafe active | No mode request. SE3 reports itself unavailable immediately (re-using Commander's current health request ID) and PX4's native failsafe applies |
 
-Until Commander deselects SE3, it publishes zero body rates with `MPC_THR_HOVER` thrust instead of leaving its last command in `mc_rate_control` (only while armed and airborne). This stops rotation; it does not level the aircraft. Commander independently enforces SE3's declared requirements (attitude, angular velocity, local position), so an estimator loss triggers its failsafe regardless of SE3. In `gz_f450` SITL (November 2026) the measured handoff from the last SE3 reference to Position mode is 32–36 ms after a controller fault, and to Commander's Land failsafe 68–72 ms after a state fault; with this SITL estimator configuration the fallback is Land or Descend because RTL has no global position. Commander retains mode and failsafe authority; do not interpret the runtime's readiness checks as an independently validated flight-safety system.
+Until Commander deselects SE3, it replaces its last command with a neutral one (only while armed and airborne): zero body rates with `MPC_THR_HOVER` thrust in RATE_PX4, which stops rotation but does not level the aircraft; a level attitude at the current heading with hover thrust in ATTITUDE_PX4; in PHYSICAL it re-enables PX4's rate controller, which then tracks zero rates and hover thrust. Commander independently enforces SE3's declared requirements (attitude, angular velocity, local position), so an estimator loss triggers its failsafe regardless of SE3. In `gz_f450` SITL (November 2026) the measured handoff from the last SE3 reference to Position mode is 32–36 ms after a controller fault, and to Commander's Land failsafe 68–72 ms after a state fault; with this SITL estimator configuration the fallback is Land or Descend because RTL has no global position. Commander retains mode and failsafe authority; do not interpret the runtime's readiness checks as an independently validated flight-safety system.
 
 SITL builds additionally provide `se3_control fault controller|state|allocation` for testing these paths (`allocation`: PHYSICAL only); it requires `SYS_FAILURE_EN = 1` and is not compiled into flight-controller firmware.
 

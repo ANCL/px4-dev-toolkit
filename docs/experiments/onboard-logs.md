@@ -26,7 +26,9 @@ Recording profiles extend `config/recording/common.txt` with controller-specific
 
 The standard `trajectory_setpoint` publication is the desired onboard SE3
 position, velocity, acceleration, jerk and yaw while SE3 is active. Its
-`vehicle_rates_setpoint` and native PX4 thrust/torque/actuator topics remain.
+`vehicle_rates_setpoint` and native PX4 thrust/torque/actuator topics remain
+in RATE_PX4 and ATTITUDE_PX4. PHYSICAL publishes no rate or torque setpoint;
+its `se3_wrench_setpoint` and `se3_allocation_status` are ULog-only.
 The SE3 `se3_trajectory_status` uORB message retains exact run phase, plan
 CRC and higher-order references in ULog; those fields are not reconstructed
 in ROS 2. Live `setpoint` uses plan CRC `0`, because its reference may change

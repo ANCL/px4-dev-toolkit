@@ -17,11 +17,11 @@ Choose a control path by where its feedback runs: native PX4 reference, ROS 2 Of
 |---|---|---|
 | PX4 reference | [Position](px4-reference/position-mode.md), [staging](px4-reference/staging.md) | PX4 stabilizes the aircraft; ROS helpers automate the SITL demonstration. |
 | ROS 2 Offboard | [Position](offboard/position.md), [SE3](offboard/se3/index.md) | ROS streams setpoints via DDS; PX4 retains the loops below the selected handoff. |
-| PX4 onboard | [SE3](onboard/se3.md) | PX4 runs the controller and trajectory; its rate loop and allocator remain active. |
+| PX4 onboard | [SE3](onboard/se3.md) | PX4 runs the controller and trajectory; `SE3_CTRL` commands PX4's attitude and rate loops, its rate loop, or SI physical allocation in `control_allocator`. |
 
 </div>
 
-**Control allocation** maps requested vehicle thrust and torque into actuator commands using the configured geometry and limits. Every implementation described here retains PX4 allocation. A normalized torque setpoint is an allocator input, not a physical moment in N·m.
+**Control allocation** maps requested vehicle thrust and torque into actuator commands using the configured geometry and limits. Every implementation described here retains PX4's `control_allocator`; onboard SE3 PHYSICAL allocates its SI wrench there with the `CA_ROTOR*` rotor model instead of the normalized native allocation. A normalized torque setpoint is an allocator input, not a physical moment in N·m.
 
 <span id="native-position-mode-reference-experiment"></span>
 <span id="position-mode-staging-helper"></span>
@@ -56,7 +56,7 @@ Choose a control path by where its feedback runs: native PX4 reference, ROS 2 Of
 
 For `thrust_and_torque`, choose [Geometric (Normalized)](offboard/se3/geometric-normalized.md), [Geometric (Physical)](offboard/se3/geometric-physical.md), or [PX4 Rate PID](offboard/se3/px4-rate.md). The physical law maps N·m moments to PX4-normalized commands through a vehicle adapter. See [vehicle data](../extending/vehicles.md).
 
-[Onboard SE3](onboard/se3.md) runs a nominal 100 Hz position/attitude-to-rate controller in firmware. See [Onboard control](../operations/onboard.md) for parameters, mode selection, trajectory start, and return.
+[Onboard SE3](onboard/se3.md) runs a nominal 100 Hz geometric position/attitude controller in firmware, with attitude, body-rate or physical-wrench output selected by `SE3_CTRL`. See [Onboard control](../operations/onboard.md) for parameters, mode selection, trajectory start, and return.
 
 <span id="recording-and-studies"></span>
 <span id="next"></span>
